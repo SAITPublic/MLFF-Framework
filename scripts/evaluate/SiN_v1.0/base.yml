@@ -1,0 +1,5 @@
+dataset:
+  - src: /DB/SiN_v1.0/ocp_lmdb_rcut5/Trainset_ocp_graph_rmax5.lmdb
+
+task:
+    description: "Evaluating MLFF models with metrics based on MD simluations"
