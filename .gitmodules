@@ -1,0 +1,12 @@
+[submodule "codebases/ocp"]
+	path = codebases/ocp
+	url = https://github.com/Open-Catalyst-Project/ocp.git
+[submodule "codebases/mace"]
+	path = codebases/mace
+	url = https://github.com/ACEsuit/mace.git
+[submodule "codebases/nequip"]
+	path = codebases/nequip
+	url = https://github.com/mir-group/nequip.git
+[submodule "codebases/allegro"]
+	path = codebases/allegro
+	url = https://github.com/mir-group/allegro.git

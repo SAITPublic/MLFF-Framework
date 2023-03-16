@@ -10,7 +10,7 @@ from nequip.data import AtomicData, AtomicDataDict
 from nequip.utils.torch_geometric.batch import Batch as BatchNequIP
 
 
-def convert_atoms_to_ocp_data(atoms):
+def convert_atoms_to_ocp_batch(atoms):
     # convert atoms into pytorch_geometric data
     # which will be converted into graph ocp data in model forward() by using generate_graph()
     atomic_numbers = torch.Tensor(atoms.get_atomic_numbers())
@@ -23,11 +23,11 @@ def convert_atoms_to_ocp_data(atoms):
         atomic_numbers=atomic_numbers,
         natoms=natoms,
     ).to(self.device)
-    data = Batch.from_data_list(data) # batch size = 1
-    return data
+    batch = Batch.from_data_list(data) # batch size = 1
+    return batch
 
 
-def convert_atoms_to_nequip_data(atoms):
+def convert_atoms_to_nequip_batch(atoms):
     # convert atoms into AtomicData (graph) for NequIP
     data = AtomicData.from_ase(atoms=atoms, r_max=self.cutoff)
     # remove labels
@@ -36,8 +36,8 @@ def convert_atoms_to_nequip_data(atoms):
             del data[k]
     data = self.model.type_mapper(data)
     data = data.to(self.device)
-    data = BatchNequIP.from_data_list(data)
-    return data
+    batch = BatchNequIP.from_data_list(data)
+    return batch
 
 
 class BenchmarkCalculator(Calculator):
@@ -64,14 +64,14 @@ class BenchmarkCalculator(Calculator):
         self.max_neighbors = self.model.max_neighbors
         self.pbc = [self.model.use_pbc] * 3
 
-        # because the input snapshots are new, on-the-fly graph generating 
+        # because the input snapshots are new, we should use on-the-fly graph generation
         self.model.otf_graph = True 
     
     def _set_data_converter(self):
         if self.model_name == "nequip":
-            self.convert_atoms_to_data = convert_atoms_to_nequip_data
+            self.convert_atoms_to_batch = convert_atoms_to_nequip_batch
         else:
-            self.convert_atoms_to_data = convert_atoms_to_ocp_data
+            self.convert_atoms_to_batch = convert_atoms_to_ocp_batch
 
     def set_normalizers(self, normalizers):
         self.normalizers = normalizers
@@ -83,10 +83,10 @@ class BenchmarkCalculator(Calculator):
         Calculator.calculate(atoms=atoms, properties=properties, system_changes=system_changes)
 
         # convert atoms (ASE) into a data format compaitible with MLFF models
-        data = self.convert_atoms_to_data(atoms)
+        batch = self.convert_atoms_to_batch(atoms)
 
         # MLFF model inference
-        energy, forces = self.model(data)
+        energy, forces = self.model(batch)
 
         # de-normalization (if it is used)
         if self.model_name == "nequip":
