@@ -1,0 +1,59 @@
+includes:
+- /nas/SAIT-MLFF-Framework/NeurIPS23_DnB/configs/rMD17/base_rmax5.yml
+
+model:
+  name: gemnet_t
+  num_spherical: 7
+  num_radial: 6
+  num_blocks: 4
+  emb_size_atom: 128
+  emb_size_edge: 128
+  emb_size_trip: 64
+  emb_size_rbf: 16
+  emb_size_cbf: 16
+  emb_size_bil_trip: 64
+  num_before_skip: 1
+  num_after_skip: 1
+  num_concat: 1
+  num_atom: 2
+  cutoff: 5.0
+  max_neighbors: 50
+  rbf:
+    name: gaussian
+  envelope:
+    name: polynomial
+    exponent: 5
+  cbf:
+    name: spherical_harmonics
+  extensive: True
+  output_init: HeOrthogonal
+  activation: silu
+  scale_file: /nas/SAIT-MLFF-Framework/NeurIPS23_DnB/configs/rMD17/auxiliary/gemnet-T/scale_file_compound.json
+
+  otf_graph: False
+  regress_forces: True
+  direct_forces: False
+
+optim:
+  batch_size: 32
+  eval_batch_size: 32
+  num_workers: 2
+  optimizer: AdamW
+  optimizer_params: {"amsgrad": True, "weight_decay": 2.e-6}
+  max_epochs: 2000
+  ema_decay: 0.999
+
+  # scheduler
+  scheduler: ReduceLROnPlateau
+  lr_initial: 1.e-3
+  mode: min
+  factor: 0.5
+  patience: 10
+  cooldown: 10
+  clip_grad_norm: 10
+
+  # loss function is defined in Eq. (35) in GemNet paper suppl. (NeurIPS21)
+  energy_coefficient: 0.001
+  loss_energy: mae
+  force_coefficient: 0.999
+  loss_force: l2mae

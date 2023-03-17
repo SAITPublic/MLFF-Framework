@@ -1,0 +1,49 @@
+includes:
+#- /nas/SAIT-MLFF-Framework/NeurIPS23_DnB/configs/SiN_v1.0/base_rmax5.yml
+- /nas/SAIT-MLFF-Framework/NeurIPS23_DnB/configs/SiN_v1.0/base_rmax6.yml
+
+
+trainer: forces
+
+
+model:
+  name: bpnn
+  cutoff: 6.0
+  regress_forces: True
+  use_pbc: True
+  otf_graph: False
+
+  # neural network
+  nHidden: 30
+  nLayer: 2
+  trainable: False
+
+  # descriptor : Descriptor parmeter file paths. If you use defeault parameters, comment out.
+  #g2_params: None 
+  #g4_params: None
+
+  # data-related arg
+  atom_species:
+    - Si
+    - N
+  dataset_path: /home/workspace/MLFF/SiN_v1.0/Trainset_ocp_graph_rmax6.lmdb # link file of train data
+
+
+optim:
+  batch_size: 8 ## GBS = 32 (4 GPUs)
+  eval_batch_size: 8
+  num_workers: 2
+  max_epochs: 1000
+
+  optimizer: Adam
+  weight_decay: 1.e-6
+  scheduler: LinearLR
+  lr_initial: 0.0001
+  start_factor: 1.0
+  end_factor: 1.0 ## constant LR
+
+  energy_coefficient: 1
+  loss_energy: energy_per_atom_mse
+  force_coefficient: 0.1
+  loss_force: force_per_dim_mse
+

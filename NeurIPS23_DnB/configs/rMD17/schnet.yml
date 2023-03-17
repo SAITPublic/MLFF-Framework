@@ -1,0 +1,32 @@
+includes:
+- /nas/SAIT-MLFF-Framework/NeurIPS23_DnB/configs/rMD17/base_rmax5.yml
+
+model:
+  name: schnet
+  hidden_channels: 64 # paper
+  num_filters: 64 # paper
+  num_interactions: 3 # paper (but 6 is used)
+  num_gaussians: 50 # paper, resolution 0.1
+  cutoff: 5.0 # paper : 5.0
+
+  regress_forces: True
+  use_pbc: False
+  otf_graph: False ## because of DB is cutoff=6.0
+
+optim:
+  batch_size: 32 # paper
+  eval_batch_size: 32 # paper
+  num_workers: 2
+  optimizer: Adam # paper
+  #max_epochs: 3200 # paper, 100,000 steps
+  max_epochs: 10 # paper, 100,000 steps
+  ema_decay: 0.99 # paper
+
+  scheduler: LinearLR # paper: ExponentialDecay of tensorflow
+  lr_initial: 1.e-3 # paper
+
+  ## loss function is defined in Eq. (5) in SchNet paper (NeurIPS17)
+  energy_coefficient: 0.01
+  loss_energy: mae # paper : mse (but double / float issue must be resolved!)
+  force_coefficient: 0.99
+  loss_force: mae # paper

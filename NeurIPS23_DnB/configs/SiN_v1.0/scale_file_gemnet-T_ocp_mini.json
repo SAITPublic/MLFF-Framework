@@ -1,0 +1,16 @@
+{
+    "comment": "ocp_mini_prepare_ckpt_ep0",
+    "OutBlock_0_sum": 0.5957865046902194,
+    "TripInteraction_1_had_rbf": 6.172626335537418,
+    "TripInteraction_1_sum_cbf": 3.193322994193454,
+    "AtomUpdate_1_sum": 0.5711816585504774,
+    "OutBlock_1_sum": 0.5506789135719807,
+    "TripInteraction_2_had_rbf": 6.178077271072318,
+    "TripInteraction_2_sum_cbf": 3.336195236115969,
+    "AtomUpdate_2_sum": 0.5046382761115508,
+    "OutBlock_2_sum": 0.5553337085834413,
+    "TripInteraction_3_had_rbf": 5.263816005289961,
+    "TripInteraction_3_sum_cbf": 3.504970410819962,
+    "AtomUpdate_3_sum": 0.39634873499332496,
+    "OutBlock_3_sum": 0.4503744805920384
+}

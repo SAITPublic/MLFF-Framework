@@ -1,0 +1,60 @@
+includes:
+- /nas/SAIT-MLFF-Framework/NeurIPS23_DnB/configs/rMD17/base_rmax5.yml
+
+model:
+  name: scn
+  num_interactions: 12
+  hidden_channels: 256 # 1024 in OC, reduce by 1/4 for rMD17, as in GemNet
+  sphere_channels: 64 # 128
+  sphere_channels_reduce: 64 # 128
+  num_sphere_samples: 64 # 128
+  num_basis_functions: 64 # 128
+  distance_function: "gaussian"
+  max_num_neighbors: 40
+  cutoff: 5.0
+  lmax: 6
+  mmax: 1
+  use_grid: True
+  num_bands: 1
+  num_taps: 1
+  basis_width_scalar: 2.0
+
+  regress_forces: True
+  use_pbc: True
+  otf_graph: False
+
+optim:
+  batch_size: 32
+  eval_batch_size: 32
+  num_workers: 2
+  optimizer: AdamW
+  optimizer_params: {"amsgrad": True}
+  max_epochs: 2000 
+  #max_epochs: 1200 # 12 in OC, increase by 10 times
+  ema_decay: 0.999
+
+  # warmup then step decaying
+  #lr_initial: 1.e-3
+  #warmup_steps: 00
+  #warmup_factor: 0.2
+  #lr_gamma: 0.3
+  #lr_milestone_epochs: # steps at which lr_initial <- lr_initial * lr_gamma
+  #  - 500
+  #  - 700
+  #  - 800
+  #  - 1100
+
+  # scheduler used in GemNet for rMD17
+  scheduler: ReduceLROnPlateau
+  lr_initial: 1.e-3
+  mode: min
+  factor: 0.5
+  patience: 10
+  cooldown: 10
+  clip_grad_norm: 100
+
+  # loss function (described in Section 3.1 in SCN paper (NeurIPS22)) 
+  force_coefficient: 100
+  energy_coefficient: 2
+  loss_energy: mae
+  loss_force: l2mae

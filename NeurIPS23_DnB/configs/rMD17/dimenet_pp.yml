@@ -1,0 +1,42 @@
+includes:
+- /nas/SAIT-MLFF-Framework/NeurIPS23_DnB/configs/rMD17/base_rmax5.yml
+
+model:
+  name: dimenetplusplus
+  hidden_channels: 128 # paper
+  int_emb_size: 64 # paper 
+  basis_emb_size: 8 # paper
+  out_emb_channels: 256 # paper
+  num_blocks: 4 # paper (DimeNet++)
+  cutoff: 5.0 # paper
+  num_radial: 6 # paper
+  num_spherical: 7 # paper
+  num_before_skip: 1
+  num_after_skip: 2
+  num_output_layers: 3
+
+  regress_forces: True
+  use_pbc: False
+  otf_graph: False 
+
+optim:
+  batch_size: 32 # paper
+  eval_batch_size: 32 # paper
+  num_workers: 2
+  optimizer: Adam # ?
+  optimizer_params: {"amsgrad": True} # paper
+  max_epochs: 3200 # paper, 100,000 steps
+  ema_decay: 0.999 # paper
+
+  # warmup then linear decaying
+  # paper: mixing warmup and step decaying (but it is described ambiguously)
+  lr_initial: 1.e-3 # paper
+  warmup_steps: 3000 # 100 epochs
+  warmup_factor: 0.2
+  lr_lambda: linear
+
+  ## loss function is defined in Eq. (2) in DimeNet paper (ICLR20) 
+  energy_coefficient: 1
+  loss_energy: mae
+  force_coefficient: 100
+  loss_force: mae_per_dim

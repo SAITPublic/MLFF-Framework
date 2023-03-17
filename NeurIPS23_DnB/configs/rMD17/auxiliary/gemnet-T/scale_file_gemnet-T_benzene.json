@@ -1,0 +1,20 @@
+{
+    "comment": "scale_file_benzene",
+    "OutBlock_0_sum": 0.7732701119126723,
+    "TripInteraction_1_had_rbf": 3.4938454086803787,
+    "TripInteraction_1_sum_cbf": 2.4986635941992605,
+    "AtomUpdate_1_sum": 1.1510214864740056,
+    "OutBlock_1_sum": 0.7838120440725451,
+    "TripInteraction_2_had_rbf": 3.3878764177087244,
+    "TripInteraction_2_sum_cbf": 2.391104324960906,
+    "AtomUpdate_2_sum": 0.7747877554607879,
+    "OutBlock_2_sum": 0.6491251233722908,
+    "TripInteraction_3_had_rbf": 3.4127756539109897,
+    "TripInteraction_3_sum_cbf": 2.193200388748527,
+    "AtomUpdate_3_sum": 0.5909749235651088,
+    "OutBlock_3_sum": 0.7339252622534187,
+    "TripInteraction_4_had_rbf": 3.355392134321973,
+    "TripInteraction_4_sum_cbf": 2.524182215729949,
+    "AtomUpdate_4_sum": 0.7969163946595623,
+    "OutBlock_4_sum": 0.624603287096704
+}

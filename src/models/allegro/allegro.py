@@ -17,6 +17,9 @@ from nequip.data.transforms import TypeMapper
 # pre-defined modules in NequIP
 from nequip.model import SimpleIrrepsConfig, ForceOutput, PartialForceOutput
 
+# pre-defined modules in Allegro
+from allegro.model import Allegro
+
 # modified modules to enable to be compatible with LMDB datasets
 from src.models.nequip.energy_model import EnergyModel
 from src.models.nequip.rescale import RescaleEnergyEtc, PerSpeciesRescale
@@ -28,33 +31,8 @@ from src.datasets.nequip.statistics import (
 from src.common.utils import bm_logging # benchmark logging
 
 
-# reference : nequip.model._build.py
-def model_from_config(config, initialize):
-    builders = [eval(module) for module in config.get("model_builders", [])]
-    model = None
-    for builder in builders:
-        pnames = inspect.signature(builder).parameters
-        params = {}
-        if "config" in pnames:
-            params["config"] = config
-
-        if "initialize" in pnames:
-            params["initialize"] = initialize
-
-        if "model" in pnames:
-            if model is None:
-                raise RuntimeError(f"Builder {builder.__name__} asked for the model as an input, but no previous builder has returned a model")
-            params["model"] = model
-        else:
-            if model:
-                raise RuntimeError(f"All model_builders after the first one that returns a model must take the model as an argument; {builder.__name__} doesn't")
-        model = builder(**params)
-
-    return model
-
-
-@registry.register_model("nequip")
-class NequIPWrap(BaseModel):
+@registry.register_model("allegro")
+class AllegroWrap(BaseModel):
     def __init__(
         self,
         num_atoms, # not used
@@ -71,13 +49,7 @@ class NequIPWrap(BaseModel):
         chemical_symbols=None,
         dataset=None, # train dataset path
         # architecture arguments
-        model_builders=[
-                "SimpleIrrepsConfig",
-                "EnergyModel",
-                "PerSpeciesRescale",
-                "ForceOutput",
-                "RescaleEnergyEtc",
-            ],
+        model_builders=model_builders,
         num_layers=3,
         l_max=1,
         parity=True,

@@ -1,0 +1,67 @@
+includes:
+- /nas/SAIT-MLFF-Framework/NeurIPS23_DnB/configs/SiN_v1.0/base_rmax5.yml
+
+
+trainer: forces_nequip
+
+
+model:
+  name: nequip
+  cutoff: 5.0
+  regress_forces: True
+  use_pbc: True
+  otf_graph: False
+
+  # neural network
+  model_builders:
+    - SimpleIrrepsConfig
+    - EnergyModel
+    - PerSpeciesRescale
+    - ForceOutput
+    - RescaleEnergyEtc
+  num_layers: 4
+  l_max: 2
+  parity: True
+  num_features: 32
+  num_basis: 8
+  BesselBasis_trainable: True
+  PolynomialCutoff_p: 6
+  invariant_layers: 2
+  invariant_neurons: 64
+  avg_num_neighbors: auto
+  use_sc: True
+  nonlinearity_type: gate
+  resnet: False
+  nonlinearity_scalars:
+    e: silu
+    o: tanh
+  nonlinearity_gates:
+    e: silu
+    o: tanh
+
+  # data-related arg
+  chemical_symbols:
+    - Si
+    - N
+
+
+optim:
+  batch_size: 8 ## GBS = 32 (4 GPUs)
+  eval_batch_size: 8
+  #eval_every: 534
+  num_workers: 2
+  max_epochs: 300
+  ema_decay: 0.99
+
+  optimizer: Adam
+  optimizer_params: {"amsgrad": False}
+  scheduler: LinearLR
+  lr_initial: 0.01
+  start_factor: 1.0
+  end_factor: 0.0
+
+  energy_coefficient: 1
+  loss_energy: mse_per_atom
+  force_coefficient: 1
+  loss_force: mse_per_dim
+

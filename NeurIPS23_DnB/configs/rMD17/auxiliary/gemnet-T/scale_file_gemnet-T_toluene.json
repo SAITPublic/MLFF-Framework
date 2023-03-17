@@ -1,0 +1,20 @@
+{
+    "comment": "scale_file_toluene",
+    "OutBlock_0_sum": 0.6794183985104807,
+    "TripInteraction_1_had_rbf": 3.6107747266371497,
+    "TripInteraction_1_sum_cbf": 2.37806417359419,
+    "AtomUpdate_1_sum": 0.8709810267111358,
+    "OutBlock_1_sum": 0.6596540555145867,
+    "TripInteraction_2_had_rbf": 3.4892857570865172,
+    "TripInteraction_2_sum_cbf": 2.3127611659965503,
+    "AtomUpdate_2_sum": 0.6076736178224066,
+    "OutBlock_2_sum": 0.5181513595900132,
+    "TripInteraction_3_had_rbf": 3.5389944381477596,
+    "TripInteraction_3_sum_cbf": 2.124546968904978,
+    "AtomUpdate_3_sum": 0.4320789998686227,
+    "OutBlock_3_sum": 0.5479221232102026,
+    "TripInteraction_4_had_rbf": 3.601482278969755,
+    "TripInteraction_4_sum_cbf": 2.1749789342069823,
+    "AtomUpdate_4_sum": 0.5112712675844459,
+    "OutBlock_4_sum": 0.43768446535079847
+}

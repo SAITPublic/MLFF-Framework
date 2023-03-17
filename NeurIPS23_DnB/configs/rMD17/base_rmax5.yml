@@ -1,0 +1,66 @@
+trainer: forces
+
+dataset:
+  aspirin:
+  - src: /home/workspace/MLFF/rMD17/aspirin/rmax5.0/Trainset.lmdb 
+    normalize_labels: True
+  - src: /home/workspace/MLFF/rMD17/aspirin/rmax5.0/Validset.lmdb 
+  - src: /home/workspace/MLFF/rMD17/aspirin/rmax5.0/Testset.lmdb 
+  azobenzene:
+  - src: /home/workspace/MLFF/rMD17/azobenzene/rmax5.0/Trainset.lmdb 
+    normalize_labels: True
+  - src: /home/workspace/MLFF/rMD17/azobenzene/rmax5.0/Validset.lmdb 
+  - src: /home/workspace/MLFF/rMD17/azobenzene/rmax5.0/Testset.lmdb 
+  benzene:
+  - src: /home/workspace/MLFF/rMD17/benzene/rmax5.0/Trainset.lmdb 
+    normalize_labels: True
+  - src: /home/workspace/MLFF/rMD17/benzene/rmax5.0/Validset.lmdb 
+  - src: /home/workspace/MLFF/rMD17/benzene/rmax5.0/Testset.lmdb 
+  ethanol:
+  - src: /home/workspace/MLFF/rMD17/ethanol/rmax5.0/Trainset.lmdb 
+    normalize_labels: True
+  - src: /home/workspace/MLFF/rMD17/ethanol/rmax5.0/Validset.lmdb 
+  - src: /home/workspace/MLFF/rMD17/ethanol/rmax5.0/Testset.lmdb 
+  malonaldehyde:
+  - src: /home/workspace/MLFF/rMD17/malonaldehyde/rmax5.0/Trainset.lmdb 
+    normalize_labels: True
+  - src: /home/workspace/MLFF/rMD17/malonaldehyde/rmax5.0/Validset.lmdb 
+  - src: /home/workspace/MLFF/rMD17/malonaldehyde/rmax5.0/Testset.lmdb 
+  naphthalene:
+  - src: /home/workspace/MLFF/rMD17/naphthalene/rmax5.0/Trainset.lmdb 
+    normalize_labels: True
+  - src: /home/workspace/MLFF/rMD17/naphthalene/rmax5.0/Validset.lmdb 
+  - src: /home/workspace/MLFF/rMD17/naphthalene/rmax5.0/Testset.lmdb 
+  paracetamol:
+  - src: /home/workspace/MLFF/rMD17/paracetamol/rmax5.0/Trainset.lmdb 
+    normalize_labels: True
+  - src: /home/workspace/MLFF/rMD17/paracetamol/rmax5.0/Validset.lmdb 
+  - src: /home/workspace/MLFF/rMD17/paracetamol/rmax5.0/Testset.lmdb 
+  salicylic:
+  - src: /home/workspace/MLFF/rMD17/salicylic/rmax5.0/Trainset.lmdb 
+    normalize_labels: True
+  - src: /home/workspace/MLFF/rMD17/salicylic/rmax5.0/Validset.lmdb 
+  - src: /home/workspace/MLFF/rMD17/salicylic/rmax5.0/Testset.lmdb 
+  toluene:
+  - src: /home/workspace/MLFF/rMD17/toluene/rmax5.0/Trainset.lmdb 
+    normalize_labels: True
+  - src: /home/workspace/MLFF/rMD17/toluene/rmax5.0/Validset.lmdb 
+  - src: /home/workspace/MLFF/rMD17/toluene/rmax5.0/Testset.lmdb 
+  uracil:
+  - src: /home/workspace/MLFF/rMD17/uracil/rmax5.0/Trainset.lmdb 
+    normalize_labels: True
+  - src: /home/workspace/MLFF/rMD17/uracil/rmax5.0/Validset.lmdb 
+  - src: /home/workspace/MLFF/rMD17/uracil/rmax5.0/Testset.lmdb 
+
+logger: files #tensorboard
+
+task:
+  dataset: lmdb
+  description: "Regressing to energies and forces for DFT trajectories (rMD17) with no fixed atoms"
+  metrics: 
+    - energy_per_atom_mae
+    - forces_mae
+    - forces_mse
+  primary_metric: forces_mae
+  train_on_free_atoms: False
+  eval_on_free_atoms: False

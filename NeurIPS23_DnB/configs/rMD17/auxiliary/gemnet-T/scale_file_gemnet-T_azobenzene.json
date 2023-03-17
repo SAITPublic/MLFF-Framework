@@ -1,0 +1,20 @@
+{
+    "comment": "scale_file_azobenzene",
+    "OutBlock_0_sum": 0.7267199269537366,
+    "TripInteraction_1_had_rbf": 3.8434205280506486,
+    "TripInteraction_1_sum_cbf": 2.4408362705031648,
+    "AtomUpdate_1_sum": 0.9285371783858998,
+    "OutBlock_1_sum": 0.7382900766242487,
+    "TripInteraction_2_had_rbf": 3.7600190051940205,
+    "TripInteraction_2_sum_cbf": 2.3888835028447346,
+    "AtomUpdate_2_sum": 0.7039625528779836,
+    "OutBlock_2_sum": 0.6205789988343046,
+    "TripInteraction_3_had_rbf": 3.7892675703938643,
+    "TripInteraction_3_sum_cbf": 2.2333383379316136,
+    "AtomUpdate_3_sum": 0.5671899060091038,
+    "OutBlock_3_sum": 0.63565082927752,
+    "TripInteraction_4_had_rbf": 3.5510965956691005,
+    "TripInteraction_4_sum_cbf": 2.3679985219741195,
+    "AtomUpdate_4_sum": 0.6502314826082677,
+    "OutBlock_4_sum": 0.5899676414062852
+}
