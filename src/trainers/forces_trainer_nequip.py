@@ -13,7 +13,7 @@ from src.common.collaters.parallel_collater_nequip import ParallelCollaterNequIP
 class NequIPForcesTrainer(ForcesTrainer):
     """
     Trainer class for the Structure to Energy & Force (S2EF) task, 
-    and this class is especially used to train an NequIP model.
+    and this class is especially used to train an NequIP model or an Allegro model.
     """
     def __init__(self, config):
         super().__init__(config)
@@ -29,12 +29,6 @@ class NequIPForcesTrainer(ForcesTrainer):
         trainer_config = super()._parse_config(config)
         trainer_config["model_attributes"]["dataset"] = trainer_config["dataset"]
         return trainer_config
-    
-    # TODO: remove this function
-    def _update_model_attributes_config(self):
-        # this function is called in self._set_model()
-        # self.config["model_attributes"]["additional_config"]["dataset"] = self.train_dataset
-        self.config["model_attributes"]["dataset"] = self.train_dataset
     
     def initiate_collater(self):
         self.type_mapper = TypeMapper(

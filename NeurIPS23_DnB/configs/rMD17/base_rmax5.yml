@@ -1,5 +1,3 @@
-trainer: forces
-
 dataset:
   aspirin:
   - src: /home/workspace/MLFF/rMD17/aspirin/rmax5.0/Trainset.lmdb 

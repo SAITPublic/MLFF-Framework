@@ -1,5 +1,6 @@
 """
 written by byunggook.na (SAIT)
+reference : nequip.model._build.py
 """
 
 import torch
@@ -28,9 +29,54 @@ from src.datasets.nequip.statistics import (
 from src.common.utils import bm_logging # benchmark logging
 
 
-# reference : nequip.model._build.py
-def model_from_config(config, initialize):
-    builders = [eval(module) for module in config.get("model_builders", [])]
+def compute_statistics(model_config, type_mapper, dataset_name, global_rescale_shift=None):
+    # add statistics results to config
+    dataset = LmdbDataset(dataset_name)
+
+    # 1) avg_num_neighbors (required by EnergyModel)
+    model_config["avg_num_neighbors"] = compute_avg_num_neighbors(
+        config=model_config, 
+        initialize=True, 
+        dataset=dataset,
+        transform=type_mapper,
+    )
+
+    # 2) per_species_rescale_shifts and per_species_rescale_scales (required by PerSpeciesRescale)
+    if "PerSpeciesRescale" in model_config["model_builders"]:
+        shifts, scales, arguments_in_dataset_units = compute_per_species_shift_and_scale(
+            config=model_config, 
+            initialize=True, 
+            dataset=dataset,
+            transform=type_mapper,
+        )
+        model_config["per_species_rescale_shifts"] = shifts
+        model_config["per_species_rescale_scales"] = scales
+        model_config["arguments_in_dataset_units"] = arguments_in_dataset_units
+
+    # 3) global_rescale_shift and global_rescale_scale (required by RescaleEnergyEtc (i.e., GlobalRescale))
+    if ("RescaleEnergyEtc" in model_config["model_builders"] or
+        "GlobalRescale" in model_config["model_builders"]
+    ):
+        if global_rescale_shift is not None:
+            default_shift_keys = [AtomicDataDict.TOTAL_ENERGY_KEY]
+            bm_logging.warning(
+                f"!!!! Careful global_shift is set to {global_rescale_shift}."
+                f"The model for {default_shift_keys} will no longer be size extensive"
+            )
+        global_shift, global_scale = compute_global_shift_and_scale(
+            config=model_config, 
+            initialize=True, 
+            dataset=dataset,
+            transform=type_mapper,
+        )
+        model_config["global_rescale_shift"] = global_shift
+        model_config["global_rescale_scale"] = global_scale
+
+    dataset.close_db()
+    return model_config
+
+
+def initiate_model_by_builders(builders, config, initialize):
     model = None
     for builder in builders:
         pnames = inspect.signature(builder).parameters
@@ -49,9 +95,7 @@ def model_from_config(config, initialize):
             if model:
                 raise RuntimeError(f"All model_builders after the first one that returns a model must take the model as an argument; {builder.__name__} doesn't")
         model = builder(**params)
-
     return model
-
 
 @registry.register_model("nequip")
 class NequIPWrap(BaseModel):
@@ -60,10 +104,11 @@ class NequIPWrap(BaseModel):
         num_atoms, # not used
         bond_feat_dim, # not used
         num_targets,
+        cutoff=5.0,
+        max_neighbors=None, # not used?
         use_pbc=True,
         regress_forces=True,
         otf_graph=False,
-        cutoff=5.0,
         # data-related arguments (type mapper and statistics)
         num_types=None,
         type_names=None,
@@ -72,12 +117,12 @@ class NequIPWrap(BaseModel):
         dataset=None, # train dataset path
         # architecture arguments
         model_builders=[
-                "SimpleIrrepsConfig",
-                "EnergyModel",
-                "PerSpeciesRescale",
-                "ForceOutput",
-                "RescaleEnergyEtc",
-            ],
+            "SimpleIrrepsConfig",
+            "EnergyModel",
+            "PerSpeciesRescale",
+            "ForceOutput",
+            "RescaleEnergyEtc",
+        ],
         num_layers=3,
         l_max=1,
         parity=True,
@@ -108,7 +153,7 @@ class NequIPWrap(BaseModel):
         self.otf_graph = otf_graph
         self.cutoff = cutoff
         
-        # self.max_neighbors = 50 ## not used?
+        self.max_neighbors = max_neighbors
         super().__init__()
 
         model_config = dict(
@@ -157,52 +202,18 @@ class NequIPWrap(BaseModel):
         model_config["num_types"] = self.type_mapper.num_types
         model_config["type_names"] = self.type_mapper.type_names
 
-        # add statistics results to config
-        dataset = LmdbDataset(self.config["dataset"])
-
-        # 1) avg_num_neighbors (required by EnergyModel)
-        model_config["avg_num_neighbors"] = compute_avg_num_neighbors(
-            config=model_config, 
-            initialize=True, 
-            dataset=dataset,
-            transform=self.type_mapper,
+        # compute statistics (similar to Normalizers of OCP)
+        model_config = compute_statistics(
+            model_config = model_config, 
+            type_mapper = self.type_mapper, 
+            dataset_name = dataset, 
+            global_rescale_shift=global_rescale_shift,
         )
 
-        # 2) per_species_rescale_shifts and per_species_rescale_scales (required by PerSpeciesRescale)
-        if "PerSpeciesRescale" in model_config["model_builders"]:
-            shifts, scales, arguments_in_dataset_units = compute_per_species_shift_and_scale(
-                config=model_config, 
-                initialize=True, 
-                dataset=dataset,
-                transform=self.type_mapper,
-            )
-            model_config["per_species_rescale_shifts"] = shifts
-            model_config["per_species_rescale_scales"] = scales
-            model_config["arguments_in_dataset_units"] = arguments_in_dataset_units
-
-        # 3) global_rescale_shift and global_rescale_scale (required by RescaleEnergyEtc (i.e., GlobalRescale))
-        if ("RescaleEnergyEtc" in model_config["model_builders"] or
-            "GlobalRescale" in model_config["model_builders"]
-        ):
-            if global_rescale_shift is not None:
-                default_shift_keys = [AtomicDataDict.TOTAL_ENERGY_KEY]
-                bm_logging.warning(
-                    f"!!!! Careful global_shift is set to {global_rescale_shift}."
-                    f"The model for {default_shift_keys} will no longer be size extensive"
-                )
-            global_shift, global_scale = compute_global_shift_and_scale(
-                config=model_config, 
-                initialize=True, 
-                dataset=dataset,
-                transform=self.type_mapper,
-            )
-            model_config["global_rescale_shift"] = global_shift
-            model_config["global_rescale_scale"] = global_scale
-
-        dataset.close_db()
-
         # constrcut the NequIP model
-        self.nequip_model = model_from_config(
+        builders = [eval(module) for module in model_config["model_builders"]]
+        self.nequip_model = initiate_model_by_builders(
+            builders=builders, 
             config=model_config, 
             initialize=True,
         )

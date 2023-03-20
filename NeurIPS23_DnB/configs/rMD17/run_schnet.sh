@@ -42,7 +42,7 @@ CUDA_VISIBLE_DEVICES=$GPU python /nas/SAIT-MLFF-Framework/main.py \
     --run-dir $EXPDIR \
     --identifier $EXPID \
     --molecule $MOL \
-    --save-ckpt-epoch 100
+    --save-ckpt-every-epoch 100
 
 done
 
@@ -54,17 +54,17 @@ molecules=('naphthalene' 'paracetamol' 'salicylic' 'toluene' 'uracil')
 for MOL in "${molecules[@]}"; do
 
 
-CONFIG=/nas/NeurIPS23_DnB/configs/rMD17/schnet.yml
+CONFIG=/nas/SAIT-MLFF-Framework/NeurIPS23_DnB/configs/rMD17/schnet.yml
 EXPDIR=/home/workspace/MLFF/NeurIPS23_DnB-exp/rMD17/${MOL}/SchNet/
 EXPID=Train1K_Rmax5_LinearLR_LR1e3_EP3200_E1e-2_MAE_F99e-2_MAE_EMA99_BS32_1GPU
 
-CUDA_VISIBLE_DEVICES=$GPU python /nas/ocp/main.py \
+CUDA_VISIBLE_DEVICES=$GPU python /nas/SAIT-MLFF-Framework/main.py \
     --mode train \
     --config-yml $CONFIG \
     --run-dir $EXPDIR \
     --identifier $EXPID \
     --molecule $MOL \
-    --save-ckpt-epoch 100
+    --save-ckpt-every-epoch 100
 
 done
 

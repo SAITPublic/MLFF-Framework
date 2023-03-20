@@ -65,7 +65,8 @@ def convert_ocp_Data_into_nequip_AtomicData(ocp_data, transform):
 
     # Additional information used in an OCP-based trainer
     # fixed atoms
-    data.fixed = ocp_data.fixed
+    if hasattr(ocp_data, "fixed"):
+        data.fixed = ocp_data.fixed
 
     return data
 

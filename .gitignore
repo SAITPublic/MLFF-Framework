@@ -116,3 +116,6 @@ Local
 #NeurIPS23_DnB/
 codebases_old/
 *debug*
+
+# artifact
+.nfs*

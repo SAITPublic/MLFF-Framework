@@ -77,6 +77,9 @@ class BaseTrainer(ABC):
         self.cpu = self.config["gpus"] == 0
         self.device = get_device(self.config)
 
+        # use float32 as default precision
+        torch.set_default_dtype(torch.float32) 
+
         # AMP Scaler
         self.scaler = torch.cuda.amp.GradScaler() if self.config["amp"] else None
 
@@ -358,9 +361,6 @@ class BaseTrainer(ABC):
         ):
             num_atoms = loader.dataset[0].x.shape[-1]
         
-        # TODO: remove this line
-        # self._update_model_attributes_config()
-
         model_class = registry.get_model_class(self.config["model_name"])
         self.model = model_class(
             num_atoms = num_atoms,

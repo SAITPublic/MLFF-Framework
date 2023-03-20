@@ -15,20 +15,19 @@ from nequip.data import AtomicDataDict, AtomicData
 from nequip.data.transforms import TypeMapper
 
 # pre-defined modules in NequIP
-from nequip.model import SimpleIrrepsConfig, ForceOutput, PartialForceOutput
-
-# pre-defined modules in Allegro
-from allegro.model import Allegro
+from nequip.model import ForceOutput, PartialForceOutput
 
 # modified modules to enable to be compatible with LMDB datasets
-from src.models.nequip.energy_model import EnergyModel
+from src.common.utils import bm_logging # benchmark logging
 from src.models.nequip.rescale import RescaleEnergyEtc, PerSpeciesRescale
+from src.models.nequip.nequip import compute_statistics, initiate_model_by_builders
 from src.datasets.nequip.statistics import (
     compute_avg_num_neighbors, 
     compute_global_shift_and_scale,
     compute_per_species_shift_and_scale
 )
-from src.common.utils import bm_logging # benchmark logging
+
+from src.models.allegro.allegro_energy_model import AllegroEnergyModel as Allegro
 
 
 @registry.register_model("allegro")
@@ -38,41 +37,55 @@ class AllegroWrap(BaseModel):
         num_atoms, # not used
         bond_feat_dim, # not used
         num_targets,
+        cutoff=5.0, # r_max
+        max_neighbors=None, # not used?
         use_pbc=True,
         regress_forces=True,
         otf_graph=False,
-        cutoff=5.0,
         # data-related arguments (type mapper and statistics)
         num_types=None,
         type_names=None,
         chemical_symbol_to_type=None,
         chemical_symbols=None,
         dataset=None, # train dataset path
+        avg_num_neighbors="auto",
         # architecture arguments
-        model_builders=model_builders,
+        model_builders=[
+            "Allegro",
+            "PerSpeciesRescale",
+            "ForceOutput",
+            "RescaleEnergyEtc",
+        ],
         num_layers=3,
         l_max=1,
-        parity=True,
-        num_features=32,
-        nonlinearity_type="gate",
-        resnet=False,
-        nonlinearity_scalars={"e": "silu", "o": "tanh"},
-        nonlinearity_gates={"e": "silu", "o": "tanh"},
-        num_basis=8,
+        parity="o3_full", ## different from NequIP
         BesselBasis_trainable=True,
         PolynomialCutoff_p=6,
-        invariant_layers=2,
-        invariant_neurons=64,
-        use_sc=True,
-        avg_num_neighbors="auto",
-        per_species_rescale_shifts_trainable=False,
-        per_species_rescale_scales_trainable=False,
-        per_species_rescale_shifts="dataset_per_atom_total_energy_mean",
-        per_species_rescale_scales="dataset_forces_rms",
-        global_rescale_shift_trainable=False,
-        global_rescale_scale_trainable=False,
-        global_rescale_shift=None,
-        global_rescale_scale="dataset_forces_rms",
+        env_embed_multiplicity=32, # num features
+        env_embed_mlp_latent_dimensions=[],
+        env_embed_mlp_nonlinearity=None,
+        env_embed_mlp_initialization="uniform",
+        embed_initial_edge=True,
+        two_body_latent_mlp_latent_dimensions=[64, 128, 256, 512],
+        two_body_latent_mlp_nonlinearity="silu",
+        two_body_latent_mlp_initialization="uniform",
+        latent_mlp_latent_dimensions=[512],
+        latent_mlp_nonlinearity="silu",
+        latent_mlp_initialization="uniform",
+        latent_resnet=True,
+        edge_eng_mlp_latent_dimensions=[128],
+        edge_eng_mlp_nonlinearity=None,
+        edge_eng_mlp_initialization="uniform",
+        # NequIP default arguments used in Allegro
+        num_basis=8, # BesselBasis
+        per_species_rescale_shifts_trainable=False, # PerSpeciesRescale
+        per_species_rescale_scales_trainable=False, # PerSpeciesRescale
+        per_species_rescale_shifts="dataset_per_atom_total_energy_mean", # PerSpeciesRescale
+        per_species_rescale_scales="dataset_forces_rms", # PerSpeciesRescale
+        global_rescale_shift_trainable=False, # RescaleEnergyEtc
+        global_rescale_scale_trainable=False, # RescaleEnergyEtc
+        global_rescale_shift=None, # RescaleEnergyEtc
+        global_rescale_scale="dataset_forces_rms", # RescaleEnergyEtc
     ):
         self.num_targets = num_targets
         self.use_pbc = use_pbc
@@ -80,7 +93,7 @@ class AllegroWrap(BaseModel):
         self.otf_graph = otf_graph
         self.cutoff = cutoff
         
-        # self.max_neighbors = 50 ## not used?
+        self.max_neighbors = max_neighbors
         super().__init__()
 
         model_config = dict(
@@ -89,19 +102,26 @@ class AllegroWrap(BaseModel):
             num_layers=num_layers,
             l_max=l_max,
             parity=parity,
-            num_features=num_features,
-            nonlinearity_type=nonlinearity_type,
-            resnet=resnet,
-            nonlinearity_scalars=nonlinearity_scalars,
-            nonlinearity_gates=nonlinearity_gates,
-            num_basis=num_basis,
             BesselBasis_trainable=BesselBasis_trainable,
             PolynomialCutoff_p=PolynomialCutoff_p,
-            invariant_layers=invariant_layers,
-            invariant_neurons=invariant_neurons,
-            use_sc=use_sc,
+            env_embed_multiplicity=env_embed_multiplicity, # num features
+            env_embed_mlp_latent_dimensions=env_embed_mlp_latent_dimensions,
+            env_embed_mlp_nonlinearity=env_embed_mlp_nonlinearity,
+            env_embed_mlp_initialization=env_embed_mlp_initialization,
+            embed_initial_edge=embed_initial_edge,
+            two_body_latent_mlp_latent_dimensions=two_body_latent_mlp_latent_dimensions,
+            two_body_latent_mlp_nonlinearity=two_body_latent_mlp_nonlinearity,
+            two_body_latent_mlp_initialization=two_body_latent_mlp_initialization,
+            latent_mlp_latent_dimensions=latent_mlp_latent_dimensions,
+            latent_mlp_nonlinearity=latent_mlp_nonlinearity,
+            latent_mlp_initialization=latent_mlp_initialization,
+            latent_resnet=latent_resnet,
+            edge_eng_mlp_latent_dimensions=edge_eng_mlp_latent_dimensions,
+            edge_eng_mlp_nonlinearity=edge_eng_mlp_nonlinearity,
+            edge_eng_mlp_initialization=edge_eng_mlp_initialization,
             avg_num_neighbors=avg_num_neighbors,
             ## belows are default
+            num_basis=num_basis,
             per_species_rescale_shifts_trainable=per_species_rescale_shifts_trainable,
             per_species_rescale_scales_trainable=per_species_rescale_scales_trainable,
             per_species_rescale_shifts=per_species_rescale_shifts,
@@ -129,59 +149,25 @@ class AllegroWrap(BaseModel):
         model_config["num_types"] = self.type_mapper.num_types
         model_config["type_names"] = self.type_mapper.type_names
 
-        # add statistics results to config
-        dataset = LmdbDataset(self.config["dataset"])
-
-        # 1) avg_num_neighbors (required by EnergyModel)
-        model_config["avg_num_neighbors"] = compute_avg_num_neighbors(
-            config=model_config, 
-            initialize=True, 
-            dataset=dataset,
-            transform=self.type_mapper,
+        # compute statistics (similar to Normalizers of OCP)
+        model_config = compute_statistics(
+            model_config = model_config, 
+            type_mapper = self.type_mapper, 
+            dataset_name = dataset, 
+            global_rescale_shift=global_rescale_shift,
         )
 
-        # 2) per_species_rescale_shifts and per_species_rescale_scales (required by PerSpeciesRescale)
-        if "PerSpeciesRescale" in model_config["model_builders"]:
-            shifts, scales, arguments_in_dataset_units = compute_per_species_shift_and_scale(
-                config=model_config, 
-                initialize=True, 
-                dataset=dataset,
-                transform=self.type_mapper,
-            )
-            model_config["per_species_rescale_shifts"] = shifts
-            model_config["per_species_rescale_scales"] = scales
-            model_config["arguments_in_dataset_units"] = arguments_in_dataset_units
-
-        # 3) global_rescale_shift and global_rescale_scale (required by RescaleEnergyEtc (i.e., GlobalRescale))
-        if ("RescaleEnergyEtc" in model_config["model_builders"] or
-            "GlobalRescale" in model_config["model_builders"]
-        ):
-            if global_rescale_shift is not None:
-                default_shift_keys = [AtomicDataDict.TOTAL_ENERGY_KEY]
-                bm_logging.warning(
-                    f"!!!! Careful global_shift is set to {global_rescale_shift}."
-                    f"The model for {default_shift_keys} will no longer be size extensive"
-                )
-            global_shift, global_scale = compute_global_shift_and_scale(
-                config=model_config, 
-                initialize=True, 
-                dataset=dataset,
-                transform=self.type_mapper,
-            )
-            model_config["global_rescale_shift"] = global_shift
-            model_config["global_rescale_scale"] = global_scale
-
-        dataset.close_db()
-
         # constrcut the NequIP model
-        self.nequip_model = model_from_config(
+        builders = [eval(module) for module in model_config["model_builders"]]
+        self.allegro_model = initiate_model_by_builders(
+            builders=builders, 
             config=model_config, 
             initialize=True,
         )
 
         # maintain rescale layers individually
         self.rescale_layers = []
-        outer_layer = self.nequip_model
+        outer_layer = self.allegro_model
         while hasattr(outer_layer, "unscale"):
             self.rescale_layers.append(outer_layer)
             outer_layer = getattr(outer_layer, "model", None)
@@ -215,7 +201,7 @@ class AllegroWrap(BaseModel):
 
         # model forward
         # : output is dict
-        out = self.nequip_model(input_data)
+        out = self.allegro_model(input_data)
         
         # return values required in an OCP-based trainer
         if self.regress_forces:
@@ -225,4 +211,4 @@ class AllegroWrap(BaseModel):
 
     @property
     def num_params(self):
-        return sum(p.numel() for p in self.nequip_model.parameters())
+        return sum(p.numel() for p in self.allegro_model.parameters())

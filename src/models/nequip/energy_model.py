@@ -51,7 +51,4 @@ def EnergyModel(config):
         }
     )
 
-    return SequentialGraphNetwork.from_parameters(
-        shared_params=config,
-        layers=layers,
-    )
+    return SequentialGraphNetwork.from_parameters(shared_params=config, layers=layers)

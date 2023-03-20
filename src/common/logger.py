@@ -89,5 +89,5 @@ class FilesLogger(Logger):
         outfile = open(log_path, 'w')
         outfile.write(str(table)+"\n")
         if time:
-            outfile.write(f"train() elapsed time: {time:.1f} sec\n")
+            outfile.write(f"train() elapsed time: {time:.1f} sec ({time/3600.0:.1f} h)\n")
         outfile.close()

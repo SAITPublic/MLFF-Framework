@@ -1,6 +1,8 @@
 includes:
 - /nas/SAIT-MLFF-Framework/NeurIPS23_DnB/configs/rMD17/base_rmax5.yml
 
+trainer: forces
+
 model:
   name: schnet
   hidden_channels: 64 # paper

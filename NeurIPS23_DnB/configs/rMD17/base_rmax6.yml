@@ -1,53 +1,51 @@
-trainer: forces
-
 dataset:
-- aspirin:
+  aspirin:
   - src: /home/workspace/MLFF/rMD17/aspirin/rmax6.0/Trainset.lmdb 
     normalize_labels: True
     #normalize_label_json: /home/workspace/MLFF/rMD17/aspirin/rmax6.0/normalize_stats.json
   - src: /home/workspace/MLFF/rMD17/aspirin/rmax6.0/Validset.lmdb 
   - src: /home/workspace/MLFF/rMD17/aspirin/rmax6.0/Testset.lmdb 
-- azobenzene:
+  azobenzene:
   - src: /home/workspace/MLFF/rMD17/azobenzene/rmax6.0/Trainset.lmdb 
     normalize_labels: True
   - src: /home/workspace/MLFF/rMD17/azobenzene/rmax6.0/Validset.lmdb 
   - src: /home/workspace/MLFF/rMD17/azobenzene/rmax6.0/Testset.lmdb 
-- benzene:
+  benzene:
   - src: /home/workspace/MLFF/rMD17/benzene/rmax6.0/Trainset.lmdb 
     normalize_labels: True
   - src: /home/workspace/MLFF/rMD17/benzene/rmax6.0/Validset.lmdb 
   - src: /home/workspace/MLFF/rMD17/benzene/rmax6.0/Testset.lmdb 
-- ethanol:
+  ethanol:
   - src: /home/workspace/MLFF/rMD17/ethanol/rmax6.0/Trainset.lmdb 
     normalize_labels: True
   - src: /home/workspace/MLFF/rMD17/ethanol/rmax6.0/Validset.lmdb 
   - src: /home/workspace/MLFF/rMD17/ethanol/rmax6.0/Testset.lmdb 
-- malonaldehyde:
+  malonaldehyde:
   - src: /home/workspace/MLFF/rMD17/malonaldehyde/rmax6.0/Trainset.lmdb 
     normalize_labels: True
   - src: /home/workspace/MLFF/rMD17/malonaldehyde/rmax6.0/Validset.lmdb 
   - src: /home/workspace/MLFF/rMD17/malonaldehyde/rmax6.0/Testset.lmdb 
-- naphthalene:
+  naphthalene:
   - src: /home/workspace/MLFF/rMD17/naphthalene/rmax6.0/Trainset.lmdb 
     normalize_labels: True
   - src: /home/workspace/MLFF/rMD17/naphthalene/rmax6.0/Validset.lmdb 
   - src: /home/workspace/MLFF/rMD17/naphthalene/rmax6.0/Testset.lmdb 
-- paracetamol:
+  paracetamol:
   - src: /home/workspace/MLFF/rMD17/paracetamol/rmax6.0/Trainset.lmdb 
     normalize_labels: True
   - src: /home/workspace/MLFF/rMD17/paracetamol/rmax6.0/Validset.lmdb 
   - src: /home/workspace/MLFF/rMD17/paracetamol/rmax6.0/Testset.lmdb 
-- salicylic:
+  salicylic:
   - src: /home/workspace/MLFF/rMD17/salicylic/rmax6.0/Trainset.lmdb 
     normalize_labels: True
   - src: /home/workspace/MLFF/rMD17/salicylic/rmax6.0/Validset.lmdb 
   - src: /home/workspace/MLFF/rMD17/salicylic/rmax6.0/Testset.lmdb 
-- toluene:
+  toluene:
   - src: /home/workspace/MLFF/rMD17/toluene/rmax6.0/Trainset.lmdb 
     normalize_labels: True
   - src: /home/workspace/MLFF/rMD17/toluene/rmax6.0/Validset.lmdb 
   - src: /home/workspace/MLFF/rMD17/toluene/rmax6.0/Testset.lmdb 
-- uracil:
+  uracil:
   - src: /home/workspace/MLFF/rMD17/uracil/rmax6.0/Trainset.lmdb 
     normalize_labels: True
   - src: /home/workspace/MLFF/rMD17/uracil/rmax6.0/Validset.lmdb 

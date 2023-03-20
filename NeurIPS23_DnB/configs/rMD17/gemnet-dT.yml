@@ -1,6 +1,8 @@
 includes:
 - /nas/SAIT-MLFF-Framework/NeurIPS23_DnB/configs/rMD17/base_rmax5.yml
 
+trainer: forces
+
 model:
   name: gemnet_t
   num_spherical: 7

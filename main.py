@@ -16,8 +16,9 @@ import os
 sys.path.insert(0, os.path.abspath("./"))
 sys.path.insert(1, os.path.abspath("./codebases/ocp")) 
 sys.path.insert(2, os.path.abspath("./codebases/nequip")) 
-#sys.path.insert(3, os.path.abspath("./codebases/mace")) 
-#sys.path.insert(4, os.path.abspath("./codebases/allegro")) 
+sys.path.insert(3, os.path.abspath("./codebases/allegro")) 
+#sys.path.insert(4, os.path.abspath("./codebases/mace")) 
+
 
 import copy
 import logging
