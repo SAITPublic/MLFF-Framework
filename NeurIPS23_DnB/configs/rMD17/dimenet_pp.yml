@@ -1,44 +1,49 @@
 includes:
-- /nas/SAIT-MLFF-Framework/NeurIPS23_DnB/configs/rMD17/base_rmax5.yml
+- /nas/SAIT-MLFF-Framework/NeurIPS23_DnB/configs/rMD17/base.yml # atom cloud (without edges)
+#- /nas/SAIT-MLFF-Framework/NeurIPS23_DnB/configs/rMD17/base_rmax5.yml # atom graph (with rmax 5.0)
 
 trainer: forces
 
 model:
   name: dimenetplusplus
+  # neural network
   hidden_channels: 128 # paper
+  out_emb_channels: 256 # paper
   int_emb_size: 64 # paper 
   basis_emb_size: 8 # paper
-  out_emb_channels: 256 # paper
   num_blocks: 4 # paper (DimeNet++)
-  cutoff: 5.0 # paper
   num_radial: 6 # paper
   num_spherical: 7 # paper
-  num_before_skip: 1
-  num_after_skip: 2
-  num_output_layers: 3
+  num_before_skip: 1 # paper figure (DimeNet++)
+  num_after_skip: 2 # paper figure (DimeNet++)
+  num_output_layers: 3 # paper figure (DimeNet++)
 
+  # force
   regress_forces: True
-  use_pbc: False
-  otf_graph: False 
+
+  # graph
+  cutoff: 5.0 # paper
+  otf_graph: True # True when atom cloud is used
+  use_pbc: False # non-periodic system
 
 optim:
   batch_size: 32 # paper
-  eval_batch_size: 32 # paper
+  eval_batch_size: 50
   num_workers: 2
-  optimizer: Adam # ?
+  optimizer: Adam # paper : AMSGrad
   optimizer_params: {"amsgrad": True} # paper
-  max_epochs: 3200 # paper, 100,000 steps
+  max_epochs: 3000 # paper, 100,000 steps
   ema_decay: 0.999 # paper
 
-  # warmup then linear decaying
-  # paper: mixing warmup and step decaying (but it is described ambiguously)
+  # In paper, mixing warmup and step decaying (but it is described ambiguously)
+  # BTW, decaying step is 2,000,000 which is larger than max_steps (100,000).
+  # That is, constant LR is used
   lr_initial: 1.e-3 # paper
-  warmup_steps: 3000 # 100 epochs
-  warmup_factor: 0.2
-  lr_lambda: linear
+  lr_lambda: constant
+  warmup_steps: 3000 # paper (warmup_factor is 1/3000)
 
   ## loss function is defined in Eq. (2) in DimeNet paper (ICLR20) 
   energy_coefficient: 1
   loss_energy: mae
   force_coefficient: 100
-  loss_force: mae_per_dim
+  loss_force: force_per_dim_mae

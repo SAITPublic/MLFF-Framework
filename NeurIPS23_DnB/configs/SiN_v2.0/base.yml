@@ -1,0 +1,22 @@
+dataset:
+  # atom cloud
+  - src: /home/workspace/MLFF/SiN_v2.0/split_1/atom_cloud/train.lmdb
+    normalize_labels: True 
+    normalize_labels_json: /home/workspace/MLFF/SiN_v2.0/split_1/atom_cloud/normalize_stats.json
+  - src: /home/workspace/MLFF/SiN_v2.0/split_1/atom_cloud/valid.lmdb
+  - src: /home/workspace/MLFF/SiN_v2.0/split_1/atom_cloud/test.lmdb
+
+logger: files
+
+task:
+  dataset: lmdb
+  description: "Regressing to energies and forces for DFT trajectories from OCP"
+  metrics: 
+    - energy_per_atom_mae
+    - energy_per_atom_mse
+    - forces_mae
+    - forces_mse
+  primary_metric: forces_mae
+  train_on_free_atoms: False
+  eval_on_free_atoms: False
+

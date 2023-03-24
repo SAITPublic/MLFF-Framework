@@ -1,3 +1,8 @@
+"""
+written by byunggook.na (SAIT)
+DDPLoss is different from that of OCP in terms of dealing with forces using multi-gpu
+"""
+
 import torch
 from torch import nn
 
@@ -124,11 +129,13 @@ class DDPLoss(nn.Module):
             num_samples = distutils.all_reduce(
                 num_samples, device=input.device
             )
+            # num_samples is the number of atoms
             if self.reduction == "mean_over_dim":
                 # In DDPLoss in OCP (just using "mean"), 
                 # force loss are averaged over num of atoms (i.e., dimension is not considered).
-                # But, some codes like NequIP and SIMPLE-NN is implemented so that force loss is averaged by (3 * num of atoms)
-                # So, we deal with this loss property
+                # But, for some models like SchNet and NequIP, 
+                # a loss is implemented so that the force loss is averaged by (3 * num of atoms)
+                # So, we reflect this property.
                 num_samples *= 3 
 
             # Multiply by world size since gradients are averaged

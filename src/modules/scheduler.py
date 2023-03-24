@@ -6,6 +6,7 @@ from ocpmodels.common import distutils
 """
 Available LR scheduler
 
+0) ConstantLR
 1) LinearLR
 2) ReduceLROnPlateau
 3) CosineAnnealingWarmRestarts
@@ -28,25 +29,28 @@ class LinearWarmupLRMultiplier:
     """    
     def __init__(self, config):
         self.config = config
-
-        self.warmup_factor = self.config["warmup_factor"] # lr at starting point, which is multiplied by warmup factor.
         if "warmup_steps" in self.config.keys():
             self.warmup_steps = float(self.config["warmup_steps"])
         elif "warmup_epochs" in self.config.keys():
             self.warmup_steps = convert_epoch_to_step(self.config["warmup_epochs"], config)
         else:
             raise Exception("When using warmup, it requires 'warmup_steps' or 'warmup_epochs' in the config.")
-
-        # lr_lambda = self.config.get("lr_lambda", "step")
-        # if lr_lambda not in ["step", "linear"]:
-        #     NotImplementedError("When not setting 'scheduler' in the config, LR scheduler is defined by 'LambdaLR' and it requires 'lr_lambda' in the config (options: 'step' or 'linear')")
+        # lr at starting point, which is multiplied by warmup factor.
+        # default value is (1 / warmup steps).
+        self.warmup_factor = self.config.get("warmup_factor", 1.0/self.warmup_steps) 
 
     def _warmup_multiplier(self, current_step):
         alpha = current_step / self.warmup_steps
         return self.warmup_factor * (1.0 - alpha) + alpha
 
+    def warmup_then_constant(self, current_step):
+        if current_step <= self.warmup_steps:
+            return self._warmup_multiplier(current_step)
+        else:
+            return 1
+
     def get_lr_lambda(self):
-        raise NotImplementedError("Decay strategy used after warmup phase should be implemented. Please implement 'get_lr_lambda()'")
+        return lambda x: self.warmup_then_constant(x)
 
 
 class LinearWarmupStepDecayLRMultiplier(LinearWarmupLRMultiplier):
@@ -101,13 +105,13 @@ class LRScheduler:
     Modifications:
     1) add different lambda functions to deal with various warmup-based decaying strategies
     """
-    scheduler_types = [
-        "LinearLR", # SAIT
-        "ReduceLROnPlateau", # OCP, NequIP, MACE
-        "CosineAnnealingWarmRestarts", # NequIP
-        "ExponentialLR", # MACE
-        "LambdaLR", # OCP (for warmup)
-    ]
+    # scheduler_types = [
+    #     "LinearLR", # SAIT
+    #     "ReduceLROnPlateau", # OCP, NequIP, MACE
+    #     "CosineAnnealingWarmRestarts", # NequIP
+    #     "ExponentialLR", # MACE
+    #     "LambdaLR", # OCP (for warmup)
+    # ]
 
     def __init__(self, optimizer, config):
         self.optimizer = optimizer
@@ -117,26 +121,31 @@ class LRScheduler:
         self.scheduler_type = self.config.get("scheduler", "LambdaLR") 
 
         # add required hyper-parameters for each scheduler
-        if self.scheduler_type in self.scheduler_types:
-            if self.scheduler_type == "LinearLR":
-                self.config["total_iters"] = convert_epoch_to_step(self.config["max_epochs"], self.config)
-                self.config["start_factor"] = self.config.get("start_factor", 1.0) # default setting
-                self.config["end_factor"] = self.config.get("end_factor", 0.0) # default setting
-            elif self.scheduler_type == "LambdaLR":
-                # To consider warmup, lr decaying functions are defined
-                assert ("warmup_steps" in self.config) or ("warmup_epochs" in self.config)
-                assert ("lr_lambda" in self.config)
-                self.scheduler_type = "LambdaLR"
-                lr_lambda = self.config["lr_lambda"]
+        if self.scheduler_type == "ConstantLR":
+            self.config["total_iters"] = convert_epoch_to_step(self.config["max_epochs"], self.config)
+            self.config["factor"] = self.config.get("factor", 1.0)
+        elif self.scheduler_type == "LinearLR":
+            self.config["total_iters"] = convert_epoch_to_step(self.config["max_epochs"], self.config)
+            self.config["start_factor"] = self.config.get("start_factor", 1.0) # default setting
+            self.config["end_factor"] = self.config.get("end_factor", 0.0) # default setting
+        elif self.scheduler_type == "LambdaLR":
+            # To consider warmup, lr decaying functions are defined
+            assert ("warmup_steps" in self.config) or ("warmup_epochs" in self.config)
+            assert ("lr_lambda" in self.config)
+            self.scheduler_type = "LambdaLR"
+            lr_lambda = self.config["lr_lambda"]
 
-                # lr decaying strategy
-                # 1) step
-                # 2) linear
-                if lr_lambda == "step":
-                    lr_multiplier = LinearWarmupStepDecayLRMultiplier(self.config)
-                elif lr_lambda == "linear":
-                    lr_multiplier = LinearWarmupLinearDecayLRMultiplier(self.config)
-                self.config["lr_lambda"] = lr_multiplier.get_lr_lambda()
+            # lr decaying strategy
+            # 1) constant
+            # 2) step
+            # 3) linear
+            if lr_lambda == "constant":
+                lr_multiplier = LinearWarmupLRMultiplier(self.config)
+            elif lr_lambda == "step":
+                lr_multiplier = LinearWarmupStepDecayLRMultiplier(self.config)
+            elif lr_lambda == "linear":
+                lr_multiplier = LinearWarmupLinearDecayLRMultiplier(self.config)
+            self.config["lr_lambda"] = lr_multiplier.get_lr_lambda()
         
         # extract hyper-parameters to initiate a scheduler
         scheduler_class = getattr(torch.optim.lr_scheduler, self.scheduler_type)

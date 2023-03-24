@@ -5,35 +5,30 @@ trainer: forces_nequip
 
 model:
   name: nequip
-  cutoff: 5.0 # default: 4.0 in paper
-  regress_forces: True
-  use_pbc: False
-  otf_graph: False
-
   # neural network
-  model_builders:
+  model_builders: # NequIP default config
     - SimpleIrrepsConfig
     - EnergyModel
     - PerSpeciesRescale
     - ForceOutput
     - RescaleEnergyEtc
-  num_layers: 5
+  num_layers: 5 # rmd17 config
   l_max: 3
-  parity: True
-  num_features: 32
-  num_basis: 8
-  BesselBasis_trainable: True
-  PolynomialCutoff_p: 6
-  invariant_layers: 2
-  invariant_neurons: 64
-  avg_num_neighbors: auto
-  use_sc: True
-  nonlinearity_type: gate
-  resnet: False
-  nonlinearity_scalars:
+  parity: True # rmd17 config
+  num_features: 64 # rmd17 config
+  num_basis: 8 # rmd17 config
+  BesselBasis_trainable: True # rmd17 config
+  PolynomialCutoff_p: 6 # rmd17 config
+  invariant_layers: 3 # rmd17 config
+  invariant_neurons: 64 # rmd17 config
+  avg_num_neighbors: 10.0 # rmd17 config
+  use_sc: True # rmd17 config
+  nonlinearity_type: gate # rmd17 config
+  resnet: False # rmd17 config
+  nonlinearity_scalars: # rmd17 config
     e: silu
     o: tanh
-  nonlinearity_gates:
+  nonlinearity_gates: # rmd17 config
     e: silu
     o: tanh
 
@@ -43,22 +38,31 @@ model:
     - C
     - O
 
+  # force
+  regress_forces: True
+
+  # graph
+  cutoff: 5.0 #  rmd17 config
+  otf_graph: False 
+  use_pbc: False # non-periodic system
+
 optim:
-  batch_size: 5 
-  eval_batch_size: 16
+  batch_size: 5 # rmd17 config
+  eval_batch_size: 50
   num_workers: 2
-  max_epochs: 2000
-  ema_decay: 0.99
+  max_epochs: 2000 # GemNet budget
+  ema_decay: 0.99 # rmd17 config
 
-  optimizer: Adam
-  optimizer_params: {"amsgrad": False}
-  scheduler: ReduceLROnPlateau
-  lr_initial: 0.01
-  patience: 50
-  factor: 0.8
+  optimizer: Adam # rmd17 config
+  optimizer_params: {"amsgrad": True} # rmd17 config
+  scheduler: ReduceLROnPlateau # rmd17 config
+  lr_initial: 0.01 # rmd17 config
+  patience: 50 # rmd17 config
+  factor: 0.8 # rmd17 config
 
-  energy_coefficient: 1
-  loss_energy: mse_per_atom
-  force_coefficient: 1000
-  loss_force: mse_per_dim
+  # loss function is defined in Eq. (9) in NequIP arXiv paper
+  energy_coefficient: 1 # rmd17 config
+  loss_energy: mse # rmd17 config
+  force_coefficient: 1000 # rmd17 config
+  loss_force: force_per_dim_mse # rmd17 config
 

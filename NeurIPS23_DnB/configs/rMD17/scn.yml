@@ -1,62 +1,56 @@
 includes:
-- /nas/SAIT-MLFF-Framework/NeurIPS23_DnB/configs/rMD17/base_rmax5.yml
+- /nas/SAIT-MLFF-Framework/NeurIPS23_DnB/configs/rMD17/base.yml # atom cloud (without edges)
+#- /nas/SAIT-MLFF-Framework/NeurIPS23_DnB/configs/rMD17/base_rmax5.yml # atom graph (with rmax 5.0)
 
 trainer: forces
 
 model:
   name: scn
-  num_interactions: 12
-  hidden_channels: 256 # 1024 in OC, reduce by 1/4 for rMD17, as in GemNet
-  sphere_channels: 64 # 128
-  sphere_channels_reduce: 64 # 128
-  num_sphere_samples: 64 # 128
-  num_basis_functions: 64 # 128
-  distance_function: "gaussian"
-  max_num_neighbors: 40
-  cutoff: 5.0
-  lmax: 6
-  mmax: 1
-  use_grid: True
-  num_bands: 1
-  num_taps: 1
-  basis_width_scalar: 2.0
+  # neural network
+  num_interactions: 12 # SCN OC20-2M config
+  hidden_channels: 256 # denoted by H : 1024 in OC20-2M, reduce by 1/4 for rMD17, as in GemNet
+  sphere_channels: 64 # denoted by C : 128 in OC20-2M
+  sphere_channels_reduce: 64 # denoted by C : 128 in OC20-2M
+  num_sphere_samples: 64 # denoted by E : 128 in OC20-2M
+  num_basis_functions: 64 # 128 in OC20-2M
+  distance_function: "gaussian" # SCN OC20-2M config
+  lmax: 6 # SCN OC20-2M config 
+  mmax: 1 # SCN OC20-2M config
+  use_grid: True # SCN OC20-2M config
+  num_bands: 1 # SCN OC20-2M config
+  num_taps: 1 # SCN OC20-2M config
+  basis_width_scalar: 2.0 # SCN OC20-2M config
 
+  # force
+  # note that SCN is a direct force prediction model
   regress_forces: True
-  use_pbc: True
-  otf_graph: False
+  direct_forces: True # SCN paper
+
+  # graph
+  cutoff: 5.0 # PaiNN
+  max_num_neighbors: 40 # SCN OC20-2M config
+  otf_graph: True # True when atom cloud is used
+  use_pbc: False # non-periodic system
 
 optim:
-  batch_size: 32
-  eval_batch_size: 32
+  batch_size: 10 # PaiNN paper
+  eval_batch_size: 50 
   num_workers: 2
-  optimizer: AdamW
-  optimizer_params: {"amsgrad": True}
-  max_epochs: 2000 
-  #max_epochs: 1200 # 12 in OC, increase by 10 times
-  ema_decay: 0.999
+  optimizer: Adam # PaiNN paper
+  max_epochs: 2000 # GemNet paper
+  ema_decay: 0.99 # SchNet paper (followed by PaiNN)
+  clip_grad_norm: 100 # SCN OC20-2M config
 
-  # warmup then step decaying
-  #lr_initial: 1.e-3
-  #warmup_steps: 00
-  #warmup_factor: 0.2
-  #lr_gamma: 0.3
-  #lr_milestone_epochs: # steps at which lr_initial <- lr_initial * lr_gamma
-  #  - 500
-  #  - 700
-  #  - 800
-  #  - 1100
+  # scheduler (PaiNN)
+  # but for small molecule data, it may follow PaiNN
+  scheduler: ReduceLROnPlateau # PaiNN paper
+  lr_initial: 1.e-3 # PaiNN paper
+  factor: 0.5 # PaiNN paper
+  patience: 50 # PaiNN paper
 
-  # scheduler used in GemNet for rMD17
-  scheduler: ReduceLROnPlateau
-  lr_initial: 1.e-3
-  mode: min
-  factor: 0.5
-  patience: 10
-  cooldown: 10
-  clip_grad_norm: 100
-
-  # loss function (described in Section 3.1 in SCN paper (NeurIPS22)) 
-  force_coefficient: 100
-  energy_coefficient: 2
-  loss_energy: mae
-  loss_force: l2mae
+  # loss function described in Section 3.1 in SCN paper (NeurIPS22)
+  # but for small molecule data, it may follow PaiNN
+  energy_coefficient: 0.01 # PaiNN paper
+  loss_energy: mse # PaiNN paper
+  force_coefficient: 0.99 # PaiNN paper
+  loss_force: force_per_dim_mse # PaiNN paper

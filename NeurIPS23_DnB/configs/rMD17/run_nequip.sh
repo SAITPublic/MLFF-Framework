@@ -11,13 +11,13 @@ cd $BENCHMARK_HOME
 
 if [ $GPU -eq 4 ]; then
 
-molecules=('aspirin' 'azobenzene')
+molecules=('azobenzene')
 
 for MOL in "${molecules[@]}"; do
 
 CONFIG=/nas/SAIT-MLFF-Framework/NeurIPS23_DnB/configs/rMD17/nequip.yml
 EXPDIR=/home/workspace/MLFF/NeurIPS23_DnB-exp/rMD17/${MOL}/NequIP/
-EXPID=Train1K_Rmax5_ReduceLROnPlateau_LR1e-2_EP2000_E1_EnergyPerAtomMAE_F1000_ForcePerDimMAE_EMA99_BS5_1GPU 
+EXPID=Train950_Rmax5_ReduceLROnPlateau_LR1e-2_EP2000_E1_MSE_F1000_ForcePerDimMSE_EMA99_BS5_1GPU 
 
 CUDA_VISIBLE_DEVICES=$GPU python /nas/SAIT-MLFF-Framework/main.py \
     --mode train \

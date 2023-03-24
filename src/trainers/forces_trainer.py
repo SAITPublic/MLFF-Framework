@@ -15,6 +15,8 @@ LICENSE file in the root directory of this source tree.
 import logging
 import os
 import pathlib
+import json 
+import time
 from collections import defaultdict
 from pathlib import Path
 
@@ -22,9 +24,7 @@ import numpy as np
 import torch
 import torch_geometric
 from tqdm import tqdm
-
 from prettytable import PrettyTable
-import time
 
 from ocpmodels.common import distutils
 from ocpmodels.common.registry import registry
@@ -44,20 +44,28 @@ class ForcesTrainer(BaseTrainer):
     """
     Trainer class for the Structure to Energy & Force (S2EF) task.
     """
-    def __init__(self, config):
-        super().__init__(config)
-
-        # this benchmark focuses on s2ef task
-        # regress_forces should be true
-        assert self.config["model_attributes"].get("regress_forces", True) 
-
     def _set_task(self):
         # most models have a scaler energy output (meaning that num_targets = 1)
         self.num_targets = 1
 
+        # this benchmark focuses on s2ef task, so regress_forces should be true
+        if "regress_forces" in self.config["model_attributes"]:
+            assert self.config["model_attributes"]["regress_forces"]
+        else:
+            self.config["model_attributes"]["regress_forces"] = True
+
         # If we're computing gradients wrt input, set mean of normalizer to 0 --
         # since it is lost when compute dy / dx -- and std to forward target std
         if (self.normalizer.get("normalize_labels", False)):
+            if self.mode != "train":
+                # just empty normalizer (which will be loaded from the given checkpoint)
+                self.normalizers["grad_target"] = Normalizer(
+                    mean=0.0,
+                    std=1.0,
+                    device=self.device,
+                )
+                return
+
             if "grad_target_std" in self.normalizer:
                 self.normalizers["grad_target"] = Normalizer(
                     mean=self.normalizer.get("grad_target_mean", 0.0),
@@ -73,7 +81,7 @@ class ForcesTrainer(BaseTrainer):
                 )
             else:
                 # force is already tensor
-                forces_train = torch.stack([data.force for data in self.train_loader.dataset]) 
+                forces_train = torch.concat([data.force for data in self.train_loader.dataset])
                 self.normalizers["grad_target"] = Normalizer(
                     mean=0.0,
                     std=torch.std(forces_train),
@@ -121,10 +129,7 @@ class ForcesTrainer(BaseTrainer):
         # Calculate start_epoch from step instead of loading the epoch number
         # to prevent inconsistencies due to different batch size in checkpoint.
         start_epoch = self.step // len(self.train_loader)
-
-        for epoch_int in range(
-            start_epoch, self.config["optim"]["max_epochs"]
-        ):
+        for epoch_int in range(start_epoch, self.config["optim"]["max_epochs"]):
             start_epoch_time = time.time()
             self.train_sampler.set_epoch(epoch_int) # shuffle
             skip_steps = self.step % len(self.train_loader)
@@ -222,7 +227,7 @@ class ForcesTrainer(BaseTrainer):
 
         # final evaluation
         bm_logging.info("Performing the final evaluation (last model)")
-        metric_table = self._create_metric_table(display_meV=True)
+        metric_table = self.create_metric_table(display_meV=True)
         bm_logging.info("\n"+str(metric_table))
         if self.logger:
             self.logger.log_final_metrics(metric_table, train_elapsed_time)

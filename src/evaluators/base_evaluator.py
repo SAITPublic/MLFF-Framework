@@ -17,7 +17,7 @@ from src.common.registry import evaluator_registry
 from src.modules.calculator import BenchmarkCalculator
 
 
-@evaluator_registry.register_evaluator("base")
+@evaluator_registry.register_evaluator("base_evaluator")
 class BaseEvaluator(ABC):
     def __init__(self, config):
         assert config is not None
@@ -77,7 +77,7 @@ class BaseEvaluator(ABC):
             # Case 1. Load a checkpoint as a model class
             # not complete!
             raise NotImplementedError("Not implemented ... because of normalizers maintained in a trainer class")
-            self.model = ckpt.to(self.device)
+            # self.model = ckpt.to(self.device)
         elif isinstance(ckpt, dict):
             # Case 2. Load a checkpoint as a dictionary that includes state_dict() and other auxiliary information
             # It requires the corresponding configuration file of the model

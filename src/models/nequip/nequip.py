@@ -152,6 +152,9 @@ class NequIPWrap(BaseModel):
         self.regress_forces = regress_forces
         self.otf_graph = otf_graph
         self.cutoff = cutoff
+
+        if self.otf_graph:
+            raise NotImplementedError("on-the-fly garph generation is not enabled for NequIP")
         
         self.max_neighbors = max_neighbors
         super().__init__()

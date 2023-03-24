@@ -27,6 +27,8 @@ class NequIPForcesTrainer(ForcesTrainer):
     
     def _parse_config(self, config):
         trainer_config = super()._parse_config(config)
+        # NequIP, Allegro does not need normalizer (they use own normaliation strategy)
+        trainer_config["dataset"]["normalize_labels"] = False
         trainer_config["model_attributes"]["dataset"] = trainer_config["dataset"]
         return trainer_config
     

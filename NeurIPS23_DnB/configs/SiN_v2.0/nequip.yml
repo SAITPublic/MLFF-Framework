@@ -1,0 +1,78 @@
+includes:
+- /nas/SAIT-MLFF-Framework/NeurIPS23_DnB/configs/SiN_v2.0/base_rmax5.yml
+
+trainer: forces_nequip
+
+model:
+  name: nequip
+  # neural network
+  model_builders: # NequIP default config
+    - SimpleIrrepsConfig
+    - EnergyModel
+    - PerSpeciesRescale
+    - ForceOutput
+    - RescaleEnergyEtc
+  num_layers: 6 # paper (periodic system), LiPS config
+  l_max: 2 # LiPS config
+  parity: True # LiPS config
+  num_features: 32 # LiPS config
+  num_basis: 8 # paper, LiPS config
+  BesselBasis_trainable: True # LiPS config
+  PolynomialCutoff_p: 6 # LiPS config
+  invariant_layers: 3 # paper, LiPS config
+  invariant_neurons: 64 # paper, LiPS config
+  avg_num_neighbors: auto
+  use_sc: True # LiPS config
+  nonlinearity_type: gate # LiPS config
+  resnet: False # LiPS config
+  nonlinearity_scalars: # LiPS config
+    e: silu
+    o: tanh
+  nonlinearity_gates: # LiPS config
+    e: silu
+    o: tanh
+  #per_species_rescale_shifts_trainable: True # LiPS config
+  #per_species_rescale_scales_trainable: True # LiPS config
+  #per_species_rescale_shifts: [0.0, 0.0] # LiPS config
+  #per_species_rescale_scales: [1.0, 1.0] # LiPS config
+  #global_rescale_shift_trainable: False # LiPS config
+  #global_rescale_scale_trainable: False # LiPS config
+  #global_rescale_shift: dataset_energy_mean # LiPS config --> this should be disabled
+  #global_rescale_scale: dataset_forces_rms # LiPS config
+
+  # force
+  regress_forces: True
+
+  # graph
+  cutoff: 5.0 # paper (periodic sytsem; LiPS)
+  otf_graph: False
+  use_pbc: True # periodic system
+
+  # data-related arg
+  chemical_symbols:
+    - N
+    - Si
+
+optim:
+  batch_size: 1 # paper (periodic system)
+  eval_batch_size: 16
+  num_workers: 2
+  max_epochs: 1000
+  ema_decay: 0.99 # paper
+
+  optimizer: Adam
+  optimizer_params: {"amsgrad": True} # paper
+  scheduler: ReduceLROnPlateau
+  lr_initial: 0.005 # paper (periodic system)
+  patience: 50 # paper
+  factor: 0.8 # paper 
+
+  # loss function is defined in Eq. (9) in NequIP arXiv paper
+  # NequIP recommend that E_coef : F_coef = 1 : N_atoms^2
+  # In SiN, the number of atoms in snapshots are different.
+  # So, we set E_coef : F_coef = 1 : 1 and energy target is divided by N_atoms (MSE makes N_atoms^2 effect)
+  energy_coefficient: 1
+  loss_energy: energy_per_atom_mse
+  force_coefficient: 1
+  loss_force: force_per_dim_mse
+

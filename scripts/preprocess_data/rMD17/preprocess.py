@@ -3,10 +3,16 @@ Modified by byunggook.na (reference: ocp/scripts/preprocess_ef.py)
 
 Creates LMDB files with extracted graph features from provided *.npz files of rMD17
 for the S2EF task.
+
+rMD17 data details:
+'nuclear_charges' : The nuclear charges for the molecule
+'coords' : The coordinates for each conformation (in units of ångstrom)
+'energies' : The total energy of each conformation (in units of kcal/mol)
+'forces' : The cartesian forces of each conformation (in units of kcal/mol/ångstrom)
 """
 
 import sys
-sys.path.insert(0, "/nas/ocp")
+sys.path.insert(0, "../../../codebases/ocp/")
 
 import os
 import argparse
@@ -14,6 +20,7 @@ import random
 import pickle
 import json
 import lmdb
+import csv
 from tqdm import tqdm
 
 import numpy as np
@@ -68,35 +75,39 @@ def convert_symbols(nuclear_charges):
 def write_npz_to_lmdb(args, mol):
 
     npzfile = os.path.join(args.data_dir, f"rmd17_{mol}.npz")
-    assert os.path.isfile(npzfile), f"{npzfile} does not exist. Please download rMD17 according to README.txt or check --data-dir option."
+    assert os.path.isfile(npzfile), f"{npzfile} does not exist."
 
-    assert args.out_path is not None, "--out-path must be specified."
     out_path = os.path.join(args.out_path, mol)
 
     if args.r_max is None:
-        out_path = os.path.join(out_path, f"no_rmax")
-        r_max = 6.0 ## default! but there is no edges
+        out_path = os.path.join(out_path, f"atom_cloud")
         r_edges = False
     else:
-        out_path = os.path.join(out_path, f"rmax{args.r_max}")
-        r_max = args.r_max
+        out_path = os.path.join(out_path, f"atom_graph_rmax{args.r_max}")
         r_edges = True
+
+    if args.sampling_step is None:
+        out_path = out_path + "_uniform"
+    else:
+        out_path = out_path + f"_sampling_step_{args.sampling_step}"
     os.makedirs(out_path, exist_ok=True)
 
     # Initialize feature extractor.
+    # rMD17 consists of small molecules which have under 100 atoms, 
+    # so actually there is no constraint on maximum number of neighbors.
     a2g = AtomsToGraphs(
-        max_neigh=100, ## rMD17 is molecule datasets, so there is no constraint on maximum number of neighbors.
-        radius=r_max,
-        r_energy=True, ## not args.test_data
-        r_forces=True, ## not args.test_data
+        max_neigh=100, 
+        radius=args.r_max,
+        r_energy=True, 
+        r_forces=True, 
         r_fixed=False,
         r_distances=False,
-        r_edges=r_edges, ## otf_graph can be False
+        r_edges=r_edges, 
     )
 
     print(f"Start preprocessing {mol}")
 
-    ## convert npz to atoms (ase.atoms.Atoms)
+    # convert npz to atoms (ase.atoms.Atoms)
     npz_data = np.load(npzfile)
     coords = npz_data["coords"]  # shape: (n_snapshot, n_atoms, 3)
     forces = npz_data["forces"]  # shape: (n_snapshot, n_atoms, 3)
@@ -105,8 +116,6 @@ def write_npz_to_lmdb(args, mol):
     energies = energies / kcalPerMol_FOR_1eV
 
     nuclear_charges = npz_data["nuclear_charges"]  # shape: (n_atoms)
-    #mol_symbols, mol_symbols_list = convert_symbols(nuclear_charges) # str
-
     charge_dict = {1:"H", 6:"C", 7:"N", 8:"O"}
     mol_symbols_list = [charge_dict[c] for c in nuclear_charges]
 
@@ -115,35 +124,50 @@ def write_npz_to_lmdb(args, mol):
 
     print(f"Number of atoms: {n_atoms}")
    
-    ## split train/val/test
-    np.random.seed(args.seed)
-    index = np.random.permutation(np.arange(n_snapshots))
-    train_index = index[:args.train_size]
-    val_index = index[args.train_size:args.train_size+args.val_size]
-    if args.test_size is None:
-        test_index = index[args.train_size+args.val_size:]
+    # split train/val/test
+    if args.sampling_step is None:
+        # uniform sampling (random sampling)
+        np.random.seed(args.seed)
+        index = np.random.permutation(np.arange(n_snapshots))
+        train_index = index[:args.train_size]
+        val_index = index[args.train_size:args.train_size+args.val_size]
+        if args.test_size is None:
+            test_index = index[args.train_size+args.val_size:]
+        else:
+            test_index = index[:-args.test_size]
     else:
-        test_index = index[:-args.test_size]
+        # sampling with the constant step
+        start_index = np.random.randint(n_snapshots - (args.train_size + args.val_size - 1) * args.sampling_step)
+        sampled_index = np.arange(start_index, n_snapshots, args.sampling_step)
+        if sampled_index[-1] >= n_snapshots:
+            raise ValueError("Indices of data which will be sampled are larger than the number of the total data")
+        sampled_index = np.random.permutation(sampled_index)
+        train_index = sampled_index[:args.train_size]
+        val_index = sampled_index[args.train_size:]
+        test_index = np.array([i for i in range(n_snapshots) if (i-start_index)%args.sampling_step != 0])
+        if args.test_size is not None:
+            test_index = np.random.choice(test_index, args.test_size)
 
-    print(f"Number of snapshots: {len(index)}")
+    print(f"Number of snapshots: {n_snapshots}")
     print(f"-- Train: {len(train_index)}")
     print(f"-- Valid: {len(val_index)}")
     print(f"-- Test : {len(test_index)}")
 
-    ## extract meta data which includes normalization statistics
+    indices_dict = {'train': sorted(train_index), 'valid': sorted(val_index), 'test': sorted(test_index)}
+
+    # extract meta data which includes normalization statistics
     norm_stats = {
         "energy_mean": energies[train_index].mean(),
         "energy_std" : energies[train_index].std(),
-        "force_mean" : 0.0, #forces[train_index].mean(), ## For atoms in a snapshot, the sum of forces should be zero.
+        "force_mean" : 0.0, # The sum of forces in each snapshots should be zero, so the mean should be also zero.
         "force_std"  : forces[train_index].std(),
     }
     with open(os.path.join(out_path, "normalize_stats.json"), "w", encoding="utf-8") as f:
         json.dump(norm_stats, f, ensure_ascii=False, indent=4)
 
-    ## save train/val/test dataset
-    for split_name, split_index in zip(["Trainset", "Validset", "Testset"], [train_index, val_index, test_index]):
-
-        lmdbfile = os.path.join(out_path, split_name+".lmdb")
+    # save train/val/test dataset
+    for split_name, split_index in indices_dict.items():
+        lmdbfile = os.path.join(out_path, f"{split_name}.lmdb")
         db = lmdb.open(
             lmdbfile,
             map_size=1099511627776 * 2,
@@ -154,15 +178,15 @@ def write_npz_to_lmdb(args, mol):
         )
 
         for i, index in enumerate(tqdm(split_index)):
-            ## 1) construct ase.Atoms 
+            # 1) construct ase.Atoms 
             atoms = Atoms(symbols=mol_symbols_list,
-                  positions=coords[index],
-                  cell=250.0*np.identity(3), ## dummy cell (pbc = all False)
-                  pbc=[False, False, False],
-                  info={"energy": energies[index],
-                        "free_energy": energies[index]},
-                  #numbers=nuclear_charges,
-                  )
+                positions=coords[index],
+                cell=250.0*np.identity(3), ## dummy cell (pbc = all False)
+                pbc=[False, False, False],
+                info={"energy": energies[index],
+                    "free_energy": energies[index]},
+                #numbers=nuclear_charges,
+            )
             atoms.new_array("forces", forces[index])
             properties = {
                 "energy": energies[index],
@@ -171,32 +195,28 @@ def write_npz_to_lmdb(args, mol):
             calc = SinglePointCalculator(atoms, **properties)
             atoms.calc = calc
             
-            ## 2) convert ase.Atoms into torch_geometric.Data
+            # 2) convert ase.Atoms into torch_geometric.Data
             data = a2g.convert(atoms)
             data.sid = 0
             data.fid = index
            
-            ## 3) put torch_geometric.Data into LMDB
+            # 3) put torch_geometric.Data into LMDB
             txn = db.begin(write=True)
             txn.put(f"{i}".encode("ascii"), pickle.dumps(data, protocol=-1))
             txn.commit()
 
-            # Save count of objects in lmdb.
-            #txn = db.begin(write=True)
-            #txn.put(f"length".encode("ascii"), pickle.dumps(len(traj_frames), protocol=-1))
-            #txn.commit()
-            ### --> It seems that length insertion is not needed..
-
         db.sync()
         db.close()
 
-    print("Done")
+        # save the index list 
+        indexfile = os.path.join(out_path, f"{split_name}_index.csv")
+        with open(indexfile, 'w', encoding='utf-8', newline='') as f:
+            wr = csv.writer(f)
+            for i, idx in enumerate(split_index):
+                wr.writerow([idx])
 
-    """
-    with db.begin() as txn:
-        for k, _ in txn.cursor():
-            print(k)
-    """
+    print("Done")
+    
 
 def main():
     parser = argparse.ArgumentParser()
@@ -206,7 +226,7 @@ def main():
     )
     parser.add_argument(
         "--out-path",
-        help="Directory to save extracted features. Will create if doesn't exist",
+        help="Directory to save extracted features. Will create at --data-dir if doesn't exist",
     )
     parser.add_argument(
         "--r-max",
@@ -237,6 +257,12 @@ def main():
         type=int,
         default=2023,
         help="Random seed for data shuffling",
+    )
+    parser.add_argument(
+        "--sampling-step",
+        type=int,
+        default=None,
+        help="Sampling step, at every which data is sampled as the train and validation data (default: None, meaning random sampling)"
     )
     args = parser.parse_args()
 

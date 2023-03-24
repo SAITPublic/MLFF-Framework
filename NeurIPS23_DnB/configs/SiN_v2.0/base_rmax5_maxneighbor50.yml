@@ -1,0 +1,21 @@
+dataset:
+  # rmax5, max neighbors 50
+  - src: /home/workspace/MLFF/SiN_v2.0/split_1/atom_graph_rmax5.0_maxneighbor50/train.lmdb
+    normalize_labels: True
+  - src: /home/workspace/MLFF/SiN_v2.0/split_1/atom_graph_rmax5.0_maxneighbor50/valid.lmdb
+  - src: /home/workspace/MLFF/SiN_v2.0/split_1/atom_graph_rmax5.0_maxneighbor50/test.lmdb
+
+logger: files
+
+task:
+  dataset: lmdb
+  description: "Regressing to energies and forces for DFT trajectories from OCP"
+  metrics: 
+    - energy_per_atom_mae
+    - energy_per_atom_mse
+    - forces_mae
+    - forces_mse
+  primary_metric: forces_mae
+  train_on_free_atoms: False
+  eval_on_free_atoms: False
+

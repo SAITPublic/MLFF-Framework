@@ -19,9 +19,9 @@ sys.path.insert(2, os.path.abspath("./codebases/nequip"))
 sys.path.insert(3, os.path.abspath("./codebases/allegro")) 
 #sys.path.insert(4, os.path.abspath("./codebases/mace")) 
 
-
 import copy
 import logging
+from pathlib import Path
 
 import submitit
 
@@ -34,7 +34,12 @@ from ocpmodels.common.utils import (
 
 # benchmark codes
 from src.common.flags import benchmark_flags
-from src.common.config import add_benchmark_config, add_benchmark_evaluate_config
+from src.common.config import (
+    add_benchmark_config, 
+    add_benchmark_fit_scale_config,
+    add_benchmark_validate_config,
+    add_benchmark_evaluate_config,
+)
 from src.common.utils import new_trainer_context, new_evaluator_context
 
 
@@ -52,6 +57,7 @@ class Runner(submitit.helpers.Checkpointable):
                 self.task.setup(self.evaluator)
                 self.task.run()
         else:
+            # train, fit-scale, validate
             with new_trainer_context(args=args, config=config) as ctx:
                 self.config = ctx.config
                 self.task = ctx.task
@@ -77,6 +83,8 @@ if __name__ == "__main__":
     args, override_args = parser.parse_known_args()
     config = build_config(args, override_args)
     config = add_benchmark_config(config, args)
+    config = add_benchmark_fit_scale_config(config, args)
+    config = add_benchmark_validate_config(config, args)
     config = add_benchmark_evaluate_config(config, args)
 
     if args.submit:  # Run on cluster

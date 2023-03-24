@@ -21,6 +21,7 @@ import errno
 import os
 import random
 import yaml
+import json
 
 from abc import ABC, abstractmethod
 from collections import defaultdict
@@ -49,7 +50,7 @@ from src.common.utils import get_device
 from src.common.logger import parse_logs
 from src.modules.loss import initiate_loss
 from src.modules.scheduler import LRScheduler
-from src.modules.evaluator import BenchmarkEvaluator
+from src.modules.metric_evaluator import MetricEvaluator
 from src.common.collaters.parallel_collater import ParallelCollater
 
 
@@ -64,6 +65,9 @@ class BaseTrainer(ABC):
 
     def __init__(self, config):
         assert config is not None
+
+        # set mode (train, validate, fit-scale)
+        self.mode = config["mode"]
 
         # debug mode
         self.is_debug = config["is_debug"]
@@ -99,7 +103,10 @@ class BaseTrainer(ABC):
         self.normalizer = self.config.get("normalizer", self.config["dataset"])
 
         # make directories to save checkpoint and log
-        if not self.is_debug and distutils.is_master():
+        if (self.mode == "train"
+            and not self.is_debug 
+            and distutils.is_master()
+        ):
             os.makedirs(self.config["cmd"]["checkpoint_dir"], exist_ok=True)
             os.makedirs(self.config["cmd"]["logs_dir"], exist_ok=True)
 
@@ -107,7 +114,8 @@ class BaseTrainer(ABC):
         self._inititiate()
 
         # logging the local config
-        bm_logging.info(f"\n{yaml.dump(self.config, default_flow_style=False)}") # TODO: check
+        if self.mode == "train":
+            bm_logging.info(f"\n{yaml.dump(self.config, default_flow_style=False)}")
 
     def _parse_config(self, config):
         logger_name = config["logger"] if isinstance(config["logger"], str) else config["logger"]["name"]
@@ -181,7 +189,10 @@ class BaseTrainer(ABC):
 
     def _set_logger(self):
         self.logger = None
-        if not self.is_debug and distutils.is_master():
+        if (self.mode == "train"
+            and not self.is_debug 
+            and distutils.is_master()
+        ):
             logger_class = registry.get_logger_class(self.config["logger"])
             self.logger = logger_class(self.config)
 
@@ -229,6 +240,9 @@ class BaseTrainer(ABC):
         )
 
     def check_self_edge_in_same_cell(self, dataset):
+        if self.config["model_attributes"].get("otf_graph", False):
+            return True
+
         def _check(data):
             mask_self_edge = (data.edge_index[0] == data.edge_index[1])
             mask_self_edge_in_same_cell = mask_self_edge & torch.all(data.cell_offsets == 0, dim=1)
@@ -266,6 +280,9 @@ class BaseTrainer(ABC):
 
         self.train_loader = self.val_loader = self.test_loader = None
         
+        if self.mode != "train":
+            return
+
         # train set
         if self.config.get("dataset", None):
             bm_logging.info(f"Loading train dataset (type: {self.config['task']['dataset']}): {self.config['dataset']['src']}")
@@ -321,6 +338,15 @@ class BaseTrainer(ABC):
         # energy normalizer
         self.normalizers = {}
         if self.normalizer.get("normalize_labels", False):
+            if self.mode != "train":
+                # just empty normalizer (which will be loaded from the given checkpoint)
+                self.normalizers["target"] = Normalizer(
+                    mean=0.0,
+                    std=1.0,
+                    device=self.device,
+                )
+                return
+
             if "target_mean" in self.normalizer:
                 # Load precomputed mean and std of training set labels (specified in a configuration file)
                 self.normalizers["target"] = Normalizer(
@@ -354,17 +380,18 @@ class BaseTrainer(ABC):
         # Build model
         bm_logging.info(f"Loading model: {self.config['model_name']}")
 
-        num_atoms = None
-        if (self.train_loader and
-            hasattr(self.train_loader.dataset[0], "x") and 
-            self.train_loader.dataset[0].x is not None
-        ):
-            num_atoms = loader.dataset[0].x.shape[-1]
+        # TODO : check and remove if it is useless
+        # num_atoms = None
+        # if (self.train_loader 
+        #     and hasattr(self.train_loader.dataset[0], "x") 
+        #     and self.train_loader.dataset[0].x is not None
+        # ):
+        #     num_atoms = loader.dataset[0].x.shape[-1]
         
         model_class = registry.get_model_class(self.config["model_name"])
         self.model = model_class(
-            num_atoms = num_atoms,
-            bond_feat_dim = None,
+            num_atoms = None, # useless
+            bond_feat_dim = None, # useless
             num_targets = self.num_targets,
             **self.config["model_attributes"],
         ).to(self.device)
@@ -395,6 +422,9 @@ class BaseTrainer(ABC):
         }
 
     def _set_optimizer_and_lr_scheduler(self):
+        if self.mode != "train":
+            return
+
         # optimizer
         optimizer = self.config["optim"].get("optimizer", "AdamW")
         optimizer_class = getattr(torch.optim, optimizer)
@@ -435,20 +465,18 @@ class BaseTrainer(ABC):
     def _set_ema(self):
         # Exponential Moving Average (EMA)
         self.ema_decay = self.config["optim"].get("ema_decay", None)
-        if self.ema_decay:
+        if self.ema_decay is not None:
             self.ema = ExponentialMovingAverage(
                 self.model.parameters(),
                 self.ema_decay,
             )
-        else:
-            self.ema = None
 
     def _generate_evaluator(self):
         task_metrics = self.config["task"].get("metrics", None) # check list!
         task_attributes = self.config["task"].get("attributes", None)
         task_primary_metric = self.config["task"].get("primary_metric", None)
 
-        return BenchmarkEvaluator(
+        return MetricEvaluator(
             task=self.task_name, 
             task_metrics=task_metrics,
             task_attributes=task_attributes,
@@ -472,6 +500,11 @@ class BaseTrainer(ABC):
         bm_logging.info(f"Loading checkpoint from: {checkpoint_path}")
         map_location = torch.device("cpu") if self.cpu else self.device
         checkpoint = torch.load(checkpoint_path, map_location=map_location)
+
+        # load the training config
+        self.config = checkpoint.get("config", None)
+        assert self.config is not None
+
         self.epoch = checkpoint.get("epoch", 0)
         self.step = checkpoint.get("step", 0)
         self.best_val_metric = checkpoint.get("best_val_metric", None)
@@ -501,9 +534,9 @@ class BaseTrainer(ABC):
         strict = self.config["task"].get("strict_load", True)
         load_state_dict(self.model, new_dict, strict=strict)
 
-        if "optimizer" in checkpoint:
+        if "optimizer" in checkpoint and self.mode == "train":
             self.optimizer.load_state_dict(checkpoint["optimizer"])
-        if "scheduler" in checkpoint and checkpoint["scheduler"] is not None:
+        if "scheduler" in checkpoint and checkpoint["scheduler"] is not None and self.mode == "train":
             self.scheduler.scheduler.load_state_dict(checkpoint["scheduler"])
         if "ema" in checkpoint and checkpoint["ema"] is not None:
             self.ema.load_state_dict(checkpoint["ema"])
@@ -607,16 +640,17 @@ class BaseTrainer(ABC):
         """Derived classes should implement this function."""
 
     @torch.no_grad()
-    def validate(self, split="val", log_flag=True):
-        # set a dataloader corresponding to the given data split
-        if split == "train":
-            loader = self.train_loader
-        elif split == "val":
-            loader = self.val_loader
-        elif split == "test":
-            loader = self.test_loader
-        else:
-            raise ValueError(f"Split {split} is not supported")
+    def validate(self, split="val", loader=None, log_flag=True):
+        if loader is None:
+            # set a dataloader corresponding to the given data split
+            if split == "train":
+                loader = self.train_loader
+            elif split == "val":
+                loader = self.val_loader
+            elif split == "test":
+                loader = self.test_loader
+            else:
+                raise ValueError(f"Split {split} is not supported")
 
         # set the model as the eval mode
         ensure_fitted(self._unwrapped_model, warn=True)
@@ -710,19 +744,20 @@ class BaseTrainer(ABC):
         if self.ema:
             self.ema.update()
 
-    def _create_metric_table(self, display_meV=True):
+    def create_metric_table(self, display_meV=True, dataloaders=None):
         table = PrettyTable()
         table.field_names = ["dataset"] + [metric_name for metric_name in self.evaluator.metric_fn]
         
-        datalist = ["train"]
-        if self.val_loader:
-            datalist.append("val")
-        if self.test_loader:
-            datalist.append("test")
+        if dataloaders is None:
+            dataloaders = {"train": self.train_loader}
+            if self.val_loader:
+                dataloaders["val"] = self.val_loader
+            if self.test_loader:
+                dataloaders["test"] = self.test_loader
 
-        for dataname in datalist:
+        for dataname, dataloader in dataloaders.items():
             bm_logging.info(f"Evaluating on {dataname} ...")
-            metrics = self.validate(split=dataname, log_flag=False)
+            metrics = self.validate(split=dataname, loader=dataloader, log_flag=False)
             table_row_metrics = [dataname]
             for metric_name in self.evaluator.metric_fn:
                 if display_meV and "mae" in metric_name:

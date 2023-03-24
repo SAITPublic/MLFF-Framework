@@ -4,6 +4,7 @@ import copy
 import datetime
 import time
 import importlib
+import yaml
 from argparse import Namespace
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -13,6 +14,7 @@ from pathlib import Path
 import torch
 
 from ocpmodels.common import distutils, gp_utils
+from ocpmodels.common.utils import load_config
 from ocpmodels.common.registry import registry 
 
 from src.common import distutils as benchmark_distutils
@@ -34,11 +36,11 @@ bm_logging = logging.getLogger("BenchmarkLogging")
 
 # benchmark logger setting considering distributed environment 
 # (we can omit 'if is_master()' when using logging)
-def setup_benchmark_logging(config, file_log=True):
+def setup_benchmark_logging(config):
     root = logging.getLogger()
     bm_logging = logging.getLogger("BenchmarkLogging")
     if distutils.is_master():
-        if not config["is_debug"]:
+        if not config["is_debug"] and config["mode"] == "train":
             # The initial logging setup is performed by setup_logging() of ocpmodels.common.utils at main.py.
             # We'll follow the logging format.
             log_formatter = root.handlers[0].formatter
@@ -49,7 +51,7 @@ def setup_benchmark_logging(config, file_log=True):
                 bm_logging.addHandler(handler)
                 root.removeHandler(handler)
             
-            if file_log:
+            if config.get("logger", None) == "files":
                 # send INFO to a file
                 logger_name = config["logger"] if isinstance(config["logger"], str) else config["logger"]["name"]
                 logdir = os.path.join(config["run_dir"], "logs", logger_name, config["timestamp_id"])
@@ -65,7 +67,7 @@ def setup_benchmark_logging(config, file_log=True):
 
 
 # Copied from ocp.ocpmodels.utils
-def setup_benchmark_imports(config: Optional[dict] = None):
+def setup_benchmark_imports(config=None):
     # First, check if imports are already setup
     has_already_setup = registry.get("imports_benchmark_setup", no_warning=True)
     if has_already_setup:
@@ -134,8 +136,7 @@ def new_trainer_context(*, config: Dict[str, Any], args: Namespace):
             else:
                 return f"{config['identifier']}-{timestamp}"
    
-    original_config = config
-    config = copy.deepcopy(original_config)
+    original_config = copy.deepcopy(config)
     if args.distributed:
         benchmark_distutils.setup(config)
         if config["gp_gpus"] is not None:
@@ -145,21 +146,29 @@ def new_trainer_context(*, config: Dict[str, Any], args: Namespace):
     config["timestamp_id"] = _set_timestamp_id(config) 
 
     # check whether arguments which are required to initiate a Trainer class exist in a configuration
-    confing = check_config(config)
+    config = check_config(config)
 
     start_time = time.time()
     try:
         # setup benchmark logging with a file handler
-        setup_benchmark_logging(config, file_log=(config.get("logger", None) == "files"))
+        setup_benchmark_logging(config)
         setup_benchmark_imports(config)
 
+        # construct a trainer instance
         trainer_class = registry.get_trainer_class(config.get("trainer", "forces"))
         assert trainer_class is not None, "Trainer not found"
         trainer = trainer_class(config = config)
 
+        if config["mode"] == "train":
+            # save a training configuration yaml file into checkpoint_dir
+            with open(os.path.join(trainer.config["cmd"]["checkpoint_dir"], "config_train.yml"), 'w') as f:
+                input_config, _, _ = load_config(args.config_yml)
+                yaml.dump(input_config, f)
+
+        # construct a task instance (given a trainer)
         task_cls = registry.get_task_class(config["mode"])
         assert task_cls is not None, "Task not found"
-        task = task_cls(config)
+        task = task_cls(config=original_config)
         ctx = _TrainingContext(config=original_config, task=task, trainer=trainer)
         yield ctx
         distutils.synchronize()
@@ -178,22 +187,22 @@ def new_evaluator_context(*, config: Dict[str, Any], args: Namespace):
         task: "BaseTask"
         evaluator: "BaseEvaluator"
    
-    original_config = config
-    config = copy.deepcopy(original_config)
-    
+    original_config = copy.deepcopy(config)
     start_time = time.time()
     try:
         # setup benchmark logging with a file handler
         setup_benchmark_logging(config, file_log=False)
         setup_benchmark_imports(config)
 
+        # construct an evaluator instance
         evaluator_class = evaluator_registry.get_evaluator_class(config.get("evaluator", "rbf"))
         assert evaluator_class is not None, "Evaluator not found"
         evaluator = evaluator_class(config = config)
 
+        # construct a task instance (given an evaluator)
         task_cls = registry.get_task_class(config["mode"])
         assert task_cls is not None, "Task not found"
-        task = task_cls(config)
+        task = task_cls(config=original_config)
         ctx = _EvaluationContext(config=config, task=task, evaluator=evaluator)
         yield ctx
         distutils.synchronize()

@@ -23,6 +23,8 @@ class ParallelCollater:
     # copied from ocpmodels.common.datasets
     def data_list_collater(self, data_list, otf_graph=False):
         batch = Batch.from_data_list(data_list)
+        if batch.y.dtype == torch.float64:
+            batch.y = batch.y.float() # float64 -> float32
         if not otf_graph:
             batch = self.set_neighbors_in_a_batch(data_list, batch)
         return batch

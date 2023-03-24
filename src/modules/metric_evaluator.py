@@ -61,7 +61,7 @@ Example (for brevity):
 
 """
 
-class BenchmarkEvaluator(Evaluator):
+class MetricEvaluator(Evaluator):
 
     def __init__(self, task=None, task_metrics=None, task_attributes=None, task_primary_metric=None, device="cpu"):
         # this benchmark focuses on s2ef task

@@ -16,17 +16,28 @@ def add_benchmark_config(config, args):
         else:
             raise ValueError(f"The path of {args.molecule} dataset is not specified in your configuration file")
 
-    # TODO: remove these configuration arguments
-    config["prepare_ckpt_epoch"] = args.prepare_ckpt_epoch
-    config["output_scale_file"] = args.output_scale_file
+    return config
 
+
+def add_benchmark_fit_scale_config(config, args):
+    if args.mode == "fit-scale":
+        config["scale_path"] = args.scale_path
+        config["scale_file"] = args.scale_file
+        config["data_type"] = args.data_type
+        config["num_batches"] = args.num_batches
+    return config
+
+
+def add_benchmark_validate_config(config, args):
+    if args.mode == "validate":
+        config["validate_data"] = args.validate_data
     return config
 
 
 def add_benchmark_evaluate_config(config, args):
     if args.mode == "evaluate":
-        config["checkpoint_path"] = args.checkpoint_path
-
+        #config["checkpoint"] = args.checkpoint
+        assert config["checkpoint"] is not None
     return config
 
 
@@ -53,3 +64,4 @@ def check_config(config):
     config["slurm"] = config.get("slurm", {})
 
     return config
+    
