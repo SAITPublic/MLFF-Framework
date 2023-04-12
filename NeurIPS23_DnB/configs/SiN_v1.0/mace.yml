@@ -1,0 +1,58 @@
+includes:
+- NeurIPS23_DnB/configs/SiN_v1.0/base_rmax5.yml
+
+trainer: forces_mace
+
+model:
+  name: mace
+  # neural network
+  hidden_irreps: "64x0e + 64x1o" # num features = 32, l max = 2 as in NequIP
+  MLP_irreps: "16x0e" # paper
+  num_interactions: 2 # 2 = paper, 3 is SOTA model in SAIT
+  max_ell: 3 # related to spherical harmonics # paper
+  correlation: 3 # (nu) # paper
+  num_radial_basis: 8 # paper 
+  num_cutoff_basis: 5 # paper
+  gate: silu
+  
+  # force
+  regress_forces: True
+
+  # graph
+  cutoff: 5.0 # same in OCP models
+  #max_neighbors: 50 # same in OCP models # not used, but explictly described
+  otf_graph: False # for now (23. 4. 5), otf is not enabled
+  use_pbc: True # periodic system
+
+  # data-related arg
+  E0s: average
+  scaling: rms_forces_scaling # paper, as in NequIP
+  shifting: True # paper, as in NeuqIP
+  chemical_symbols:
+    - N
+    - Si
+
+optim:
+  batch_size: 32
+  eval_batch_size: 32
+  num_workers: 2
+  max_epochs: 200 # same in OCP models
+  ema_decay: 0.99 # paper
+  # swa # for now (23. 4. 5), swa is not enabled
+
+  optimizer: Adam
+  optimizer_params: {"amsgrad": True} # paper
+  weight_decay: 5.e-7 # default in MACE code, paper
+  scheduler: LinearLR
+  lr_initial: 0.01 # paper
+
+  # loss function is defined in Eq. (15) in MACE arXiv paper
+  # : it follows the NequIP loss
+  # NequIP recommend that E_coef : F_coef = 1 : N_atoms^2
+  # In SiN, the number of atoms in snapshots are different.
+  # So, we set E_coef : F_coef = 1 : 1 and energy target is divided by N_atoms (MSE makes N_atoms^2 effect)
+  energy_coefficient: 1
+  loss_energy: energy_per_atom_mse
+  force_coefficient: 1
+  loss_force: force_per_dim_mse
+

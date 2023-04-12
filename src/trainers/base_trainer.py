@@ -23,6 +23,7 @@ import random
 import yaml
 import json
 
+from pathlib import Path
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from tqdm import tqdm
@@ -66,8 +67,9 @@ class BaseTrainer(ABC):
     def __init__(self, config):
         assert config is not None
 
-        # set mode (train, validate, fit-scale)
+        # set mode
         self.mode = config["mode"]
+        self.flag_loading_dataset = (self.mode == "train" or self.mode == "fit-scale")
 
         # debug mode
         self.is_debug = config["is_debug"]
@@ -110,7 +112,7 @@ class BaseTrainer(ABC):
             os.makedirs(self.config["cmd"]["checkpoint_dir"], exist_ok=True)
             os.makedirs(self.config["cmd"]["logs_dir"], exist_ok=True)
 
-        # set various modules used in the trainer
+        # set various modules used in the trainer        
         self._inititiate()
 
         # logging the local config
@@ -268,7 +270,25 @@ class BaseTrainer(ABC):
             
             # rank = distutils.get_rank()
             # for data in dataset[split[rank] : split[rank+1]]:
-            #     _check(data)            
+            #     _check(data)
+
+    def _do_data_related_settings(self):
+        """ After setting dataset and loader, this function is called."""
+        if self.config["model_name"] == "bpnn":
+            # scale and pca should be used in BPNN
+            dataset_path = self.config["model_attributes"].get("dataset_path", self.config["dataset"]["src"]) # train dataset
+            if os.path.isfile(dataset_path):
+                # single lmdb file
+                scale_pca_path = Path(dataset_path).parent / "BPNN_scale_pca.pt"
+            elif os.path.isdir(dataset_path):
+                # multi lmdb files
+                # TODO: handling multi lmdb files
+                scale_pca_path = os.path.join(dataset_path, "BPNN_scale_pca.pt")
+                raise NotImplementedError("Not implemented for dealing with multiple LMDB files.")
+            else:
+                raise RuntimeError("Error")
+            self.config["model_attributes"]["scale_pca_path"] = scale_pca_path
+            self.config["model_attributes"]["dataset_path"] = dataset_path
 
     def _set_datasets_and_generate_loaders_samplers(self):
         self.parallel_collater = self.initiate_collater()
@@ -278,20 +298,18 @@ class BaseTrainer(ABC):
         train_local_batch_size = self.config["optim"]["batch_size"]
         eval_local_batch_size = self.config["optim"].get("eval_batch_size", train_local_batch_size)
 
+        self.train_dataset = self.val_dataset = self.test_dataset = None
         self.train_loader = self.val_loader = self.test_loader = None
         
-        if self.mode != "train":
-            return
-
         # train set
-        if self.config.get("dataset", None):
+        if self.config.get("dataset", None) and self.flag_loading_dataset:
             bm_logging.info(f"Loading train dataset (type: {self.config['task']['dataset']}): {self.config['dataset']['src']}")
             self.train_dataset = dataset_class(self.config["dataset"])
             self.check_self_edge_in_same_cell(self.train_dataset)
             self.train_sampler = self.get_sampler(
                 dataset=self.train_dataset,
                 batch_size=train_local_batch_size,
-                shuffle=True,
+                shuffle=True, 
             )
             self.train_loader = self.get_dataloader(
                 dataset=self.train_dataset,
@@ -301,7 +319,7 @@ class BaseTrainer(ABC):
             self.config["optim"]["num_train"] = len(self.train_dataset)
 
         # validation set
-        if self.config.get("val_dataset", None):
+        if self.config.get("val_dataset", None) and self.flag_loading_dataset:
             bm_logging.info(f"Loading validation dataset (type: {self.config['task']['dataset']}): {self.config['val_dataset']['src']}")
             self.val_dataset = dataset_class(self.config["val_dataset"])
             self.check_self_edge_in_same_cell(self.val_dataset)
@@ -318,7 +336,7 @@ class BaseTrainer(ABC):
             self.config["optim"]["num_val"] = len(self.val_dataset)
 
         # test set
-        if self.config.get("test_dataset", None):
+        if self.config.get("test_dataset", None) and self.flag_loading_dataset:
             bm_logging.info(f"Loading test dataset (type: {self.config['task']['dataset']}): {self.config['test_dataset']['src']}")
             self.test_dataset = dataset_class(self.config["test_dataset"])
             self.check_self_edge_in_same_cell(self.test_dataset)
@@ -334,43 +352,12 @@ class BaseTrainer(ABC):
             )
             self.config["optim"]["num_test"] = len(self.test_dataset)
 
-    def _set_normalizer(self):
-        # energy normalizer
-        self.normalizers = {}
-        if self.normalizer.get("normalize_labels", False):
-            if self.mode != "train":
-                # just empty normalizer (which will be loaded from the given checkpoint)
-                self.normalizers["target"] = Normalizer(
-                    mean=0.0,
-                    std=1.0,
-                    device=self.device,
-                )
-                return
+        # data-related setting
+        self._do_data_related_settings()
 
-            if "target_mean" in self.normalizer:
-                # Load precomputed mean and std of training set labels (specified in a configuration file)
-                self.normalizers["target"] = Normalizer(
-                    mean=self.normalizer["target_mean"],
-                    std=self.normalizer["target_std"],
-                    device=self.device,
-                )
-            elif "normalize_labels_json" in self.normalizer:
-                # Load precomputed mean and std of training set labels (specified in a json file outside from a configuration file)
-                normalize_stats = json.load(open(self.normalizer["normalize_labels_json"], 'r'))
-                self.normalizers["target"] = Normalizer(
-                    mean=normalize_stats["energy_mean"],
-                    std=normalize_stats["energy_std"],
-                    device=self.device,
-                )
-            else:
-                # Compute mean and std of training set labels.
-                energy_train = torch.tensor([data.y for data in self.train_loader.dataset])
-                self.normalizers["target"] = Normalizer(
-                    mean=torch.mean(energy_train),
-                    std=torch.std(energy_train),
-                    device=self.device,
-                )
-            bm_logging.info(f"Normalizer of energy: mean {self.normalizers['target'].mean}, std {self.normalizers['target'].std}")
+    @abstractmethod
+    def _set_normalizer(self):
+        """Energy normalizer needs factors calculated by using forces, thereby that the function is implemented in ForcesTrainer"""
 
     @abstractmethod
     def _set_task(self):
@@ -421,6 +408,22 @@ class BaseTrainer(ABC):
             "force" : initiate_loss(self.config["optim"].get("loss_force", "force_per_dim_mse"))
         }
 
+    def _split_trainable_params_optimizer_weight_decay(self):
+        # as in OCP code
+        params_decay = []
+        params_no_decay = []
+        for name, param in self.model.named_parameters():
+            if param.requires_grad:
+                if "embedding" in name:
+                    params_no_decay += [param]
+                elif "frequencies" in name:
+                    params_no_decay += [param]
+                elif "bias" in name:
+                    params_no_decay += [param]
+                else:
+                    params_decay += [param]
+        return params_decay, params_no_decay
+
     def _set_optimizer_and_lr_scheduler(self):
         if self.mode != "train":
             return
@@ -428,22 +431,12 @@ class BaseTrainer(ABC):
         # optimizer
         optimizer = self.config["optim"].get("optimizer", "AdamW")
         optimizer_class = getattr(torch.optim, optimizer)
+        # Arguments of optimizer are listed in self.config['optim']['optimizer_params'],
+        # except weight decay that is given as self.config['optim']['weight_decay']
         weight_decay = self.config["optim"].get("weight_decay", 0)
         if  weight_decay > 0:
             # Do not regularize bias etc.
-            params_decay = []
-            params_no_decay = []
-            for name, param in self.model.named_parameters():
-                if param.requires_grad:
-                    if "embedding" in name:
-                        params_no_decay += [param]
-                    elif "frequencies" in name:
-                        params_no_decay += [param]
-                    elif "bias" in name:
-                        params_no_decay += [param]
-                    else:
-                        params_decay += [param]
-
+            params_decay, params_no_decay = self._split_trainable_params_optimizer_weight_decay()
             self.optimizer = optimizer_class(
                 params=[
                     {"params": params_no_decay, "weight_decay": 0},
@@ -464,6 +457,7 @@ class BaseTrainer(ABC):
 
     def _set_ema(self):
         # Exponential Moving Average (EMA)
+        self.ema = None
         self.ema_decay = self.config["optim"].get("ema_decay", None)
         if self.ema_decay is not None:
             self.ema = ExponentialMovingAverage(
@@ -621,19 +615,19 @@ class BaseTrainer(ABC):
                 return ckpt_path
         return None
 
-    def save_model_as_class(self, ckpt_name=None):
-        if self.ema:
-            self.ema.store()
-            self.ema.copy_to()
+    # def save_model_as_class(self, ckpt_name=None):
+    #     if self.ema:
+    #         self.ema.store()
+    #         self.ema.copy_to()
         
-        if ckpt_name is None:
-            ckpt_name = self.config["model_name"] + ".model"
-        path = os.path.join(self.config["cmd"]["checkpoint_dir"], ckpt_name)
-        model = self._unwrapped_model
-        model.to("cpu")
-        torch.save(model, path)
-        if self.ema:
-            self.ema.restore()
+    #     if ckpt_name is None:
+    #         ckpt_name = self.config["model_name"] + ".model"
+    #     path = os.path.join(self.config["cmd"]["checkpoint_dir"], ckpt_name)
+    #     model = self._unwrapped_model
+    #     model.to("cpu")
+    #     torch.save(model, path)
+    #     if self.ema:
+    #         self.ema.restore()
 
     @abstractmethod
     def train(self):
@@ -770,7 +764,8 @@ class BaseTrainer(ABC):
         return table
 
     def _end_train(self):
-        self.train_dataset.close_db()
+        if self.train_dataset:
+            self.train_dataset.close_db()
         if self.val_dataset:
             self.val_dataset.close_db()
         if self.test_dataset:

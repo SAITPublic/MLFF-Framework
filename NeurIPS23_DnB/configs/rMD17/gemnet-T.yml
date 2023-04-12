@@ -61,7 +61,7 @@ optim:
   factor: 0.5 # paper
   patience: 50 # paper
   cooldown: 50 # paper
-  # warmup!!!
+  # no warmup ... paper : warmup epoch 10
 
   # loss function is defined in Eq. (35) in GemNet paper suppl. 35p (NeurIPS21)
   energy_coefficient: 0.001

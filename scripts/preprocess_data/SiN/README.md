@@ -11,7 +11,7 @@ In ESC project (SAIT), the data path is /mnt/DB/SiN_v2.0/
 Two split cases are prepared by Geonu Kim (geonu.kim).
 The details will be filled.
 
-(or the split code can be included in process.py by Geonu Kim)
+(or the split option in preprocess.py can be implemented by Geonu Kim)
 
 ### Split 1
 

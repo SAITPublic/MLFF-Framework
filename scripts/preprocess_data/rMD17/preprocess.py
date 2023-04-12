@@ -1,5 +1,6 @@
 """
-Modified by byunggook.na (reference: ocp/scripts/preprocess_ef.py)
+Written by byunggook.na 
+(reference: ocp/scripts/preprocess_ef.py)
 
 Creates LMDB files with extracted graph features from provided *.npz files of rMD17
 for the S2EF task.

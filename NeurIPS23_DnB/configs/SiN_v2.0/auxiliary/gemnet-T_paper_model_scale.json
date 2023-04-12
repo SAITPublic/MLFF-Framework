@@ -1,0 +1,20 @@
+{
+    "comment": "gemnet_t",
+    "OutBlock_0_sum": 0.7939601395518444,
+    "TripInteraction_1_had_rbf": 8.707122437803076,
+    "TripInteraction_1_sum_cbf": 4.492532980172615,
+    "AtomUpdate_1_sum": 0.6855750493002322,
+    "OutBlock_1_sum": 0.6469926795585491,
+    "TripInteraction_2_had_rbf": 8.205452495556779,
+    "TripInteraction_2_sum_cbf": 4.686291226149863,
+    "AtomUpdate_2_sum": 0.5330426273849264,
+    "OutBlock_2_sum": 0.6027903585550283,
+    "TripInteraction_3_had_rbf": 7.23479313620651,
+    "TripInteraction_3_sum_cbf": 4.021205261150881,
+    "AtomUpdate_3_sum": 0.503036868315887,
+    "OutBlock_3_sum": 0.5385253085301985,
+    "TripInteraction_4_had_rbf": 7.400909667624485,
+    "TripInteraction_4_sum_cbf": 3.8524766957274994,
+    "AtomUpdate_4_sum": 0.43592272350160055,
+    "OutBlock_4_sum": 0.523037076340913
+}

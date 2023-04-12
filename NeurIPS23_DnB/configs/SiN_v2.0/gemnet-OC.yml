@@ -1,0 +1,92 @@
+includes:
+- /nas/SAIT-MLFF-Framework/NeurIPS23_DnB/configs/SiN_v2.0/base.yml
+
+trainer: forces
+
+model:
+  name: gemnet_oc
+  # neural network
+  num_spherical: 7 # OC20 config
+  num_radial: 128 # OC20 config
+  num_blocks: 4 # OC20 config
+  emb_size_atom: 256 # OC20 config
+  emb_size_edge: 512 # OC20 config
+  emb_size_trip_in: 64 # OC20 config
+  emb_size_trip_out: 64 # OC20 config
+  emb_size_quad_in: 32 # OC20 config
+  emb_size_quad_out: 32 # OC20 config
+  emb_size_aint_in: 64 # OC20 config
+  emb_size_aint_out: 64 # OC20 config
+  emb_size_rbf: 16 # OC20 config
+  emb_size_cbf: 16 # OC20 config
+  emb_size_sbf: 32 # OC20 config
+  num_before_skip: 2 # OC20 config
+  num_after_skip: 2 # OC20 config
+  num_concat: 1 # OC20 config
+  num_atom: 3 # OC20 config
+  num_output_afteratom: 3 # OC20 config
+  rbf:
+    name: gaussian # OC20 config
+  envelope:
+    name: polynomial # OC20 config
+    exponent: 5 # OC20 config
+  cbf:
+    name: spherical_harmonics # OC20 config
+  sbf:
+    name: legendre_outer # OC20 config
+  extensive: True # OC20 config
+  output_init: HeOrthogonal # OC20 config
+  activation: silu # OC20 config
+
+  # data-related arg
+  #scale_file: configs/s2ef/all/gemnet/scaling_factors/gemnet-oc.pt
+
+  # force
+  regress_forces: True
+  direct_forces: True
+  forces_coupled: False # OC20 config
+
+  # graph
+  cutoff: 12.0 # OC20 config
+  cutoff_qint: 12.0 # OC20 config
+  cutoff_aeaint: 12.0 # OC20 config
+  cutoff_aint: 12.0 # OC20 config
+  max_neighbors: 30 # OC20 config
+  max_neighbors_qint: 8 # OC20 config
+  max_neighbors_aeaint: 20 # OC20 config
+  max_neighbors_aint: 1000 # OC20 config
+
+  quad_interaction: True # OC20 config
+  atom_edge_interaction: True # OC20 config
+  edge_atom_interaction: True # OC20 config
+  atom_interaction: True # OC20 config
+
+  num_atom_emb_layers: 2 # OC20 config
+  num_global_out_layers: 2 # OC20 config
+  qint_tags: [1, 2] # OC20 config
+
+  otf_graph: True
+  use_pbc: True
+
+optim:
+  batch_size: 16 # OC20 config
+  eval_batch_size: 16 # OC20 config
+  num_workers: 2
+  optimizer: AdamW # OC20 config
+  optimizer_params: {"amsgrad": True} # OC20 config
+  max_epochs: 80 # OC20 config
+  ema_decay: 0.999 # OC20 config
+  clip_grad_norm: 10 # OC20 config
+  
+  # scheduler
+  scheduler: ReduceLROnPlateau # OC20 config
+  lr_initial: 5.e-4 # OC20 config
+  mode: min # OC20 config
+  factor: 0.8 # OC20 config
+  patience: 3 # OC20 config
+
+  # loss
+  energy_coefficient: 1 # OC20 config
+  loss_energy: mae # OC20 config
+  force_coefficient: 100 # OC20 config
+  loss_force: l2mae # OC20 config

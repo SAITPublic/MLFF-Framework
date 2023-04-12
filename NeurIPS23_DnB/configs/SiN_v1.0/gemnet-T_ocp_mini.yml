@@ -1,5 +1,5 @@
 includes:
-- /nas/SAIT-MLFF-Framework/NeurIPS23_DnB/configs/SiN_v1.0/base_rmax5.yml
+- NeurIPS23_DnB/configs/SiN_v1.0/base_rmax5.yml
 
 model:
   name: gemnet_t
@@ -29,7 +29,7 @@ model:
   otf_graph: False ## True = on-the-fly (otf) computing graph
   output_init: HeOrthogonal
   activation: silu
-  scale_file: /nas/SAIT-MLFF-Framework/NeurIPS23_DnB/configs/SiN_v1.0/scale_file_gemnet-T_ocp_mini.json
+  scale_file: NeurIPS23_DnB/configs/SiN_v1.0/auxiliary/scale_file_gemnet-T_ocp_mini.json
   regress_forces: True
   direct_forces: False #True
   use_pbc: True

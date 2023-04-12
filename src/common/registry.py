@@ -4,16 +4,16 @@ import importlib
 from ocpmodels.common.registry import _get_absolute_mapping
 
 
-class EvaluatorRegistry:
+class MDEvaluateRegistry:
     r"""Class for registry object which acts as central source of truth."""
     mapping = {
         # Mappings to respective classes.
-        "evaluator_name_mapping": {},
+        "md_evaluate_name_mapping": {},
         "state": {},
     }
 
     @classmethod
-    def register_evaluator(cls, name):
+    def register_md_evaluate(cls, name):
         r"""Register a trainer to registry with key 'name'
 
         Args:
@@ -23,13 +23,13 @@ class EvaluatorRegistry:
 
             from src.common.registry import registry
 
-            @registry.register_evaluator("active_evaluator")
+            @registry.register_md_evaluate("active_evaluator")
             class ActiveEvaluator():
                 ...
         """
 
         def wrap(func):
-            cls.mapping["evaluator_name_mapping"][name] = func
+            cls.mapping["md_evaluate_name_mapping"][name] = func
             return func
 
         return wrap
@@ -69,7 +69,7 @@ class EvaluatorRegistry:
         if existing_cls_path is not None:
             existing_cls_path = f"{existing_cls_path.__module__}.{existing_cls_path.__qualname__}"
         else:
-            existing_cls_path = "src.evaluators.base_evaluator.BenchmarkEvaluator"
+            existing_cls_path = "src.md_evaluate.base_evaluator.BenchmarkEvaluator"
         
         existing_keys = [f"'{name}'" for name in existing_keys]
         existing_keys = (
@@ -100,8 +100,8 @@ class EvaluatorRegistry:
             raise cls.__import_error(name, mapping_name) from e
 
     @classmethod
-    def get_evaluator_class(cls, name):
-        return cls.get_class(name, "evaluator_name_mapping")
+    def get_md_evaluate_class(cls, name):
+        return cls.get_class(name, "md_evaluate_name_mapping")
 
     @classmethod
     def get(cls, name, default=None, no_warning=False):
@@ -154,4 +154,4 @@ class EvaluatorRegistry:
         return cls.mapping["state"].pop(name, None)
 
 
-evaluator_registry = EvaluatorRegistry()
+md_evaluate_registry = MDEvaluateRegistry()

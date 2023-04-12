@@ -1,5 +1,6 @@
 includes:
-- /nas/SAIT-MLFF-Framework/NeurIPS23_DnB/configs/SiN_v2.0/base_rmax5.yml
+#- NeurIPS23_DnB/configs/HfO_v1.0/base_dataset_2_rmax6_maxneighbor50.yml
+- NeurIPS23_DnB/configs/HfO_v1.0/base_dataset_3_rmax6_maxneighbor50.yml
 
 trainer: forces_nequip
 
@@ -12,14 +13,14 @@ model:
     - PerSpeciesRescale
     - ForceOutput
     - RescaleEnergyEtc
-  num_layers: 4 # paper (periodic system), LiPS config
+  num_layers: 4 
   l_max: 2 # LiPS config
   parity: True # LiPS config
   num_features: 32 # LiPS config
   num_basis: 8 # paper, LiPS config
   BesselBasis_trainable: True # LiPS config
   PolynomialCutoff_p: 6 # LiPS config
-  invariant_layers: 2 # paper, LiPS config
+  invariant_layers: 2  
   invariant_neurons: 64 # paper, LiPS config
   avg_num_neighbors: auto
   use_sc: True # LiPS config
@@ -36,26 +37,28 @@ model:
   regress_forces: True
 
   # graph
-  cutoff: 5.0 # paper (periodic sytsem; LiPS)
-  otf_graph: False
+  cutoff: 6.0 # same in OCP models
+  max_neighbors: 50 # same in OCP models # not used, but explictly described
+  otf_graph: False # for now (23. 4. 3), otf is not enabled
   use_pbc: True # periodic system
 
   # data-related arg
   chemical_symbols:
-    - N
-    - Si
+    - O
+    - Hf
 
 optim:
-  batch_size: 32 # paper (periodic system)
-  eval_batch_size: 32
+  batch_size: 16 # paper (periodic system)
+  eval_batch_size: 16
   num_workers: 2
-  max_epochs: 300
+  max_epochs: 200 # same in OCP models
   ema_decay: 0.99 # paper
 
   optimizer: Adam
-  optimizer_params: {"amsgrad": True} # paper
+  optimizer_params: {"amsgrad": False} # paper: True
+  #weight_decay: 0.00001
   scheduler: LinearLR
-  lr_initial: 0.01 # paper (periodic system)
+  lr_initial: 0.005
 
   # loss function is defined in Eq. (9) in NequIP arXiv paper
   # NequIP recommend that E_coef : F_coef = 1 : N_atoms^2

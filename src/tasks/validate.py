@@ -36,7 +36,7 @@ class ValidateTask(BaseTask):
                     self.config["optim"].get("batch_size")
                 )
             ),
-            shuffle=False,
+            shuffle=True,
         )
 
         # loader

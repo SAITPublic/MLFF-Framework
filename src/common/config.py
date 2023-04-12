@@ -1,5 +1,7 @@
 import os
 
+from ocpmodels.common.utils import load_config
+
 
 def add_benchmark_config(config, args):     
     # to load a checkpoint in 'timestamp_id' path and resume to train the model
@@ -34,13 +36,6 @@ def add_benchmark_validate_config(config, args):
     return config
 
 
-def add_benchmark_evaluate_config(config, args):
-    if args.mode == "evaluate":
-        #config["checkpoint"] = args.checkpoint
-        assert config["checkpoint"] is not None
-    return config
-
-
 def check_config(config):
     assert "task" in config
     assert "model" in config
@@ -65,3 +60,42 @@ def check_config(config):
 
     return config
     
+
+def load_md_config(md_config_yml):
+    if md_config_yml is None:
+        return {}
+
+    config, duplicates_warning, duplicates_error = load_config(md_config_yml)
+    if len(duplicates_warning) > 0:
+        logging.warning(
+            f"Overwritten config parameters from included configs "
+            f"(non-included parameters take precedence): {duplicates_warning}"
+        )
+    if len(duplicates_error) > 0:
+        raise ValueError(
+            f"Conflicting (duplicate) parameters in simultaneously "
+            f"included configs: {duplicates_error}"
+        )
+    return config
+
+
+def build_run_md_config(args):
+    config = load_md_config(args.md_config_yml)
+    config["mode"] = args.mode
+    assert args.checkpoint is not None, "--checkpoint is should be given."
+    config["checkpoint"] = args.checkpoint
+    config["initial_structure"] = args.initial_structure
+    config["output_trajectory"] = args.output_trajectory
+    return config
+
+
+def build_evaluate_config(args):
+    config = load_md_config(args.md_config_yml)
+    config["mode"] = args.mode
+    assert args.evaluation_metric is not None, "--evaluation-metric is should be given."
+    config["evaluation_metric"] = args.evaluation_metric
+    assert args.checkpoint is not None, "--checkpoint is should be given."
+    config["checkpoint"] = args.checkpoint
+    config["reference_trajectory"] = args.reference_trajectory
+    config["generated_trajectory"] = args.generated_trajectory
+    return config

@@ -152,7 +152,6 @@ def compute_per_species_shift_and_scale(config, initialize, dataset, transform):
             else:
                 raise ValueError(f"Invalid value `{value}` of type {type(value)}")
 
-        print(str_names)
         if len(str_names) == 2:
             # Both computed from dataset
             arguments_in_dataset_units = True

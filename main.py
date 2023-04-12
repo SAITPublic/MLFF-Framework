@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.abspath("./"))
 sys.path.insert(1, os.path.abspath("./codebases/ocp")) 
 sys.path.insert(2, os.path.abspath("./codebases/nequip")) 
 sys.path.insert(3, os.path.abspath("./codebases/allegro")) 
-#sys.path.insert(4, os.path.abspath("./codebases/mace")) 
+sys.path.insert(4, os.path.abspath("./codebases/mace")) 
 
 import copy
 import logging
@@ -38,7 +38,8 @@ from src.common.config import (
     add_benchmark_config, 
     add_benchmark_fit_scale_config,
     add_benchmark_validate_config,
-    add_benchmark_evaluate_config,
+    build_run_md_config,
+    build_evaluate_config
 )
 from src.common.utils import new_trainer_context, new_evaluator_context
 
@@ -48,22 +49,19 @@ class Runner(submitit.helpers.Checkpointable):
         self.config = None
 
     def __call__(self, config):
-        if config["mode"] == "evaluate":
-            with new_evaluator_context(args=args, config=config) as ctx:
-                self.config = ctx.config
-                self.task = ctx.task
-                self.evaluator = ctx.evaluator
-
-                self.task.setup(self.evaluator)
-                self.task.run()
-        else:
-            # train, fit-scale, validate
+        if config["mode"] in ["train", "validate", "fit-scale"]:
             with new_trainer_context(args=args, config=config) as ctx:
                 self.config = ctx.config
-                self.task = ctx.task
                 self.trainer = ctx.trainer
-
+                self.task = ctx.task
                 self.task.setup(self.trainer)
+                self.task.run()
+        elif config["mode"] in ["run-md", "evaluate"]:
+            with new_evaluator_context(args=args, config=config) as ctx:
+                self.config = ctx.config
+                self.evaluator = ctx.evaluator
+                self.task = ctx.task
+                self.task.setup(self.evaluator)
                 self.task.run()
 
     def checkpoint(self, *args, **kwargs):
@@ -81,11 +79,16 @@ if __name__ == "__main__":
 
     parser = benchmark_flags.get_parser()
     args, override_args = parser.parse_known_args()
-    config = build_config(args, override_args)
-    config = add_benchmark_config(config, args)
-    config = add_benchmark_fit_scale_config(config, args)
-    config = add_benchmark_validate_config(config, args)
-    config = add_benchmark_evaluate_config(config, args)
+
+    if args.mode in ["train", "validate", "fit-scale"]:
+        config = build_config(args, override_args)
+        config = add_benchmark_config(config, args)
+        config = add_benchmark_validate_config(config, args)
+        config = add_benchmark_fit_scale_config(config, args)
+    elif args.mode == "run-md":
+        config = build_run_md_config(args)
+    elif args.mode == "evaluate":
+        config = build_evaluate_config(args)
 
     if args.submit:  # Run on cluster
         slurm_add_params = config.get(

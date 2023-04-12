@@ -1,3 +1,7 @@
+"""
+written by byunggook.na
+"""
+
 import torch
 
 from ocpmodels.common.registry import registry
@@ -45,11 +49,12 @@ class NequIPForcesTrainer(ForcesTrainer):
             type_mapper=self.type_mapper,
         )
 
-    def _set_model(self):
-        super()._set_model()
-        
-        # for yaml.dump, lmdb instance should be excluded from the configuration after model setup
-        # self.config["model_attributes"].pop("dataset")
+    def _split_trainable_params_optimizer_weight_decay(self):
+        # as in nequip code
+        # there is no splitting params according to weight decaying
+        params_decay = self.model.parameters()
+        params_no_decay = []
+        return params_decay, params_no_decay
 
     def _compute_loss(self, out, batch_list):
         # loss function always needs to be in normalized unit (according to NequIP)
@@ -99,7 +104,6 @@ class NequIPForcesTrainer(ForcesTrainer):
                 return super()._compute_loss(out=normalized_out, batch_list=normalized_batch_list)
 
     def _compute_metrics(self, out, batch_list, evaluator, metrics={}):
-        # print("[before metrics] energy GT:", batch_list[0][AtomicDataDict.TOTAL_ENERGY_KEY].tolist(), "Pred:", out["energy"]).tolist()
         for batch in batch_list:
             batch.y = batch[AtomicDataDict.TOTAL_ENERGY_KEY]
             batch.force = batch[AtomicDataDict.FORCE_KEY]

@@ -42,7 +42,7 @@ model:
   regress_forces: True
 
   # graph
-  cutoff: 5.0 #  rmd17 config
+  cutoff: 5.0 #  4.0 = rmd17 config
   otf_graph: False 
   use_pbc: False # non-periodic system
 
@@ -60,7 +60,7 @@ optim:
   patience: 50 # rmd17 config
   factor: 0.8 # rmd17 config
 
-  # loss function is defined in Eq. (9) in NequIP arXiv paper
+  # loss function is defined in Eq. (9) in NequIP paper (nature comm.)
   energy_coefficient: 1 # rmd17 config
   loss_energy: mse # rmd17 config
   force_coefficient: 1000 # rmd17 config

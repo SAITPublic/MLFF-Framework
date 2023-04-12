@@ -44,50 +44,62 @@ class ForcesTrainer(BaseTrainer):
     """
     Trainer class for the Structure to Energy & Force (S2EF) task.
     """
+    def _set_normalizer(self):
+        self.normalizers = {}
+        if self.normalizer.get("normalize_labels", False):
+            if self.mode != "train":
+                # just empty normalizer (which will be loaded from the given checkpoint)
+                self.normalizers["target"] = Normalizer(mean=0.0, std=1.0, device=self.device,)
+                self.normalizers["grad_target"] = Normalizer(mean=0.0, std=1.0, device=self.device)
+                return
+
+            # force normalizer
+            if "grad_target_std" in self.normalizer:
+                # Load precomputed mean and std of training set labels (specified in a configuration file)
+                if "grad_target_mean" in self.normalizer:
+                    bm_logging.info("`grad_target_mean` is ignored and set as 0 explicitly.")
+                scale = self.normalizer["grad_target_std"]
+            elif "normalize_labels_json" in self.normalizer:
+                # Load precomputed mean and std of training set labels (specified in a json file outside from a configuration file)
+                normalize_stats = json.load(open(self.normalizer["normalize_labels_json"], 'r'))
+                if "force_mean":
+                    bm_logging.info("`force_mean` is ignored and set as 0 explicitly.")
+                scale = normalize_stats.get("force_std", 1.0)
+            else:
+                # Compute mean and std of training set labels.
+                # : force is already tensor (which can have different shapes)
+                forces_train = torch.concat([data.force for data in self.train_loader.dataset])
+                scale = torch.std(forces_train), # 3-dim vetors -> scala value
+            self.normalizers["grad_target"] = Normalizer(mean=0.0, std=scale, device=self.device)
+            bm_logging.info(f"Normalizer of forces: mean {self.normalizers['grad_target'].mean}, std {self.normalizers['grad_target'].std}")
+
+            # energy normalizer
+            if "target_mean" in self.normalizer:
+                shift = self.normalizer["target_mean"]
+                scale = self.normalizer.get("target_std", self.normalizers["grad_target"])
+                if scale != self.normalizers["grad_target"].std:
+                    bm_logging.warning(f"Scaling factors of energy and force are recommended to be equal")
+            elif "normalize_labels_json" in self.normalizer:
+                shift = normalize_stats["energy_mean"]
+                if "energy_std":
+                    bm_logging.info("`energy_std` is ignored and set as the value of `force_std` explicitly.")
+                scale = self.normalizers["grad_target"].std # energy scale factor should be force std
+            else:
+                energy_train = torch.tensor([data.y for data in self.train_loader.dataset])
+                shift = torch.mean(energy_train)
+                scale = self.normalizers["grad_target"].std # energy scale factor should be force std
+            self.normalizers["target"] = Normalizer(mean=shift, std=scale, device=self.device)
+            bm_logging.info(f"Normalizer of energy: mean {self.normalizers['target'].mean}, std {self.normalizers['target'].std}")
+            
     def _set_task(self):
         # most models have a scaler energy output (meaning that num_targets = 1)
         self.num_targets = 1
 
         # this benchmark focuses on s2ef task, so regress_forces should be true
         if "regress_forces" in self.config["model_attributes"]:
-            assert self.config["model_attributes"]["regress_forces"]
+            assert self.config["model_attributes"]["regress_forces"], "Correct `regress_forces` to be true"
         else:
             self.config["model_attributes"]["regress_forces"] = True
-
-        # If we're computing gradients wrt input, set mean of normalizer to 0 --
-        # since it is lost when compute dy / dx -- and std to forward target std
-        if (self.normalizer.get("normalize_labels", False)):
-            if self.mode != "train":
-                # just empty normalizer (which will be loaded from the given checkpoint)
-                self.normalizers["grad_target"] = Normalizer(
-                    mean=0.0,
-                    std=1.0,
-                    device=self.device,
-                )
-                return
-
-            if "grad_target_std" in self.normalizer:
-                self.normalizers["grad_target"] = Normalizer(
-                    mean=self.normalizer.get("grad_target_mean", 0.0),
-                    std=self.normalizer["grad_target_std"],
-                    device=self.device,
-                )
-            elif "normalize_labels_json" in self.normalizer:
-                normalize_stats = json.load(open(self.normalizer["normalize_labels_json"], 'r'))
-                self.normalizers["grad_target"] = Normalizer(
-                    mean=normalize_stats["force_mean"],
-                    std=normalize_stats["force_std"],
-                    device=self.device,
-                )
-            else:
-                # force is already tensor
-                forces_train = torch.concat([data.force for data in self.train_loader.dataset])
-                self.normalizers["grad_target"] = Normalizer(
-                    mean=0.0,
-                    std=torch.std(forces_train),
-                    device=self.device,
-                )
-            bm_logging.info(f"Normalizer of forces: mean {self.normalizers['grad_target'].mean}, std {self.normalizers['grad_target'].std}")
 
     def update_best(self, primary_metric, val_metrics):
         curr_metric = val_metrics[primary_metric]["metric"]

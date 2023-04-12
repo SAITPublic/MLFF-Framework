@@ -4,6 +4,7 @@ written by robert.cho and byunggook.na (SAIT)
 
 import os
 import numpy as np
+from pathlib import Path
 
 # from ase.atom import atomic_numbers
 import ase
@@ -40,12 +41,12 @@ class PerAtomFCN(torch.nn.Module):
     ):
         super().__init__()
 
-        self.atom_types=atom_types
-        self.module_dict={}
+        self.atom_types = atom_types
+        module_dict = {}
         for key in atom_types:
-            module_list=[]
+            module_list = []
             for j in range(nLayer):
-                if(j==0):
+                if j == 0:
                     module_list.append(torch.nn.Linear(nDescriptor,nHidden))
                 else:
                     module_list.append(torch.nn.Linear(nHidden,nHidden))
@@ -62,13 +63,11 @@ class PerAtomFCN(torch.nn.Module):
             torch.nn.init.xavier_normal_(tmp_bias)
             module_list[-1].bias.data = tmp_bias[0]
 
-            self.module_dict[str(key)]= Sequential(*module_list)
-        self.module_dict=ModuleDict(self.module_dict)
-    def forward(self,x):
+            module_dict[str(key)] = Sequential(*module_list)
+        self.fcn_atoms = ModuleDict(module_dict)
 
-        out={}
-        for key in self.atom_types:
-            out[key]=self.module_dict[str(key)](x[key])
+    def forward(self, x):
+        out={key: self.fcn_atoms[str(key)](x[key]) for key in x.keys()}
         return out
 
 
@@ -83,106 +82,115 @@ class ACSF(torch.nn.Module):
         g4_params=None,
     ):
         super().__init__()
-        self.cutoff=cutoff
-        self.atomic_numbers=atomic_numbers
+        self.cutoff = cutoff
+        self.atomic_numbers = atomic_numbers
 
         if g2_params is None:
+            # default G2 parameters
             g2_etas = torch.tensor([0.003214,0.035711,0.071421,0.124987,0.214264,0.357106,0.714213,1.428426])
         else:
-            f = open(g2_params,'r')
-            lines = f.readlines()
-            g2_etas = torch.tensor([eval(v) for v in lines[0].split(",")])
-            f.close()
+            with open(g2_params,'r') as f:
+                lines = f.readlines()
+                g2_etas = torch.tensor([eval(v) for v in lines[0].split(",")])
 
         if g4_params is None:
+            # default G4 parameters
             etas = torch.tensor([0.000357,0.028569,0.089277])
             zetas = torch.tensor([1.0,2.0,4.0])
             lmdas = torch.tensor([-1.0,1.0])
         else:
-            f = open(g4_params,'r')
-            lines = f.readlines()
-            etas = torch.tensor([eval(v) for v in lines[0].split(",")])
-            zetas = torch.tensor([eval(v) for v in lines[1].split(",")])
-            lmdas = torch.tensor([eval(v) for v in lines[2].split(",")])
-            f.close()
+            with open(g4_params,'r') as f:
+                lines = f.readlines()
+                etas = torch.tensor([eval(v) for v in lines[0].split(",")])
+                zetas = torch.tensor([eval(v) for v in lines[1].split(",")])
+                lmdas = torch.tensor([eval(v) for v in lines[2].split(",")])
 
-        n_species=len(self.atomic_numbers)
-        self.dim_descriptor = n_species*len(g2_etas)+n_species*(n_species+1)*len(etas)*len(zetas)*len(lmdas)//2
+        n_species = len(self.atomic_numbers)
+        self.dim_descriptor = n_species*len(g2_etas) + n_species*(n_species+1)*len(etas)*len(zetas)*len(lmdas)//2
         self.G2_params = {}
         self.G4_params_etas = {}
         self.G4_params_zetas = {}
         self.G4_params_lmdas = {}
-        for atom1 in (self.atomic_numbers):
-            for i,atom2 in enumerate(self.atomic_numbers):
-                self.G2_params[str((atom1,atom2))]=torch.nn.Parameter(g2_etas.clone().detach(),            requires_grad=trainable)
-                for j in range(i,len(self.atomic_numbers)):
-                    atom3=self.atomic_numbers[j]
-                    self.G4_params_etas[str((atom1,atom2,atom3))]=torch.nn.Parameter(etas.clone().detach(),requires_grad=trainable)
-                    self.G4_params_zetas[str((atom1,atom2,atom3))]=torch.nn.Parameter(zetas.clone().detach(),requires_grad=trainable)
-                    self.G4_params_lmdas[str((atom1,atom2,atom3))]=torch.nn.Parameter(lmdas.clone().detach(),requires_grad=trainable)
-        self.G2_params      =torch.nn.ParameterDict(self.G2_params)
-        self.G4_params_etas =torch.nn.ParameterDict(self.G4_params_etas)
-        self.G4_params_zetas=torch.nn.ParameterDict(self.G4_params_zetas)
-        self.G4_params_lmdas=torch.nn.ParameterDict(self.G4_params_lmdas)
+        for atom1 in self.atomic_numbers:
+            for i, atom2 in enumerate(self.atomic_numbers):
+                self.G2_params[str((atom1,atom2))] = torch.nn.Parameter(g2_etas.clone().detach(), requires_grad=trainable)
+                for j in range(i, len(self.atomic_numbers)):
+                    atom3 = self.atomic_numbers[j]
+                    self.G4_params_etas[str((atom1,atom2,atom3))] = torch.nn.Parameter(etas.clone().detach(), requires_grad=trainable)
+                    self.G4_params_zetas[str((atom1,atom2,atom3))] = torch.nn.Parameter(zetas.clone().detach(), requires_grad=trainable)
+                    self.G4_params_lmdas[str((atom1,atom2,atom3))] = torch.nn.Parameter(lmdas.clone().detach(), requires_grad=trainable)
+        self.G2_params       = torch.nn.ParameterDict(self.G2_params)
+        self.G4_params_etas  = torch.nn.ParameterDict(self.G4_params_etas)
+        self.G4_params_zetas = torch.nn.ParameterDict(self.G4_params_zetas)
+        self.G4_params_lmdas = torch.nn.ParameterDict(self.G4_params_lmdas)
 
-    def forward(self,atomic_numbers ,edge_index,D_st,id3_ba,id3_ca,cosφ_cab):
-        eba_idx= id3_ba[id3_ba>id3_ca]
-        eca_idx= id3_ca[id3_ba>id3_ca]
-        cos_idx= cosφ_cab[id3_ba>id3_ca]
+    def forward(self, atomic_numbers, edge_index, D_st, id3_ba, id3_ca, cosφ_cab):
+        eba_idx = id3_ba[id3_ba>id3_ca]
+        eca_idx = id3_ca[id3_ba>id3_ca]
+        cos_idx = cosφ_cab[id3_ba>id3_ca]
+        D_ba = D_st[eba_idx]
+        D_ca = D_st[eca_idx]
 
-        D_ba=D_st[eba_idx]
-        D_ca=D_st[eca_idx]
-        res_G4={}
-        res_G2={}
+        atom_idx = {atom: atomic_numbers == atom for atom in self.atomic_numbers}
+        atom_exist = {atom: atom_idx[atom].sum() > 0 for atom in self.atomic_numbers}
 
-        for atom in self.atomic_numbers:
-            res_G4[atom]=[]
-            res_G2[atom]=[]
-        for atoms,eta in self.G4_params_etas.items():
-            atom_a, atom_b,atom_c=eval(atoms)
-            zta=self.G4_params_zetas[atoms]
-            lmda=self.G4_params_lmdas[atoms]
-            idx=((atomic_numbers[edge_index[:,eba_idx][0,:]]==atom_b)*(atomic_numbers[edge_index[:,eba_idx][1,:]]==atom_a)*(atomic_numbers[edge_index[:,eca_idx][0,:]]==atom_c))  \
-                +((atomic_numbers[edge_index[:,eba_idx][0,:]]==atom_c)*(atomic_numbers[edge_index[:,eba_idx][1,:]]==atom_a)*(atomic_numbers[edge_index[:,eca_idx][0,:]]==atom_b)) 
-            R_ba=D_ba[idx]
-            R_ca=D_ca[idx]
-            rcut=self.cutoff
+        res_G4 = {atom: [] for atom in self.atomic_numbers}
+        for atoms_triplet in self.G4_params_etas.keys():
+            atom_a, atom_b, atom_c = eval(atoms_triplet)
+            eta = self.G4_params_etas[atoms_triplet]
+            zeta = self.G4_params_zetas[atoms_triplet]
+            lmda = self.G4_params_lmdas[atoms_triplet]
+            idx = ((atomic_numbers[edge_index[:,eba_idx][0,:]] == atom_b)
+                    *(atomic_numbers[edge_index[:,eba_idx][1,:]] == atom_a)
+                    *(atomic_numbers[edge_index[:,eca_idx][0,:]] == atom_c)) + \
+                  ((atomic_numbers[edge_index[:,eba_idx][0,:]] == atom_c)
+                    *(atomic_numbers[edge_index[:,eba_idx][1,:]] == atom_a)
+                    *(atomic_numbers[edge_index[:,eca_idx][0,:]] == atom_b)) 
+            R_ba = D_ba[idx]
+            R_ca = D_ca[idx]
+            R_bc = (R_ba*R_ba + R_ca*R_ca-2*R_ba*R_ca*cos_idx[idx]).sqrt()
+            cutoff = (
+                (0.5*torch.cos(torch.pi*R_ca/self.cutoff) + 0.5) * 
+                (0.5*torch.cos(torch.pi*R_bc/self.cutoff) + 0.5) * 
+                (0.5*torch.cos(torch.pi*R_ba/self.cutoff) + 0.5) * 
+                (R_bc<self.cutoff) * 
+                (R_ba<self.cutoff) * 
+                (R_ca<self.cutoff)
+            )
+            rad = torch.exp(-eta.reshape(1,-1)*(R_bc*R_bc + R_ba*R_ba + R_ca*R_ca).reshape(-1,1))
+            cos_lmda = torch.pow(torch.abs(1+lmda.reshape(1,-1,1)*cos_idx[idx].reshape(-1,1,1)), zeta.reshape(1,1,-1))
+            res = cos_lmda.reshape(cos_lmda.shape[0],1,cos_lmda.shape[1],cos_lmda.shape[2]) * rad.reshape(rad.shape+(1,1)) * cutoff.reshape(-1,1,1,1)
+            g4_per_atom = torch.zeros((atomic_numbers.shape[0],)+res.shape[1:], device=res.device)
+            scatter(res, edge_index[:,eba_idx[idx]][1,:], dim=0, out=g4_per_atom)
+            if atom_exist[atom_a]:
+                res_G4[atom_a].append(torch.pow(2, 1-zeta) * g4_per_atom[atom_idx[atom_a]])
 
-            #Cos 제 2 법칙.       
-            R_bc=(R_ba*R_ba + R_ca*R_ca-2*R_ba*R_ca*cos_idx[idx]).sqrt()
-            cutoff=(0.5*torch.cos(torch.pi* R_ca/rcut)+0.5)*(0.5*torch.cos(torch.pi* R_bc/rcut)+0.5)*(0.5*torch.cos(torch.pi* R_ba/rcut)+0.5)*(R_bc<rcut)*(R_ba<rcut)*(R_ca<rcut)
+        res_G2 = {atom: [] for atom in self.atomic_numbers}        
+        for atoms_pair, eta in self.G2_params.items():
+            source_atom, target_atom = eval(atoms_pair)
+            idx = (atomic_numbers[edge_index[1,:]] == target_atom) * (atomic_numbers[edge_index[0,:]] == source_atom)
+            cutoff = 0.5*torch.cos(torch.pi*D_st[idx]/self.cutoff) + 0.5
+            # eta = eta.to(D_st.device)
+            rad = torch.exp(-(eta).reshape(1,-1) * (D_st[idx]*D_st[idx]).reshape(-1,1))
+            res = cutoff.reshape(-1,1) * rad
+            out_per_atom = torch.zeros(atomic_numbers.shape[0], len(eta), device=res.device)
+            scatter(res, edge_index[1,idx], dim=0, out=out_per_atom)
+            if atom_exist[target_atom]:
+                res_G2[target_atom].append(out_per_atom[atom_idx[target_atom]])
 
-            rad = torch.exp(-eta.reshape(1,-1)*(R_bc*R_bc + R_ba*R_ba + R_ca*R_ca).reshape(-1,1) )
-            cos_lmda= torch.pow(torch.abs(1+lmda.reshape(1,-1,1)*cos_idx[idx].reshape(-1,1,1)),zta.reshape(1,1,-1))
-            res=cos_lmda.reshape(cos_lmda.shape[0],1,cos_lmda.shape[1],cos_lmda.shape[2] )*rad.reshape(rad.shape+(1,1))*cutoff .reshape(-1,1,1,1)
-            g4_per_atom=torch.zeros( (atomic_numbers.shape[0],)+res.shape[1:] ,device=res.device)
-            scatter(res,edge_index[:,eba_idx[idx]][1,:],dim=0,out=g4_per_atom)
-            res_G4[atom_a].append( torch.pow(2,1-zta)*  g4_per_atom[atomic_numbers==atom_a])
-
-        for atoms,etas in self.G2_params.items():
-
-            source_atom, target_atom=eval(atoms)
-
-            idx_=(atomic_numbers[edge_index[ 1,:]]==target_atom)* (atomic_numbers[edge_index[ 0,:]]==source_atom)
-            cutoff=0.5*torch.cos(torch.pi* D_st[idx_]/self.cutoff)+0.5
-            etas=etas.to(D_st.device)
-            rad = torch.exp(-(etas).reshape(1,-1) * (D_st[idx_]*D_st[idx_]).reshape(-1,1))
-            res=cutoff.reshape(-1,1)*rad
-            out_per_atom=torch.zeros( atomic_numbers.shape[0], len(etas),device=rad.device)
-            scatter(res,edge_index[1,idx_],dim=0,out=out_per_atom)
-            res_G2[target_atom].append(out_per_atom[atomic_numbers==target_atom])
-
-        for key, val in res_G4.items():
-            val=torch.stack(val,dim=-1)
-            val=val.reshape(val.shape[0],-1)
-            res_G4[key]=val
-        for key, val in res_G2.items():
-            val=torch.stack(val,dim=-1)
-            val=val.reshape(val.shape[0],-1)
-            res_G2[key]=val
-        res={}
-        for key in res_G2.keys():
-            res[key]=torch.cat([res_G2[key],res_G4[key]],dim=-1)
+        non_empty_atoms = []
+        for atom, val in res_G4.items():
+            if len(val) > 0:
+                val = torch.stack(val,dim=-1)
+                val = val.reshape(val.shape[0],-1)
+                res_G4[atom] = val
+                non_empty_atoms.append(atom)
+        for atom, val in res_G2.items():
+            if len(val) > 0:
+                val = torch.stack(val,dim=-1)
+                val = val.reshape(val.shape[0],-1)
+                res_G2[atom] = val
+        res = {atom: torch.cat([res_G2[atom],res_G4[atom]], dim=-1) for atom in non_empty_atoms}
         return res
 
 
@@ -194,7 +202,7 @@ class BPNN(BaseModel):
         num_atoms,
         bond_feat_dim,
         num_targets,
-        cutoff=5.0,
+        cutoff=6.0,
         max_neighbors=50,
         use_pbc=True,
         regress_forces=True,
@@ -202,6 +210,7 @@ class BPNN(BaseModel):
         direct_forces=False,
         # BPNN arguments
         atom_species=None,
+        scale_pca_path=None,
         dataset_path=None,
         trainable=False,
         nHidden=1,
@@ -214,11 +223,7 @@ class BPNN(BaseModel):
         super().__init__()
 
         self.cutoff = cutoff
-        assert self.cutoff <= 6 or otf_graph
-
         self.max_neighbors = max_neighbors
-        #assert self.max_neighbors == 50 or otf_graph
-
         self.regress_forces = regress_forces
         self.otf_graph = otf_graph
         self.use_pbc = use_pbc
@@ -234,56 +239,38 @@ class BPNN(BaseModel):
             g2_params=g2_params,
             g4_params=g4_params,
         )
-        self.dim_descriptor=self.descriptor.dim_descriptor
 
-        self.PerAtomspeciesNN = PerAtomFCN(
-            nDescriptor=self.dim_descriptor,
+        self.per_atom_fcn = PerAtomFCN(
+            nDescriptor=self.descriptor.dim_descriptor,
             nHidden=nHidden,
             nLayer=nLayer,
             atom_types=self.atomic_numbers,
         )
 
-        if dataset_path is None:
+        if scale_pca_path is None and dataset_path is None:
+            bm_logging.warning("scale and pca are not used (if they are used, BPNN accuarcy could be improved)")
             self.scale = None
             self.pca = None
         else:
-            config={}
-            config['src']=dataset_path
-            dset = LmdbDataset(config)
-            
-            if os.path.isfile(dataset_path):
-                # single lmdb file
-                scale_path = dataset_path.replace(".lmdb", "_scale_BPNN.pt")
-                pca_path = dataset_path.replace(".lmdb", "_pca_BPNN.pt")
-            elif os.path.isdir(dataset_path):
-                # multi lmdb files
-                # TODO: handling multi lmdb files
-                scale_path = os.path.join(dataset_path, "scale_BPNN.pt")
-                pca_path = os.path.join(dataset_path, "pca_BPNN.pt")
-                raise NotImplementedError("Not implemented for dealing with multiple LMDB files.")
+            # set scale and pca
+            if scale_pca_path is None:
+                scale_pca_path = Path(dataset_path).parent / "BPNN_scale_pca.pt"
 
-            # scale
-            if os.path.exists(scale_path):
-                scale = torch.load(scale_path)
-                bm_logging.info(f"scale loaded from {scale_path}")
+            if os.path.exists(scale_pca_path):
+                scale_pca = torch.load(scale_pca_path)
+                scale = scale_pca["scale"]
+                pca = scale_pca["pca"]
+                bm_logging.info(f"scale and pca are loaded from {scale_pca_path}")
             else:
-                scale = self._calculate_scale(dset, 32)
-                torch.save(scale, scale_path)
-                bm_logging.info(f"scale calculated and saved at {scale_path}")
+                assert dataset_path is not None
+                scale, pca = self._calculate_scale_and_fit_pca(
+                    dataset=LmdbDataset({'src': dataset_path}), 
+                    bs=32,
+                )
+                torch.save({"scale": scale, "pca": pca}, scale_pca_path)
+                bm_logging.info(f"scale and pca are calculated and saved at {scale_pca_path}")
             self.scale = scale
-
-            # pca
-            if os.path.exists(pca_path):
-                pca = torch.load(pca_path)
-                bm_logging.info(f"pca loaded from {pca_path}")
-            else:
-                pca = self._calculate_pca(dset, scale)
-                torch.save(pca, pca_path)
-                bm_logging.info(f"pca calculated and saved at {pca_path}")
             self.pca = pca
-
-            for k, v in self.pca.items():
-                self.pca[k] = [v[0], v[1].type(torch.FloatTensor), v[2]]
 
     def get_triplets(self, edge_index, num_atoms):
         """
@@ -515,47 +502,48 @@ class BPNN(BaseModel):
             id3_ragged_idx,
         ) = self.generate_interaction_graph(data)
         idx_s, idx_t = edge_index                                                                                                                                                                                                                                                                                    
-        batch_per_atom={}
-        for atom in self.atomic_numbers:
-            batch_per_atom[atom]= batch[atomic_numbers==atom]
+        batch_per_atom = {
+            atom: batch[atomic_numbers == atom] 
+            for atom in self.atomic_numbers
+        }
         # Calculate triplet angles
         cosφ_cab = inner_product_normalized(V_st[id3_ca], V_st[id3_ba])
-        res=self.descriptor(atomic_numbers,edge_index,D_st,id3_ba,id3_ca,cosφ_cab)
-
-        if(self.pca!=None):
-            for atom in self.atomic_numbers:
-                a,w=self.scale[atom]
-                res[atom]=(res[atom] -a.reshape(1,-1).to(edge_index.device))/w.reshape(1,-1).to(edge_index.device)
+        res = self.descriptor(atomic_numbers,edge_index,D_st,id3_ba,id3_ca,cosφ_cab)
+        if self.pca is not None:
+            for atom in res.keys():
+                a,w = self.scale[atom]
+                res[atom] = (res[atom] -a.reshape(1,-1).to(edge_index.device))/w.reshape(1,-1).to(edge_index.device)
                 res[atom] = torch.einsum('ij,jm->im', res[atom], self.pca[atom][0].to(edge_index.device))- self.pca[atom][2].reshape(1,-1).to(edge_index.device)
                 res[atom] /= self.pca[atom][1].view(1,-1).to(edge_index.device)
-        out=self.PerAtomspeciesNN(res)        
-        energy=torch.zeros(batch.max().item()+1,device=D_st.device)       
-        for atom in self.atomic_numbers:
-            scatter(out[atom].squeeze(),batch_per_atom[atom],dim=0,out=energy)
+        out = self.per_atom_fcn(res)        
+        energy = torch.zeros(batch.max().item()+1, device=D_st.device)       
+        for atom in out.keys():
+            scatter(out[atom].squeeze(), batch_per_atom[atom], dim=0, out=energy)
 
-        force = -torch.autograd.grad(
-                        energy.sum(), pos, create_graph=True
-                    )[0]
-
-        return energy, force
+        if self.regress_forces:
+            forces = -torch.autograd.grad(energy.sum(), pos, create_graph=True)[0]
+            return energy, forces
+        else:
+            return energy
 
     @property
     def num_params(self):
         return sum(p.numel() for p in self.parameters())
 
-    def _calculate_scale(self, dataset, bs=1):
+    def _calculate_scale_and_fit_pca(self, dataset, bs=1):
         if torch.cuda.is_available():
             device="cuda" 
         else:
             device="cpu"
-        self.descriptor=self.descriptor.to(device)
-        scale={}
-        sz=(len(dataset)-1)//bs +2
-        idxs=[bs*i if bs*i<=len(dataset) else len(dataset) for i in np.arange(sz)]
+        self.descriptor = self.descriptor.to(device)
+        scale = {}
+        sz = (len(dataset)-1)//bs +2
+        idxs = [bs*i if bs*i<=len(dataset) else len(dataset) for i in np.arange(sz)]
+        descriptor_list = {atom: [] for atom in self.atomic_numbers}
         with torch.no_grad():
             for i in range(sz-1):
-                data_list=[dataset[j] for j in np.arange(idxs[i],idxs[i+1])]
-                data=Batch.from_data_list(data_list)
+                data_list = [dataset[j] for j in np.arange(idxs[i],idxs[i+1])]
+                data = Batch.from_data_list(data_list)
                 n_neighbors = []
                 for i, data_ in enumerate(data_list):
                     n_index = data_.edge_index[1, :]
@@ -577,67 +565,33 @@ class BPNN(BaseModel):
                 cosφ_cab = inner_product_normalized(V_st[id3_ca], V_st[id3_ba])
 
                 descriptor = self.descriptor(atomic_numbers,edge_index,D_st,id3_ba,id3_ca,cosφ_cab)
-                for atom in self.atomic_numbers:
-                    if( atom in scale.keys()):
-                        scale[atom][:,0]=torch.minimum(descriptor[atom].min(axis=0).values,scale[atom][:,0])
-                        scale[atom][:,1]=torch.maximum(descriptor[atom].max(axis=0).values,scale[atom][:,1])
+                for atom in descriptor.keys():
+                    if atom in scale.keys():
+                        scale[atom][:,0] = torch.minimum(descriptor[atom].min(axis=0).values, scale[atom][:,0])
+                        scale[atom][:,1] = torch.maximum(descriptor[atom].max(axis=0).values, scale[atom][:,1])
                     else:
-                        scale[atom]=torch.stack([descriptor[atom].min(axis=0).values,descriptor[atom].max(axis=0).values],axis=-1)
-        for atom in self.atomic_numbers:
+                        scale[atom] = torch.stack(
+                            [descriptor[atom].min(axis=0).values, descriptor[atom].max(axis=0).values],
+                            axis=-1
+                        )
+                    descriptor_list[atom].append(descriptor[atom].cpu())
+
+        # scale
+        for atom in scale.keys():
             a = (scale[atom][:,1]+scale[atom][:,0])/2
             w = (scale[atom][:,1]-scale[atom][:,0])/2
             scale[atom] = [a.cpu(),w.cpu()]
-        return scale
 
-    def _calculate_pca(self, dataset, scale, bs=32):
-        pca={}
-        if torch.cuda.is_available():
-            device="cuda" 
-        else:
-            device="cpu"
-        self.descriptor=self.descriptor.to(device)
-
-        sz=(len(dataset)-1)//bs +2
-        idxs=[bs*i if bs*i<=len(dataset) else len(dataset) for i in np.arange(sz)]
-        descriptor_list={}
+        # pca
+        pca = {}
         for atom in self.atomic_numbers:
-            descriptor_list[atom]=[]
-        with torch.no_grad():
-            for i in range(sz-1):
-                data_list=[dataset[j] for j in np.arange(idxs[i],idxs[i+1])]
-                data=Batch.from_data_list(data_list)
-                n_neighbors = []
-                for i, data_ in enumerate(data_list):
-                    n_index = data_.edge_index[1, :]
-                    n_neighbors.append(n_index.shape[0])
-                data.neighbors = torch.tensor(n_neighbors)
-                data=data.to(device)
-
-                atomic_numbers = data.atomic_numbers.long()
-                (
-                    edge_index,
-                    neighbors,
-                    D_st,
-                    V_st,
-                    id3_ba,
-                    id3_ca,
-                    id3_ragged_idx,
-                ) = self.generate_interaction_graph(data)
-                cosφ_cab = inner_product_normalized(V_st[id3_ca], V_st[id3_ba])
-
-                descriptor_=self.descriptor(atomic_numbers,edge_index,D_st,id3_ba,id3_ca,cosφ_cab)
-                for atom in self.atomic_numbers:
-                    descriptor_list[atom].append(descriptor_[atom].cpu())
-
-        descriptor={}
-        for atom in self.atomic_numbers:
-            descriptor[atom] = torch.cat(descriptor_list[atom],dim=0)
-        for atom in self.atomic_numbers:
-                pca_temp = PCA()
-                a, w = scale[atom]
-                descriptor[atom] = (descriptor[atom]-a.reshape(1,-1))/w.reshape(1,-1)
-                pca_temp.fit(descriptor[atom].detach().numpy())
-                pca[atom] = [torch.tensor(pca_temp.components_.T),
-                         torch.tensor(np.sqrt(pca_temp.explained_variance_ +1e-8)),
-                         torch.tensor(np.dot(pca_temp.mean_, pca_temp.components_.T))]
-        return pca
+            pca_atom = PCA()
+            a, w = scale[atom]
+            descriptor = (torch.cat(descriptor_list[atom], dim=0) - a.reshape(1, -1)) / w.reshape(1, -1)
+            pca_atom.fit(descriptor.detach().numpy())
+            pca[atom] = [
+                torch.tensor(pca_atom.components_.T),
+                torch.tensor(np.sqrt(pca_atom.explained_variance_ +1e-8)).type(torch.FloatTensor),
+                torch.tensor(np.dot(pca_atom.mean_, pca_atom.components_.T))
+            ]
+        return scale, pca

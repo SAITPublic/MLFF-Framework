@@ -1,0 +1,50 @@
+includes:
+- NeurIPS23_DnB/configs/SiN_v2.0/base.yml # atom cloud (without edges)
+#- NeurIPS23_DnB/configs/SiN_v2.0/base_rmax6_maxneighbor50.yml # atom cloud (without edges)
+
+trainer: forces
+
+model:
+  name: schnet
+  # neural network
+  hidden_channels: 1024 # OC20 config
+  num_filters: 256 # OC20 config
+  num_interactions: 5 # OC20 config
+  num_gaussians: 200 # OC20 config
+ 
+  # force
+  regress_forces: True 
+
+  # graph
+  cutoff: 6.0 # OC20 config (max neighbor = 50 fixed in model)
+  otf_graph: False # True when atom cloud is used
+  use_pbc: True # periodic system
+
+optim:
+  batch_size: 16 # 192: OC20-2M config
+  eval_batch_size: 16 # 192: OC20-2M config
+  num_workers: 2
+  max_epochs: 200 # 80: GemNet-dT config
+
+  optimizer: Adam # paper
+
+  # OC20-2M : 30 epochs, warmup 3 epoch, milestone 5, 8, 10 epoch
+  #scheculer: LambdaLR
+  #lr_lambda: step
+  #lr_initial: 1.e-4 # OC20 config
+  #lr_gamma: 0.1 # OC20 config
+  #lr_milestone_epochs: # can be changed...
+  #  - 15
+  #  - 30
+  #  - 45
+  #warmup_epochs: 5 # can be changed...
+  #warmup_factor: 0.2 # OC20 config
+
+  scheduler: LinearLR
+  lr_initial: 1.e-4
+
+  # loss function is defined in Eq. (5) in SchNet paper (NeurIPS17)
+  energy_coefficient: 1 # OC20 config
+  loss_energy: mse # OC20 config
+  force_coefficient: 100 # OC20-2M config
+  loss_force: mse # OC20 config

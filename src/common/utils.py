@@ -19,7 +19,7 @@ from ocpmodels.common.registry import registry
 
 from src.common import distutils as benchmark_distutils
 from src.common.config import check_config
-from src.common.registry import evaluator_registry
+from src.common.registry import md_evaluate_registry
 
 
 def get_device(config):
@@ -40,7 +40,8 @@ def setup_benchmark_logging(config):
     root = logging.getLogger()
     bm_logging = logging.getLogger("BenchmarkLogging")
     if distutils.is_master():
-        if not config["is_debug"] and config["mode"] == "train":
+        # if not config.get("is_debug", False) and config["mode"] == "train":
+        if True:
             # The initial logging setup is performed by setup_logging() of ocpmodels.common.utils at main.py.
             # We'll follow the logging format.
             log_formatter = root.handlers[0].formatter
@@ -51,7 +52,7 @@ def setup_benchmark_logging(config):
                 bm_logging.addHandler(handler)
                 root.removeHandler(handler)
             
-            if config.get("logger", None) == "files":
+            if config.get("logger", None) == "files" and config["mode"] == "train":
                 # send INFO to a file
                 logger_name = config["logger"] if isinstance(config["logger"], str) else config["logger"]["name"]
                 logdir = os.path.join(config["run_dir"], "logs", logger_name, config["timestamp_id"])
@@ -73,7 +74,7 @@ def setup_benchmark_imports(config=None):
     if has_already_setup:
         return
 
-    has_already_setup = evaluator_registry.get("imports_benchmark_setup", no_warning=True)
+    has_already_setup = md_evaluate_registry.get("imports_benchmark_setup", no_warning=True)
     if has_already_setup:
         return
 
@@ -97,7 +98,7 @@ def setup_benchmark_imports(config=None):
         # SAIT-MLFF-Framework
         # : re-define classes of trainers and tasks
         importlib.import_module("src.common.logger")
-        for key in ["trainers", "datasets", "models", "tasks", "evaluators"]:
+        for key in ["trainers", "datasets", "models", "tasks", "md_evaluate"]:
             for path in (benchmark_root / "src" / key).rglob("*.py"):
                 module_name = ".".join(
                     path.absolute()
@@ -108,7 +109,7 @@ def setup_benchmark_imports(config=None):
                 importlib.import_module(module_name)
     finally:
         registry.register("imports_benchmark_setup", True)
-        evaluator_registry.register("imports_benchmark_setup", True)
+        md_evaluate_registry.register("imports_benchmark_setup", True)
 
 
 @contextmanager
@@ -156,7 +157,7 @@ def new_trainer_context(*, config: Dict[str, Any], args: Namespace):
 
         # construct a trainer instance
         trainer_class = registry.get_trainer_class(config.get("trainer", "forces"))
-        assert trainer_class is not None, "Trainer not found"
+        assert trainer_class is not None, "Trainer class is not found"
         trainer = trainer_class(config = config)
 
         if config["mode"] == "train":
@@ -167,7 +168,7 @@ def new_trainer_context(*, config: Dict[str, Any], args: Namespace):
 
         # construct a task instance (given a trainer)
         task_cls = registry.get_task_class(config["mode"])
-        assert task_cls is not None, "Task not found"
+        assert task_cls is not None, "Task is not found"
         task = task_cls(config=original_config)
         ctx = _TrainingContext(config=original_config, task=task, trainer=trainer)
         yield ctx
@@ -191,23 +192,23 @@ def new_evaluator_context(*, config: Dict[str, Any], args: Namespace):
     start_time = time.time()
     try:
         # setup benchmark logging with a file handler
-        setup_benchmark_logging(config, file_log=False)
+        setup_benchmark_logging(config)
         setup_benchmark_imports(config)
 
-        # construct an evaluator instance
-        evaluator_class = evaluator_registry.get_evaluator_class(config.get("evaluator", "rbf"))
-        assert evaluator_class is not None, "Evaluator not found"
+        # construct an evaluator or a simulator
+        if config["mode"] == "run-md":
+            evaluator_class = md_evaluate_registry.get_md_evaluate_class("simulator")
+        else:
+            evaluator_class = md_evaluate_registry.get_md_evaluate_class(config["evaluation_metric"])
+            assert evaluator_class is not None, f"Evaluator class is not found"
         evaluator = evaluator_class(config = config)
 
-        # construct a task instance (given an evaluator)
+        # construct a task instance
         task_cls = registry.get_task_class(config["mode"])
-        assert task_cls is not None, "Task not found"
+        assert task_cls is not None, "Task class is not found"
         task = task_cls(config=original_config)
-        ctx = _EvaluationContext(config=config, task=task, evaluator=evaluator)
+        ctx = _EvaluationContext(config=original_config, task=task, evaluator=evaluator)
         yield ctx
-        distutils.synchronize()
     finally:
         total_time = time.time()-start_time
         bm_logging.info(f"Total time taken: {total_time:.1f} sec ({total_time/3600:.1f} h)")
-        if args.distributed:
-            distutils.cleanup()

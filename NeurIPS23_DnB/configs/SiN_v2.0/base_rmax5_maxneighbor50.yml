@@ -1,7 +1,8 @@
 dataset:
   # rmax5, max neighbors 50
   - src: /home/workspace/MLFF/SiN_v2.0/split_1/atom_graph_rmax5.0_maxneighbor50/train.lmdb
-    normalize_labels: True
+    normalize_labels: False # In NequIP, Allegro, it becomes False forcely.
+    normalize_labels_json: /home/workspace/MLFF/SiN_v2.0/split_1/atom_graph_rmax5.0_maxneighbor50/normalize_stats.json
   - src: /home/workspace/MLFF/SiN_v2.0/split_1/atom_graph_rmax5.0_maxneighbor50/valid.lmdb
   - src: /home/workspace/MLFF/SiN_v2.0/split_1/atom_graph_rmax5.0_maxneighbor50/test.lmdb
 

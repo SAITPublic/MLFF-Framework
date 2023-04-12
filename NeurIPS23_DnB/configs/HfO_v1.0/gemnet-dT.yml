@@ -1,0 +1,71 @@
+includes:
+- NeurIPS23_DnB/configs/HfO_v1.0/base_dataset_2.yml
+
+trainer: forces
+
+model:
+  name: gemnet_t
+  # neural network
+  num_spherical: 7 # OC20 GemNet-dT config
+  num_radial: 128 # OC20 GemNet-dT config
+  num_blocks: 3 # OC20 GemNet-dT config
+  emb_size_atom: 512 # OC20 GemNet-dT config
+  emb_size_edge: 512  
+  emb_size_trip: 64 # OC20 GemNet-dT config
+  emb_size_rbf: 16 # OC20 GemNet-dT config
+  emb_size_cbf: 16 # OC20 GemNet-dT config
+  emb_size_bil_trip: 64 # OC20 GemNet-dT config
+  num_before_skip: 1 # OC20 GemNet-dT config
+  num_after_skip: 2 # OC20 GemNet-dT config
+  num_concat: 1 # OC20 GemNet-dT config
+  num_atom: 3 # OC20 GemNet-dT config
+  rbf:
+    name: gaussian # OC20 GemNet-dT config
+  envelope:
+    name: polynomial # OC20 GemNet-dT config
+    exponent: 5 # OC20 GemNet-dT config
+  cbf:
+    name: spherical_harmonics # OC20 GemNet-dT config
+  extensive: True # OC20 GemNet-dT config
+  output_init: HeOrthogonal # OC20 GemNet-dT config
+  activation: silu # OC20 GemNet-dT config
+
+  # data-related arg
+  scale_file: /nas/SAIT-MLFF-Framework/NeurIPS23_DnB/configs/HfO_v1.0/auxiliary/gemnet-dT_scale_dataset_2.json
+
+  # force
+  regress_forces: True
+  direct_forces: True
+
+  # graph
+  cutoff: 6.0 # OC20 GemNet-dT config
+  max_neighbors: 50 # OC20 GemNet-dT config
+  otf_graph: True
+  use_pbc: True # periodic system
+
+optim:
+  batch_size: 8 # 32: OC20 GemNet-dT config
+  eval_batch_size: 8 # 32: OC20 GemNet-dT config
+  num_workers: 2 # OC20 GemNet-dT config
+  optimizer: AdamW # OC20 GemNet-dT config
+  optimizer_params: {"amsgrad": True} # OC20 GemNet-dT config
+  max_epochs: 200 # 80: OC20 GemNet-dT config
+  ema_decay: 0.999 # OC20 GemNet-dT config
+  clip_grad_norm: 10 # OC20 GemNet-dT config
+
+  # scheduler
+  # ReduceLROnPlateau : OC20 GemNet-dT config
+  #scheduler: ReduceLROnPlateau # OC20 GemNet-dT config
+  #lr_initial: 5.e-4 # OC20 GemNet-dT config
+  #mode: min # OC20 GemNet-dT config
+  #factor: 0.8 # OC20 GemNet-dT config
+  #patience: 3 # OC20 GemNet-dT config
+
+  scheduler: LinearLR
+  lr_initial: 5.e-4 
+
+  # loss
+  energy_coefficient: 1 # OC20 GemNet-dT config
+  loss_energy: mae # OC20 GemNet-dT config
+  force_coefficient: 100 # OC20 GemNet-dT config
+  loss_force: l2mae # OC20 GemNet-dT config

@@ -87,7 +87,7 @@ class ParallelCollaterNequIP(ParallelCollater):
             for d in data_list
         ]
         # Then, the list of AtomicData will be a batch by using 'from_data_list' defined in NequIP
-        # : data_list_collater customized by NequIP (nequip/utils/torch_geometric/batch.py)
+        # : from_data_list customized by NequIP (nequip/utils/torch_geometric/batch.py)
         batch = BatchNequIP.from_data_list(atomic_data_list)
 
         # convert dimension of energy in a batch to be compatible with an OCP trainer

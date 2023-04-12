@@ -1,7 +1,8 @@
 dataset:
   # rmax5
   - src: /home/workspace/MLFF/SiN_v2.0/split_1/atom_graph_rmax5.0/train.lmdb
-    normalize_labels: True
+    normalize_labels: True # In NequIP, Allegro, and MACE, it becomes False forcely.
+    normalize_labels_json: /home/workspace/MLFF/SiN_v2.0/split_1/atom_graph_rmax5.0/normalize_stats.json
   - src: /home/workspace/MLFF/SiN_v2.0/split_1/atom_graph_rmax5.0/valid.lmdb
   - src: /home/workspace/MLFF/SiN_v2.0/split_1/atom_graph_rmax5.0/test.lmdb
 

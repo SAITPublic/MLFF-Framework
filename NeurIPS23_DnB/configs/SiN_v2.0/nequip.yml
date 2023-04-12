@@ -1,5 +1,5 @@
 includes:
-- /nas/SAIT-MLFF-Framework/NeurIPS23_DnB/configs/SiN_v2.0/base_rmax5.yml
+- NeurIPS23_DnB/configs/SiN_v2.0/base_rmax6_maxneighbor50.yml
 
 trainer: forces_nequip
 
@@ -12,19 +12,19 @@ model:
     - PerSpeciesRescale
     - ForceOutput
     - RescaleEnergyEtc
-  num_layers: 6 # paper (periodic system), LiPS config
+  num_layers: 4 
   l_max: 2 # LiPS config
   parity: True # LiPS config
   num_features: 32 # LiPS config
   num_basis: 8 # paper, LiPS config
   BesselBasis_trainable: True # LiPS config
   PolynomialCutoff_p: 6 # LiPS config
-  invariant_layers: 3 # paper, LiPS config
+  invariant_layers: 2
   invariant_neurons: 64 # paper, LiPS config
   avg_num_neighbors: auto
   use_sc: True # LiPS config
   nonlinearity_type: gate # LiPS config
-  resnet: False # LiPS config
+  resnet: True #False # LiPS config
   nonlinearity_scalars: # LiPS config
     e: silu
     o: tanh
@@ -44,8 +44,9 @@ model:
   regress_forces: True
 
   # graph
-  cutoff: 5.0 # paper (periodic sytsem; LiPS)
-  otf_graph: False
+  cutoff: 6.0 # same in OCP models
+  max_neighbors: 50 # same in OCP models # not used, but explictly described
+  otf_graph: False # for now (23. 4. 3), otf is not enabled
   use_pbc: True # periodic system
 
   # data-related arg
@@ -54,18 +55,17 @@ model:
     - Si
 
 optim:
-  batch_size: 1 # paper (periodic system)
+  batch_size: 16 
   eval_batch_size: 16
   num_workers: 2
-  max_epochs: 1000
+  max_epochs: 200
   ema_decay: 0.99 # paper
 
   optimizer: Adam
-  optimizer_params: {"amsgrad": True} # paper
-  scheduler: ReduceLROnPlateau
-  lr_initial: 0.005 # paper (periodic system)
-  patience: 50 # paper
-  factor: 0.8 # paper 
+  optimizer_params: {"amsgrad": False} # paper
+  #weight_decay: 0.00001
+  scheduler: LinearLR
+  lr_initial: 0.005
 
   # loss function is defined in Eq. (9) in NequIP arXiv paper
   # NequIP recommend that E_coef : F_coef = 1 : N_atoms^2

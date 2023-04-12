@@ -116,6 +116,8 @@ Local
 #NeurIPS23_DnB/
 codebases_old/
 *debug*
+*SAIT_research*
+run.sh
 
 # artifact
 .nfs*

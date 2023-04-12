@@ -1,3 +1,6 @@
+"""
+Written by byunggook.na
+"""
 import os
 
 from ocpmodels.common.registry import registry
@@ -12,6 +15,5 @@ class EvaluateTask(BaseTask):
         self.evaluator = evaluator
 
     def run(self):
-        ## TODO: for each metric script, script body is located in run() 
         self.evaluator.evaluate() 
         
