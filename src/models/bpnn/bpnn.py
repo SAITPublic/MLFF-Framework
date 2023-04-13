@@ -8,14 +8,14 @@ from pathlib import Path
 
 # from ase.atom import atomic_numbers
 import ase
-from sklearn.decomposition import PCA
+
 
 import torch
 from torch.nn import Sequential, ModuleDict
 from torch_scatter import scatter
 from torch_sparse import SparseTensor
 from torch_geometric.data import Batch
-
+from scipy.linalg import eigh
 from ocpmodels.datasets import LmdbDataset ## TODO: compute in advance?
 from ocpmodels.common.registry import registry
 from ocpmodels.common.utils import conditional_grad
@@ -265,7 +265,7 @@ class BPNN(BaseModel):
                 assert dataset_path is not None
                 scale, pca = self._calculate_scale_and_fit_pca(
                     dataset=LmdbDataset({'src': dataset_path}), 
-                    bs=32,
+                    bs=256,
                 )
                 torch.save({"scale": scale, "pca": pca}, scale_pca_path)
                 bm_logging.info(f"scale and pca are calculated and saved at {scale_pca_path}")
@@ -530,16 +530,36 @@ class BPNN(BaseModel):
     def num_params(self):
         return sum(p.numel() for p in self.parameters())
 
+
     def _calculate_scale_and_fit_pca(self, dataset, bs=1):
+       
+        
+       
         if torch.cuda.is_available():
             device="cuda" 
         else:
             device="cpu"
         self.descriptor = self.descriptor.to(device)
         scale = {}
-        sz = (len(dataset)-1)//bs +2
-        idxs = [bs*i if bs*i<=len(dataset) else len(dataset) for i in np.arange(sz)]
-        descriptor_list = {atom: [] for atom in self.atomic_numbers}
+      
+
+        # split datasets w.r.t rank
+        rank=distutils.get_rank()
+        world_size=distutils.get_world_size()
+
+        n=len(dataset)
+        
+        idx_=[n//world_size*(i) for i in range(world_size)]
+        for j in range(n%world_size):
+            idx_[-1-j] +=n%world_size-j 
+        idx_.append(n)
+        sz = (idx_[rank+1]-idx_[rank])//bs +2
+        idxs = [bs*i + idx_[rank] if (bs*i + idx_[rank]<=idx_[rank+1] ) else idx_[rank+1] for i in np.arange(sz)]
+
+
+        #compute mean(mu) of descriptors
+        mu={}
+        n_atoms={}
         with torch.no_grad():
             for i in range(sz-1):
                 data_list = [dataset[j] for j in np.arange(idxs[i],idxs[i+1])]
@@ -566,32 +586,90 @@ class BPNN(BaseModel):
 
                 descriptor = self.descriptor(atomic_numbers,edge_index,D_st,id3_ba,id3_ca,cosφ_cab)
                 for atom in descriptor.keys():
-                    if atom in scale.keys():
-                        scale[atom][:,0] = torch.minimum(descriptor[atom].min(axis=0).values, scale[atom][:,0])
-                        scale[atom][:,1] = torch.maximum(descriptor[atom].max(axis=0).values, scale[atom][:,1])
+                    if atom in mu.keys():
+                        n_=descriptor[atom].shape[0]
+                        theta=(n_atoms[atom])/(n_atoms[atom]+n_)
+                        n_atoms[atom]+=n_
+                        mu[atom]= mu[atom]*theta+descriptor[atom].mean(axis=0)*(1-theta)
                     else:
-                        scale[atom] = torch.stack(
-                            [descriptor[atom].min(axis=0).values, descriptor[atom].max(axis=0).values],
-                            axis=-1
-                        )
-                    descriptor_list[atom].append(descriptor[atom].cpu())
+                        mu[atom]=descriptor[atom].mean(axis=0)
+                        n_atoms[atom]=descriptor[atom].shape[0]
 
+        #gather mu 
+        for atom in mu.keys():
+            n=n_atoms[atom]
+            n_tot=distutils.all_reduce(torch.tensor(n).to(device))
+            mu[atom] *=n_atoms[atom]/n_tot
+            mu[atom]=distutils.all_reduce(mu[atom])
+     
+        
+        
+        
         # scale
-        for atom in scale.keys():
-            a = (scale[atom][:,1]+scale[atom][:,0])/2
-            w = (scale[atom][:,1]-scale[atom][:,0])/2
-            scale[atom] = [a.cpu(),w.cpu()]
+        # we set scale mean=0,std=1 because it doesn't affect pca.
+        for atom in mu.keys():
+            scale[atom] = [torch.tensor(0.0),torch.tensor(1.0)]
 
         # pca
-        pca = {}
+        
+        # compute covariance matrix by batch
+        XtX={}
+        for atom in mu.keys():
+            XtX[atom]=torch.zeros((self.descriptor.dim_descriptor,self.descriptor.dim_descriptor)).to(device)
+        
+        with torch.no_grad():
+            for i in range(sz-1):
+                data_list = [dataset[j] for j in np.arange(idxs[i],idxs[i+1])]
+                data = Batch.from_data_list(data_list)
+                n_neighbors = []
+                for i, data_ in enumerate(data_list):
+                    n_index = data_.edge_index[1, :]
+                    n_neighbors.append(n_index.shape[0])
+                data.neighbors = torch.tensor(n_neighbors)
+                data=data.to(device)
+
+                atomic_numbers = data.atomic_numbers.long()
+                (
+                    edge_index,
+                    neighbors,
+                    D_st,
+                    V_st,
+                    id3_ba,
+                    id3_ca,
+                    id3_ragged_idx,
+                ) = self.generate_interaction_graph(data)
+                idx_s, idx_t = edge_index                                                                                                                                                                                                                                                                                    
+                cosφ_cab = inner_product_normalized(V_st[id3_ca], V_st[id3_ba])
+
+                descriptor = self.descriptor(atomic_numbers,edge_index,D_st,id3_ba,id3_ca,cosφ_cab)
+
+                for atom in descriptor.keys():
+                    d=descriptor[atom]-mu[atom].reshape(1,-1)
+                    XtX[atom]+=((d.unsqueeze(1))*(d.unsqueeze(-1))).sum(axis=0)
+
+        #all-reduce covariance matrix
+        for atom in XtX.keys():
+            XtX[atom]=distutils.all_reduce(XtX[atom])
+            n_atoms[atom]=distutils.all_reduce(torch.tensor(n_atoms[atom]).to(device))
+        
+        
+       
+        
+        #calculate pca
+        pca={}
+        
         for atom in self.atomic_numbers:
-            pca_atom = PCA()
-            a, w = scale[atom]
-            descriptor = (torch.cat(descriptor_list[atom], dim=0) - a.reshape(1, -1)) / w.reshape(1, -1)
-            pca_atom.fit(descriptor.detach().numpy())
-            pca[atom] = [
-                torch.tensor(pca_atom.components_.T),
-                torch.tensor(np.sqrt(pca_atom.explained_variance_ +1e-8)).type(torch.FloatTensor),
-                torch.tensor(np.dot(pca_atom.mean_, pca_atom.components_.T))
-            ]
+            a,b=eigh(XtX[atom].detach().cpu().numpy())
+            c=np.flip(b,axis=1).T
+            max_abs_rows = np.argmax(np.abs(c), axis=1)
+            signs = np.sign(c[range(c.shape[0]), max_abs_rows])
+            c *= signs
+            c=c.copy()
+            sigma_=np.flip(a).copy()/(n_atoms[atom].detach().cpu().numpy()-1) 
+            # eigh can result negative eigen value therefore set threshold for lower bound.
+            idx_=np.where(sigma_<1e-8)
+            sigma_[idx_]=1e-8
+            pca[atom]=[torch.tensor(c.T),torch.tensor(np.sqrt(sigma_)),torch.tensor(np.dot(mu[atom].detach().cpu().numpy(), c.T))]
+
         return scale, pca
+
