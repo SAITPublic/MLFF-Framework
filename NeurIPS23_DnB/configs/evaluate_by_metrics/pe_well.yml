@@ -1,0 +1,40 @@
+# evaluation_metric: pe_well
+
+unit_structures:
+- name: Hf_O2
+  path: /workspace/structures/HfO/pe_well_test/Hf_O2_POSCAR/POSCAR
+  filename_scale_suffixes:   # either filename_scale_suffixes or interatomic_distances field should be provided
+    start: 0.986
+    end: 6.786
+    interval: 0.1  
+  format: vasp
+  reference_scale_energy_relation_path: /workspace/structures/HfO/pe_well_test/Hf_O2_energy_distance.dat
+- name: O_O
+  path: /workspace/structures/HfO/pe_well_test/O_O/POSCAR
+  interatomic_distances:
+    start: 0.5
+    end: 8.0
+    interval: 0.1
+  format: vasp
+  reference_scale_energy_relation_path: /workspace/structures/HfO/pe_well_test/O_O_energy_distance.dat
+- name: Hf_O
+  path: /workspace/structures/HfO/pe_well_test/Hf_O/POSCAR
+  interatomic_distances:
+    start: 1.0
+    end: 8.0
+    interval: 0.1
+  format: vasp
+  reference_scale_energy_relation_path: /workspace/structures/HfO/pe_well_test/Hf_O_energy_distance.dat
+- name: Hf_Hf
+  path: /workspace/structures/HfO/pe_well_test/Hf_Hf/POSCAR
+  interatomic_distances:
+    start: 1.0
+    end: 8.0
+    interval: 0.1
+  format: vasp
+  reference_scale_energy_relation_path: /workspace/structures/HfO/pe_well_test/Hf_Hf_energy_distance.dat
+
+energy_save_name: length_penergy_relation
+error_save_name: pe_error_metrics
+out_dir: /workspace/ocp/traj_and_metrics/OCP_GemNet-T_SiN_v1.0/pe_well
+# fig_out_dir: 
