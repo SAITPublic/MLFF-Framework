@@ -1,0 +1,26 @@
+# evaluation_metric: distribution_functions
+
+ai_md_traj:
+  path: /workspace/dataset_AIMD/HfO/1200K_crystal_1_5/1/OUTCAR
+  format: vasp-out
+  index: 1000:1999:20  # optional
+  n_extend: 2
+  out_identifier: 3ps_to_6ps_every_0.06ps
+mlff_md_traj:
+  GemNet-dT_HfOv1:
+    path: /workspace/ocp/traj_and_metrics/GemNet-dT_HfOv1-dataset2/1200K_crystal_1_5/1/md_test_20230413_n_super_[1, 1, 1]_nh_relax_timesteps_20_20230413/atoms.traj
+    format: traj
+    index: 50:100   # optional
+    n_extend: 2
+    out_identifier: 3ps_to_6ps_every_0.06ps
+  NequIP_HfOv1:  
+    path: /workspace/nequip/traj_and_metrics/nequip_HfOv1-dataset2/1200K_crystal_1_5/1/md_test_20230403_n_super_[1, 1, 1]_nh_relax_timesteps_20_20230403/atoms.traj
+    format: traj
+    index: 50:100   # optional
+    n_extend: 2
+    out_identifier: 3ps_to_6ps_every_0.06ps
+res_out_dir: /workspace/dataset_AIMD/HfO/1200K_crystal_1_5/1/dfs
+
+r_max_rdf: 6.0
+dr_rdf: 0.05
+r_max_adf: 5.0
