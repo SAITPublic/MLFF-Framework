@@ -10,8 +10,9 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 from pathlib import Path
-
+import numpy as np
 import torch
+from math import log10, floor, isnan
 
 from ocpmodels.common import distutils, gp_utils
 from ocpmodels.common.utils import load_config
@@ -212,3 +213,17 @@ def new_evaluator_context(*, config: Dict[str, Any], args: Namespace):
     finally:
         total_time = time.time()-start_time
         bm_logging.info(f"Total time taken: {total_time:.1f} sec ({total_time/3600:.1f} h)")
+        
+        
+def calc_error_metric(f_predict, f_target, metric_name):
+    metric_name_lower = metric_name.lower()
+    if metric_name_lower == "mae":
+        return np.mean(np.absolute(f_predict - f_target))
+    elif metric_name_lower == "rmse":
+        return np.sqrt(np.mean((f_predict - f_target)**2))
+    else:
+        raise Exception("Provided metric name '{}' is not supported!".format(metric_name))
+    
+
+def truncate_float(x, n_significant):
+    return round(x, (n_significant-1) - int(floor(log10(abs(x)))))
