@@ -23,6 +23,9 @@ from src.common.collaters.parallel_collater_mace import convert_ocp_Data_into_ma
 from src.common.utils import bm_logging # benchmark logging
 
 class BenchmarkCalculator(Calculator):
+    
+    implemented_properties = ["energy", "forces"]
+    
     def __init__(self, ckpt=None, device=torch.device("cpu"), **kwargs):
         Calculator.__init__(self, **kwargs)
 

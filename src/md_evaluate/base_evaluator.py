@@ -33,7 +33,7 @@ class BaseEvaluator:
 
             # set a calculator using the loaded model
             self.calculator = BenchmarkCalculator(
-                ckpt=ckpt,    #ckpt 내 normalizer path가 train 된 machine 과 evalute 하는 machine에서 다를 수 있음; normalize param을 ckpt에 저장하는게 좋을 듯
+                ckpt=ckpt,    # note that scale_file path can be removed in the ckpt as it's not needed during inference
                 device=self.device,
             )
             

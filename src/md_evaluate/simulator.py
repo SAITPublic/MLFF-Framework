@@ -2,6 +2,7 @@
 Written by byunggook.na and heesun88.lee
 """
 from pathlib import Path
+from tqdm import tqdm
 import json
 import os
 import time
@@ -46,7 +47,7 @@ class Simulator(BaseEvaluator):
                 friction=self.config.get("langevin_thermostat_coeff", 0.001)
             )
         elif self.config["thermostat"].lower() == "nosehoover":
-            self.logger.log("NVT sim. using N-H with Q: {}".format(self.config["nh_thermostat_q"]))
+            self.logger.info("NVT sim. using N-H with Q: {}".format(self.config["nh_thermostat_q"]))
             simulator = NoseHoover(
                 atoms=atoms,
                 timestep=self.config["timestep_fs"] * units.fs,
@@ -57,7 +58,7 @@ class Simulator(BaseEvaluator):
             raise Exception("Please use a supported thermostat, either 'NoseHoover' or 'Langevin'!!")
 
         traj_obj = io.trajectory.Trajectory(save_dir / 'atoms.traj', mode='w', atoms=atoms)
-        simulator.attach(traj_obj.write, interval=self.md_config["save_freq"])
+        simulator.attach(traj_obj.write, interval=self.config["save_freq"])
 
         logger_obj = md.MDLogger(simulator, atoms,
                                 save_dir / 'thermo.log', mode='w')
@@ -98,7 +99,7 @@ class Simulator(BaseEvaluator):
         self.config['save_name'] = save_name
         
         out_dir_full = Path(self.config["out_dir"]) / save_name
-        os.makedirs(out_dir_full, parents=True, exist_ok=True)
+        out_dir_full.mkdir(parents=True, exist_ok=True)
         return out_dir_full
         
     def simulate(self):        
@@ -110,15 +111,18 @@ class Simulator(BaseEvaluator):
         self.config["nh_thermostat_q"] = 3.0 * n_atoms * units.kB * self.config["temperature_K"] \
             * (self.config["nh_relax_timesteps"] * self.config["timestep_fs"] * units.fs)**2
         
-        print("n_atoms: {}".format(n_atoms))
-        print("nh_relax_timesteps: {}, nh_thermostat_q: {}".format(self.config["nh_relax_timesteps"], self.config["nh_thermostat_q"]))
+        self.logger.info("Starting MD simulations for {} atoms".format(n_atoms))
+        self.logger.info("Thermostat coeffs. are nh_relax_timesteps: {}, nh_thermostat_q: {}".format(
+            self.config.get("nh_relax_timesteps"), self.config.get("nh_thermostat_q")
+        ))
         
         out_dir = self.get_output_dir()        
         simulator = self._get_simulator(atoms, out_dir)
         
         start_time = time.time()
         n_steps = int(self.config["simulation_time_ps"] * 1000 / self.config["timestep_fs"])
-        simulator.run(n_steps)
+        for i_step in tqdm(range(n_steps)):
+            simulator.run(1)
         elapsed = time.time() - start_time
 
         test_metrics = {}
