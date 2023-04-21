@@ -530,7 +530,7 @@ class BPNN(BaseModel):
     def num_params(self):
         return sum(p.numel() for p in self.parameters())
 
-
+    
     def _calculate_scale_and_fit_pca(self, dataset, bs=1):
        
         
@@ -560,6 +560,12 @@ class BPNN(BaseModel):
         #compute mean(mu) of descriptors
         mu={}
         n_atoms={}
+        XtX={}
+        for atom in self.atomic_numbers:
+            XtX[atom]=torch.zeros((self.descriptor.dim_descriptor,self.descriptor.dim_descriptor)).to(device)
+            mu[atom]=torch.zeros(self.descriptor.dim_descriptor).to(device)
+            n_atoms[atom]=torch.zeros(1,dtype=torch.int).to(device)
+        
         with torch.no_grad():
             for i in range(sz-1):
                 data_list = [dataset[j] for j in np.arange(idxs[i],idxs[i+1])]
@@ -585,76 +591,40 @@ class BPNN(BaseModel):
                 cosφ_cab = inner_product_normalized(V_st[id3_ca], V_st[id3_ba])
 
                 descriptor = self.descriptor(atomic_numbers,edge_index,D_st,id3_ba,id3_ca,cosφ_cab)
-                for atom in descriptor.keys():
-                    if atom in mu.keys():
-                        n_=descriptor[atom].shape[0]
-                        theta=(n_atoms[atom])/(n_atoms[atom]+n_)
-                        n_atoms[atom]+=n_
-                        mu[atom]= mu[atom]*theta+descriptor[atom].mean(axis=0)*(1-theta)
-                    else:
-                        mu[atom]=descriptor[atom].mean(axis=0)
-                        n_atoms[atom]=descriptor[atom].shape[0]
 
+                for atom in descriptor.keys():
+                    d=descriptor[atom]
+                    n_=descriptor[atom].shape[0]
+                    theta=(n_atoms[atom])/(n_atoms[atom]+n_)
+                    XtX[atom]= theta*XtX[atom] +(1-theta)*   ((d.unsqueeze(1))*(d.unsqueeze(-1))).mean(axis=0)
+                    mu[atom]= theta*mu[atom] +(1-theta)*descriptor[atom].mean(axis=0)
+                    n_atoms[atom]+=n_
+
+               
         #gather mu 
         for atom in mu.keys():
             n=n_atoms[atom]
             n_tot=distutils.all_reduce(torch.tensor(n).to(device))
             mu[atom] *=n_atoms[atom]/n_tot
             mu[atom]=distutils.all_reduce(mu[atom])
-     
+
+        #gather covariance matrix
+        for atom in XtX.keys():
+            n=n_atoms[atom]
+            n_tot=distutils.all_reduce(torch.tensor(n).to(device))
+            XtX[atom]*= n_atoms[atom]/n_tot
+            XtX[atom]=distutils.all_reduce(XtX[atom])
         
-        
-        
+
+        #substract muTmu
+        for atom in XtX.keys():
+            XtX[atom]= XtX[atom] - (mu[atom].unsqueeze(0))*(mu[atom].unsqueeze(1))
+
         # scale
         # we set scale mean=0,std=1 because it doesn't affect pca.
         for atom in mu.keys():
             scale[atom] = [torch.tensor(0.0),torch.tensor(1.0)]
 
-        # pca
-        
-        # compute covariance matrix by batch
-        XtX={}
-        for atom in mu.keys():
-            XtX[atom]=torch.zeros((self.descriptor.dim_descriptor,self.descriptor.dim_descriptor)).to(device)
-        
-        with torch.no_grad():
-            for i in range(sz-1):
-                data_list = [dataset[j] for j in np.arange(idxs[i],idxs[i+1])]
-                data = Batch.from_data_list(data_list)
-                n_neighbors = []
-                for i, data_ in enumerate(data_list):
-                    n_index = data_.edge_index[1, :]
-                    n_neighbors.append(n_index.shape[0])
-                data.neighbors = torch.tensor(n_neighbors)
-                data=data.to(device)
-
-                atomic_numbers = data.atomic_numbers.long()
-                (
-                    edge_index,
-                    neighbors,
-                    D_st,
-                    V_st,
-                    id3_ba,
-                    id3_ca,
-                    id3_ragged_idx,
-                ) = self.generate_interaction_graph(data)
-                idx_s, idx_t = edge_index                                                                                                                                                                                                                                                                                    
-                cosφ_cab = inner_product_normalized(V_st[id3_ca], V_st[id3_ba])
-
-                descriptor = self.descriptor(atomic_numbers,edge_index,D_st,id3_ba,id3_ca,cosφ_cab)
-
-                for atom in descriptor.keys():
-                    d=descriptor[atom]-mu[atom].reshape(1,-1)
-                    XtX[atom]+=((d.unsqueeze(1))*(d.unsqueeze(-1))).sum(axis=0)
-
-        #all-reduce covariance matrix
-        for atom in XtX.keys():
-            XtX[atom]=distutils.all_reduce(XtX[atom])
-            n_atoms[atom]=distutils.all_reduce(torch.tensor(n_atoms[atom]).to(device))
-        
-        
-       
-        
         #calculate pca
         pca={}
         
@@ -665,7 +635,7 @@ class BPNN(BaseModel):
             signs = np.sign(c[range(c.shape[0]), max_abs_rows])
             c *= signs
             c=c.copy()
-            sigma_=np.flip(a).copy()/(n_atoms[atom].detach().cpu().numpy()-1) 
+            sigma_= ((n_tot.detach().cpu().numpy())/(n_tot.detach().cpu().numpy()-1) )*np.flip(a).copy()
             # eigh can result negative eigen value therefore set threshold for lower bound.
             idx_=np.where(sigma_<1e-8)
             sigma_[idx_]=1e-8
