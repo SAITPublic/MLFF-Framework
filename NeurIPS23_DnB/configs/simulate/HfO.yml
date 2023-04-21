@@ -5,13 +5,13 @@ device: cuda:5
 initial_structure: 
   path: /workspace/dataset_AIMD/HfO/1200K_crystal_1_5/1/POSCAR
   format: vasp   # ref: https://wiki.fysik.dtu.dk/ase/ase/io/io.html#ase.io.read
-out_dir: /workspace/ocp/traj_and_metrics/GemNet-dT_HfOv1-dataset2
+out_dir: /workspace/ocp/traj_and_metrics/GemNet-dT_HfOv1-dataset2/1200K_crystal_1_5/1
 
 timestep_fs: 3
-simulation_time_ps: 15
+simulation_time_ps: 9
 temperature_K: 1200
 thermostat: NoseHoover   # thermostat: Langevin
-nh_relax_timestep: 20   # langevin_thermostat_coeff: 0.001
+nh_relax_timesteps: 20   # langevin_thermostat_coeff: 0.001
 save_freq: 20
 
 # pbc: True    # optional, if not given, will be guessed from "initial_structure"
