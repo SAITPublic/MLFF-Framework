@@ -26,7 +26,7 @@ class EoSEvaluator(BaseEvaluator):
         eos_fit_ref["e0_error_percentage"] = np.nan
         
         eos_fit_mlff["B_error_percentage"] = \
-            (eos_fit_mlff["Bm_Gpa"] - eos_fit_ref["Bm_Gpa"])/eos_fit_ref["Bm_Gpa"]*100.0
+            (eos_fit_mlff["B (GPa)"] - eos_fit_ref["B (GPa)"])/eos_fit_ref["B (GPa)"]*100.0
         eos_fit_mlff["v0_error_percentage"] = \
             (eos_fit_mlff["v0"] - eos_fit_ref["v0"])/eos_fit_ref["v0"]*100.0
         eos_fit_mlff["e0_error_percentage"] = \
@@ -44,7 +44,7 @@ class EoSEvaluator(BaseEvaluator):
             # print(res_df)
     
     @staticmethod
-    def compare_eos(df_vasp, df_mlff, fig_out_path, save_res):
+    def plot_eos(df_vasp, df_mlff, fig_out_path, save_res):
         plt.figure()
         ax = df_vasp.plot(x="volume", y="e-e0", marker=".")
         df_mlff.plot(x="volume", y="e-e0", marker=".", ax=ax)

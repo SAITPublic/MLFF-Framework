@@ -19,8 +19,8 @@ class DFEvaluator(BaseEvaluator):
         
     def calculate_rdf_fox(self, traj_atoms, out_identifier):
         mols = MultiMolecule.from_ase(traj_atoms)
-        # assume periodic system as RDF is meaningful only with periodic system...
-        rdf = mols.init_rdf(periodic=True, dr=self.config["dr_rdf"], r_max=self.config["r_max_rdf"])
+        # assume periodic in all axis as RDF is meaningful only in periodic system...
+        rdf = mols.init_rdf(periodic="xyz", dr=self.config["dr_rdf"], r_max=self.config["r_max_rdf"])
         pair_list = rdf.columns.values.tolist()
         
         filename_rdf = "RDF_{}.csv".format(out_identifier)
@@ -30,8 +30,8 @@ class DFEvaluator(BaseEvaluator):
     
     def calculate_adf_fox(self, traj_atoms, out_identifier):
         mols = MultiMolecule.from_ase(traj_atoms)
-        # assume periodic system as ADF is meaningful only with periodic system...
-        adf = mols.init_adf(periodic=True, r_max=self.config["r_max_adf"])  ##, weight=None
+        # assume periodic in all axis as ADF is meaningful only in periodic system...
+        adf = mols.init_adf(periodic="xyz", r_max=self.config["r_max_adf"])  ##, weight=None
         triplet_list = adf.columns.values.tolist()
         
         filename_adf = "ADF_{}.csv".format(out_identifier)
@@ -58,7 +58,7 @@ class DFEvaluator(BaseEvaluator):
     
     def output_error_metrics(self, distribution_ref, distribution_dict_mlff, combination_list, file_name):            
         distribution_error_dict = defaultdict(dict)
-        for mlff_uid, distribution_df in distribution_dict_mlff.item():
+        for mlff_uid, distribution_df in distribution_dict_mlff.items():
             for combination in combination_list:
                 distribution_error_dict[mlff_uid][combination] = \
                     calc_error_metric(distribution_df[combination].values, 
@@ -69,9 +69,8 @@ class DFEvaluator(BaseEvaluator):
                 sum(distribution_error_dict[mlff_uid].values()) / len(distribution_error_dict[mlff_uid])
         
         out_file_path = Path(self.config["res_out_dir"]) / "{}.dat".format(file_name) 
-        distribution_error_json = json.loads(distribution_error_dict)   ## this line may not be needed                  
         with open(out_file_path, 'w') as f:
-            json.dump(distribution_error_json, f, indent=4)
+            json.dump(distribution_error_dict, f, indent=4)
             
     @staticmethod
     def get_traj_atoms(path, index, format, n_extend):
@@ -109,6 +108,7 @@ class DFEvaluator(BaseEvaluator):
                           n_extend=mlff_traj_dict.get("n_extend"))
             out_identifier_mlff = "{}_{}".format(mlff_uid, mlff_traj_dict["out_identifier"])
             
+            self.logger.info("Start calculating distrubution functions for model '{}'".format(mlff_uid))
             rdf_dict_mlff[mlff_uid], pair_list_mlff = self.calculate_rdf_fox(traj_atoms_mlff, out_identifier_mlff)
             assert pair_list_ref == pair_list_mlff, \
                 "Atom types in 'mlff_md_traj' should be the same as those in 'ai_md_traj'"

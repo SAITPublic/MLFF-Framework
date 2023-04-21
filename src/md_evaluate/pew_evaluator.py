@@ -21,7 +21,7 @@ class PEWEvaluator(BaseEvaluator):
     @staticmethod
     def calculate_pe_well_error_metric(df_ref_in, df_mlff_in, res_out_path):
         df_ref = df_ref_in.rename(columns={"PE": "PE_ref"})
-        df_mlff = df_mlff_in.rename(columns={"PE": "PE_mlff".format(label)})
+        df_mlff = df_mlff_in.rename(columns={"PE": "PE_mlff"})
         
         df_combined = pd.concat( [df_ref, df_mlff], axis=1, join="inner")
         dist_array = df_combined.index.values
@@ -33,7 +33,7 @@ class PEWEvaluator(BaseEvaluator):
         E0_ref = f_ref(r0_ref)
         mask = (df_combined["PE_ref"] <= 0)
         
-        f_mlff = interpolate.interp1d(dist_array, df_combined["PE_model"].values, 
+        f_mlff = interpolate.interp1d(dist_array, df_combined["PE_mlff"].values, 
                                     bounds_error=False) #, fill_value="extrapolate"
         min_out_1 = optimize.fmin(f_mlff, dist_array[0])
         min_out_2 = optimize.fmin(f_mlff, df_combined[mask].index.values[0])
@@ -117,8 +117,8 @@ class PEWEvaluator(BaseEvaluator):
     @staticmethod
     def generate_comparison_plot(df_ref, df_mlff, fig_out_path, save_res):
         plt.figure()
-        ax = df_ref.plot(x="dist", y="PE")
-        df_mlff.plot(x="dist", y="PE", ax=ax)
+        ax = df_ref.plot(y="PE", use_index=True)
+        df_mlff.plot(y="PE", use_index=True, ax=ax)
         label_list = ["reference", "mlff"]
             
         ax.set_xlabel('distance (ang.)')
@@ -148,15 +148,15 @@ class PEWEvaluator(BaseEvaluator):
         return df_ref
     
     @staticmethod
-    def construct_np_array(range_dict):
+    def construct_range_array(range_dict):
+        n_valid_decimal = 5  
         return np.arange(range_dict["start"], 
                          range_dict["end"], 
-                         range_dict["interval"], 
-                         dtype=float)
+                         range_dict["interval"]).round(n_valid_decimal) # round to truncate spurious tailing numbers
     
     def evaluate(self):
-        calc_failure_message_template = "PE calculation for unit structure '{}', \
-                              distance {} was failed. Run will continue."
+        calc_failure_msg_template = "PE calculation for unit structure '{}', \
+            distance (or angle) {} was failed. Run will continue."
         
         for unit_structure_dict in self.config["unit_structures"]:
             structure_name = unit_structure_dict["name"]
@@ -171,12 +171,13 @@ class PEWEvaluator(BaseEvaluator):
                 data = defaultdict(list)
                 # cell = atoms.get_cell().__array__()
                 # print("cell is defined as: {}".format(cell))
-                for dist in PEWEvaluator.construct_np_array(unit_structure_dict["interatomic_distances"]):
+                for dist in PEWEvaluator.construct_range_array(unit_structure_dict["interatomic_distances"]):
                     try:
                         atoms.set_positions([(0, 0, 0), (dist, 0, 0)])            
                         pe = atoms.get_potential_energy()
                     except:
-                        print(calc_failure_message_template.format(structure_name, dist))
+                        print(calc_failure_msg_template.format(structure_name, dist))
+                        pe = np.nan
                     
                     print("dist: {}, PE: {}".format(dist, pe))                        
                     data["dist"].append(dist)
@@ -184,26 +185,28 @@ class PEWEvaluator(BaseEvaluator):
                 
             elif unit_structure_dict.get("filename_scale_suffixes"):
                 data = defaultdict(list)
-                for scale_suffix in PEWEvaluator.construct_np_array(unit_structure_dict["filename_scale_suffixes"]):
+                for scale_suffix in PEWEvaluator.construct_range_array(unit_structure_dict["filename_scale_suffixes"]):
                     structure_path = "{}_{}".format(unit_structure_dict["path"], 
                                                     str(scale_suffix))
                     atoms = io.read(structure_path, 
                                 format=unit_structure_dict["format"])
+                    atoms.set_pbc(False)
                     atoms.calc = self.calculator
                     try:
                         pe = atoms.get_potential_energy()
                     except:
-                        print(calc_failure_message_template.format(structure_name, dist))
+                        print(calc_failure_msg_template.format(structure_name, scale_suffix))
+                        pe = np.nan
                     
-                    print("dist: {}, PE: {}".format(dist, pe))                        
-                    data["dist"].append(dist)
+                    print("dist: {}, PE: {}".format(scale_suffix, pe))                        
+                    data["dist"].append(scale_suffix)
                     data["PE"].append(pe)
                 
             else:
                 raise Exception("For an enetry of unit_structures, either 'filename_scale_suffixes' or 'interatomic_distances' field should be provide!!")
             
             df_mlff = pd.DataFrame(data, columns=['dist', "PE"])
-            df_mlff["dist"] = df_mlff["dist"].round(5)  # to truncate spurious tailing numbers
+            # df_mlff["dist"] = df_mlff["dist"].round(5)  # to truncate spurious tailing numbers
             df_mlff.set_index("dist", inplace=True)
             
             out_dir = Path(self.config["out_dir"])
