@@ -61,4 +61,3 @@ unit_structures:
 energy_save_name: length_penergy_relation
 error_save_name: pe_error_metrics
 out_dir: /workspace/ocp/traj_and_metrics/GemNet-dT_HfOv1-dataset2/pe_well/test
-# fig_out_dir: 

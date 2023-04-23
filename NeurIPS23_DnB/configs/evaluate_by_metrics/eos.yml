@@ -13,5 +13,5 @@ reference_result:
   volume_energy_fname: energy_volume.dat
   save_eos_fit: True
 
-fit_res_name: compare_eos_gemnet_dT_birchmurnaghan.png
 res_out_dir: /workspace/ocp/traj_and_metrics/GemNet-dT_HfOv1-dataset2/1/test
+res_fig_name: compare_eos_gemnet_dT_birchmurnaghan.png

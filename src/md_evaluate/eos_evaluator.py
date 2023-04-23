@@ -139,7 +139,7 @@ class EoSEvaluator(BaseEvaluator):
             
         self.calculate_eos_error(eos_fit_ref, eos_fit_mlff, save_res =True)
         
-        fig_out_dir = Path(self.config["res_out_dir"]) / self.config["fit_res_name"]
+        fig_out_dir = Path(self.config["res_out_dir"]) / self.config["res_fig_name"]
         EoSEvaluator.plot_eos(df_ref, 
                     df_mlff, 
                     fig_out_dir,
