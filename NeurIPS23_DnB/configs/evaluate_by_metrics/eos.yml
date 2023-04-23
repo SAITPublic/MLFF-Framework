@@ -1,7 +1,6 @@
 # evaluation_metric: eos
 eos_type: birchmurnaghan
 
-# model_dir: /workspace/ocp/models/GemNet-dT_HfOv1-dataset2
 ref_structure:
   path: /workspace/structures/HfO/1/POSCAR_no_scale
   format: vasp
@@ -15,5 +14,4 @@ reference_result:
   save_eos_fit: True
 
 fit_res_name: compare_eos_gemnet_dT_birchmurnaghan.png
-res_out_dir: /workspace/ocp/traj_and_metrics/GemNet-dT_HfOv1-dataset2/1
-# fig_out_dir: /workspace/figures/HfO/EoS_eval/1
+res_out_dir: /workspace/ocp/traj_and_metrics/GemNet-dT_HfOv1-dataset2/1/test
