@@ -51,6 +51,7 @@ class ForcesTrainer(BaseTrainer):
                 # just empty normalizer (which will be loaded from the given checkpoint)
                 self.normalizers["target"] = Normalizer(mean=0.0, std=1.0, device=self.device,)
                 self.normalizers["grad_target"] = Normalizer(mean=0.0, std=1.0, device=self.device)
+                bm_logging.info(f"Normalizers are not set")
                 return
 
             # force normalizer
@@ -71,7 +72,6 @@ class ForcesTrainer(BaseTrainer):
                 forces_train = torch.concat([data.force for data in self.train_loader.dataset])
                 scale = torch.std(forces_train), # 3-dim vetors -> scala value
             self.normalizers["grad_target"] = Normalizer(mean=0.0, std=scale, device=self.device)
-            bm_logging.info(f"Normalizer of forces: mean {self.normalizers['grad_target'].mean}, std {self.normalizers['grad_target'].std}")
 
             # energy normalizer
             if "target_mean" in self.normalizer:
@@ -89,7 +89,10 @@ class ForcesTrainer(BaseTrainer):
                 shift = torch.mean(energy_train)
                 scale = self.normalizers["grad_target"].std # energy scale factor should be force std
             self.normalizers["target"] = Normalizer(mean=shift, std=scale, device=self.device)
-            bm_logging.info(f"Normalizer of energy: mean {self.normalizers['target'].mean}, std {self.normalizers['target'].std}")
+
+            bm_logging.info(f"Set normalizers")
+            bm_logging.info(f" - energy : shift ({self.normalizers['target'].mean}) scale ({self.normalizers['target'].std})")
+            bm_logging.info(f" - forces : shift ({self.normalizers['grad_target'].mean}) scale ({self.normalizers['grad_target'].std})")
             
     def _set_task(self):
         # most models have a scaler energy output (meaning that num_targets = 1)
@@ -240,7 +243,7 @@ class ForcesTrainer(BaseTrainer):
         # final evaluation
         bm_logging.info("Performing the final evaluation (last model)")
         metric_table = self.create_metric_table(display_meV=True)
-        bm_logging.info("\n"+str(metric_table))
+        bm_logging.info(f"\n{metric_table}")
         if self.logger:
             self.logger.log_final_metrics(metric_table, train_elapsed_time)
 

@@ -45,7 +45,7 @@ model:
 
 optim:
   batch_size: 4 # 32: OC20 GemNet-dT config
-  eval_batch_size: 4 # 32: OC20 GemNet-dT config
+  eval_batch_size: 2 # 32: OC20 GemNet-dT config
   num_workers: 2 # OC20 GemNet-dT config
   optimizer: AdamW # OC20 GemNet-dT config
   optimizer_params: {"amsgrad": True} # OC20 GemNet-dT config

@@ -7,7 +7,8 @@ BENCHMARK_HOME=$(realpath ../../../)
 
 cd $BENCHMARK_HOME
 
-EXPDIR=/home/workspace/MLFF/NeurIPS23_DnB-exp/HfO_v1.0/dataset_2/MACE
+#EXPDIR=/home/workspace/MLFF/NeurIPS23_DnB-exp/HfO_v1.0/dataset_2/MACE
+EXPDIR=/home/workspace/MLFF/NeurIPS23_DnB-exp/HfO_v1.0/dataset_3/MACE
 
 # SAIT config
 CONFIG=NeurIPS23_DnB/configs/HfO_v1.0/mace.yml

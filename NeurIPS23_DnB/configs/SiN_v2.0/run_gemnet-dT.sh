@@ -34,8 +34,6 @@ EXPID=Paper_Model_Rmax6_MaxNeigh50_otf_NormOff_LinearLR_LR5e-4_EP200_E1_MAE_F100
 
 
 
-
-
 CUDA_VISIBLE_DEVICES=$GPU python /nas/SAIT-MLFF-Framework/main.py \
     --mode train \
     --config-yml $CONFIG \

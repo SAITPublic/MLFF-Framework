@@ -26,8 +26,8 @@ model:
   use_pbc: True # periodic system
 
 optim:
-  batch_size: 4
-  eval_batch_size: 4
+  batch_size: 3
+  eval_batch_size: 3
   num_workers: 2
   max_epochs: 200 # 80: GemNet-dT config
 

@@ -23,7 +23,7 @@ CUDA_VISIBLE_DEVICES=$GPU python main.py \
     --run-dir $EXPDIR \
     --identifier $EXPID \
     --print-every 100 \
-    --save-ckpt-every-epoch 10 
+    #--save-ckpt-every-epoch 10 
 
 cd $CURRENT_PATH
 
