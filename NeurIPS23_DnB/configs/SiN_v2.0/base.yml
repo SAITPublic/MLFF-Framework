@@ -1,10 +1,10 @@
 dataset:
   # atom cloud
   - src: /home/workspace/MLFF/SiN_v2.0/split_1/atom_cloud/train.lmdb
-    normalize_labels: True # In NequIP, Allegro, and MACE, it becomes False forcely.
+    normalize_labels: False # In NequIP, Allegro, and MACE, it becomes False forcely.
     normalize_labels_json: /home/workspace/MLFF/SiN_v2.0/split_1/atom_cloud/normalize_stats.json
-  - src: /home/workspace/MLFF/SiN_v2.0/split_1/atom_cloud/valid.lmdb
-  - src: /home/workspace/MLFF/SiN_v2.0/split_1/atom_cloud/test.lmdb
+  - src: /home/workspace/MLFF/SiN_v2.0/split_1/atom_cloud/valid_shuffled.lmdb
+  - src: /home/workspace/MLFF/SiN_v2.0/split_1/atom_cloud/test_shuffled.lmdb
 
 logger: files
 

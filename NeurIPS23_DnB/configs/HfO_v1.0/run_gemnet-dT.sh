@@ -21,10 +21,11 @@ EXPID=Rmax6_MaxNeigh50_otf_NormOn_LinearLR_LR5e-3_EP200_E1_MAE_F100_L2MAE_EMA999
 
 # paper model cofnig
 CONFIG=/nas/SAIT-MLFF-Framework/NeurIPS23_DnB/configs/HfO_v1.0/paper_models/gemnet-dT.yml
-EXPID=Paper_Model_Rmax6_MaxNeigh50_otf_NormOn_LinearLR_LR5e-3_EP200_E1_MAE_F100_L2MAE_EMA999_BS8_1V100 
+#EXPID=Paper_Model_Rmax6_MaxNeigh50_otf_NormOn_LinearLR_LR5e-3_EP200_E1_MAE_F100_L2MAE_EMA999_BS8_1V100 
+EXPID=Paper_Model_Rmax6_MaxNeigh50_otf_NormOff_LinearLR_LR5e-3_EP200_E1_MAE_F100_L2MAE_EMA999_BS8_1V100 
 
 
-CUDA_VISIBLE_DEVICES=$GPU python /nas/SAIT-MLFF-Framework/main.py \
+CUDA_VISIBLE_DEVICES=$GPU python main.py \
     --mode train \
     --config-yml $CONFIG \
     --run-dir $EXPDIR \

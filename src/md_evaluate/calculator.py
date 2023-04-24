@@ -45,10 +45,9 @@ class BenchmarkCalculator(Calculator):
         # load the trained parameters of the model (and move it to GPU)
         model_state_dict = OrderedDict()
         for key, val in ckpt["state_dict"].items():
-            if key.startswith("module."):
-                k = key[7:]
-            else:
-                k = key
+            k = key
+            while k.startswith("module."):
+                k = k[7:]
             model_state_dict[k] = val
         load_state_dict(module=self.model, state_dict=model_state_dict, strict=True)
         self.model = self.model.to(self.device)
@@ -65,6 +64,8 @@ class BenchmarkCalculator(Calculator):
                 self.normalizers[key] = Normalizer(mean=0.0, std=1.0, device=self.device)
                 self.normalizers[key].load_state_dict(ckpt["normalizers"][key])
             bm_logging.info(f"Loaded normalizers")
+            bm_logging.info(f" - energy : shift ({self.normalizers['target'].mean}) scale ({self.normalizers['target'].std})")
+            bm_logging.info(f" - forces : shift ({self.normalizers['grad_target'].mean}) scale ({self.normalizers['grad_target'].std})")
         
         # extract arguments required to convert atom data into graph ocp data
         self.cutoff = self.model.cutoff

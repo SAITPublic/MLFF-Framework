@@ -17,7 +17,7 @@ model:
 
   # graph
   cutoff: 6.0 # OC20 config (max neighbor = 50 fixed in model)
-  otf_graph: False # True when atom cloud is used
+  otf_graph: True # True when atom cloud is used
   use_pbc: True # periodic system
 
 optim:

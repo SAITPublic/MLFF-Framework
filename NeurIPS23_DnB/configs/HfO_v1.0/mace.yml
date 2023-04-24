@@ -1,5 +1,6 @@
 includes:
-- NeurIPS23_DnB/configs/HfO_v1.0/base_dataset_2_rmax6_maxneighbor50.yml
+#- NeurIPS23_DnB/configs/HfO_v1.0/base_dataset_2_rmax6_maxneighbor50.yml
+- NeurIPS23_DnB/configs/HfO_v1.0/base_dataset_3_rmax6_maxneighbor50.yml
 
 trainer: forces_mace
 

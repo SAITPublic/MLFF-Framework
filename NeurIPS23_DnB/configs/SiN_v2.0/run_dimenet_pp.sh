@@ -20,10 +20,9 @@ EXPID=Rmax6_MaxNeigh50_NormOn_WarmupEP5_LinearLR_LR1e-4_EP200_E1_MSE_F50_MSE_BS4
 
 
 # paper model config
-CONFIG=/nas/SAIT-MLFF-Framework/NeurIPS23_DnB/configs/SiN_v1.0/paper_models/dimenet_pp.yml
-#EXPID=Paper_Model_Rmax6_MaxNeigh50_otf_NormOn_LinearLR_LR1e-4_EP200_E1_MSE_F50_MSE_BS4_1V100
-EXPID=Paper_Model_Rmax6_MaxNeigh50_otf_NormOff_LinearLR_LR1e-4_EP200_E1_MSE_F50_MSE_BS4_1V100
-
+CONFIG=NeurIPS23_DnB/configs/SiN_v2.0/paper_models/dimenet_pp.yml
+#EXPID=Paper_Model_Rmax6_MaxNeigh50_otf_NormOn_LinearLR_LR1e-4_EP200_E1_MSE_F50_MSE_BS3_1V100
+EXPID=Paper_Model_Rmax6_MaxNeigh50_otf_NormOff_LinearLR_LR1e-4_EP200_E1_MSE_F50_MSE_BS3_1V100
 
 
 # single GPU
@@ -33,6 +32,7 @@ CUDA_VISIBLE_DEVICES=$GPU python main.py \
     --run-dir $EXPDIR \
     --identifier $EXPID \
     --print-every 100 \
+    --seed 1
 #    --save-ckpt-every-epoch 10
 
 # 2 GPU

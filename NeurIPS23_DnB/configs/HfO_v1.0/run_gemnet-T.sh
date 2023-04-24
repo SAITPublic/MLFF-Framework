@@ -29,7 +29,8 @@ CUDA_VISIBLE_DEVICES=$GPU python /nas/SAIT-MLFF-Framework/main.py \
     --run-dir $EXPDIR \
     --identifier $EXPID \
     --print-every 100 \
-    --save-ckpt-every-epoch 10 
+    --save-ckpt-every-epoch 10 \
+    --checkpoint $2 
 
 cd $CURRENT_PATH
 
