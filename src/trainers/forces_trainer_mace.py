@@ -187,12 +187,12 @@ class MACEForcesTrainer(ForcesTrainer):
             std = mace_statistics["std"]
         if not self.config["model_attributes"].get("shifting", False):
             # MACE
-            self.config["model_attributes"]["inter_atomic_scale"] = std
-            self.config["model_attributes"]["inter_atomic_shift"] = 0.0
+            self.config["model_attributes"]["atomic_inter_scale"] = std
+            self.config["model_attributes"]["atomic_inter_shift"] = 0.0
         else:
             # ScaleShiftMACE
-            self.config["model_attributes"]["inter_atomic_scale"] = std
-            self.config["model_attributes"]["inter_atomic_shift"] = mean
+            self.config["model_attributes"]["atomic_inter_scale"] = std
+            self.config["model_attributes"]["atomic_inter_shift"] = mean
 
         # save the precomputed results
         if not mace_statistics_file_path.exists():
