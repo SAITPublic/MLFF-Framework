@@ -300,9 +300,7 @@ class ForcesTrainer(BaseTrainer):
         )
         if self.normalizer.get("normalize_labels", False):
             if self.normalizer.get("per_atom", False):
-                print(energy_target)
                 energy_target = self.normalizers["target"].norm(energy_target,batch_list[0].natoms)
-                print(energy_target)
             else:
                 energy_target = self.normalizers["target"].norm(energy_target)
 
