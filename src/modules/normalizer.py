@@ -10,11 +10,10 @@ class NormalizerPerAtom(Normalizer):
 
     def __init__(self, tensor=None, mean=None, std=None, device=None):
         assert tensor is None, "tensor should be None when NormalizerPerAtom is used"
-        super().__init__(tensor,mean,std,device)
+        super().__init__(mean=mean, std=std, device=device)
 
+    def norm(self, tensor, N):
+        return (tensor - self.mean * N) / self.std
 
-    def norm(self, tensor,N):
-        return (tensor - self.mean*N) / self.std
-
-    def denorm(self, normed_tensor,N):
-        return normed_tensor * self.std + self.mean*N
+    def denorm(self, normed_tensor, N):
+        return normed_tensor * self.std + self.mean * N

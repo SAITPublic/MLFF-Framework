@@ -615,20 +615,6 @@ class BaseTrainer(ABC):
                 return ckpt_path
         return None
 
-    # def save_model_as_class(self, ckpt_name=None):
-    #     if self.ema:
-    #         self.ema.store()
-    #         self.ema.copy_to()
-        
-    #     if ckpt_name is None:
-    #         ckpt_name = self.config["model_name"] + ".model"
-    #     path = os.path.join(self.config["cmd"]["checkpoint_dir"], ckpt_name)
-    #     model = self._unwrapped_model
-    #     model.to("cpu")
-    #     torch.save(model, path)
-    #     if self.ema:
-    #         self.ema.restore()
-
     @abstractmethod
     def train(self):
         """Derived classes should implement this function."""

@@ -53,9 +53,9 @@ class ForcesTrainer(BaseTrainer):
             if self.mode != "train":
                 # just empty normalizer (which will be loaded from the given checkpoint)
                 if self.normalizer.get("per_atom", False):
-                    self.normalizers["target"] = Normalizer(mean=0.0, std=1.0, device=self.device,)
-                else:
                     self.normalizers["target"] = NormalizerPerAtom(mean=0.0, std=1.0, device=self.device,)
+                else:
+                    self.normalizers["target"] = Normalizer(mean=0.0, std=1.0, device=self.device,)
                 self.normalizers["grad_target"] = Normalizer(mean=0.0, std=1.0, device=self.device)
                 bm_logging.info(f"Normalizers are not set")
                 return
@@ -86,7 +86,8 @@ class ForcesTrainer(BaseTrainer):
                 if scale != self.normalizers["grad_target"].std:
                     bm_logging.warning(f"Scaling factors of energy and force are recommended to be equal")
             elif "normalize_labels_json" in self.normalizer:
-                if self.normalizer.get("per_atom", False):    # per_atom_energy mean
+                if self.normalizer.get("per_atom", False):
+                    # per-atom energy mean
                     shift = normalize_stats["energy_per_atom_mean"]
                 else:
                     shift = normalize_stats["energy_mean"]
@@ -95,26 +96,25 @@ class ForcesTrainer(BaseTrainer):
                 scale = self.normalizers["grad_target"].std # energy scale factor should be force std
             else:
                 
-                if self.normalizer.get("per_atom", False):    # per_atom_energy mean
-                    energy_train = torch.tensor([data.y/data.force.shape[0] for data in self.train_loader.dataset])
-                    shift = torch.mean(energy_train)
-                else:                                         # total energy mean
+                if self.normalizer.get("per_atom", False):
+                    # per-atom energy mean
+                    energy_per_atom_train = torch.tensor([data.y / data.force.shape[0] for data in self.train_loader.dataset])
+                    shift = torch.mean(energy_per_atom_train)
+                else:
+                    # total energy mean
                     energy_train = torch.tensor([data.y for data in self.train_loader.dataset])
                     shift = torch.mean(energy_train)
                 scale = self.normalizers["grad_target"].std # energy scale factor should be force std
 
-                # per_atom_energy 
             if self.normalizer.get("per_atom", False):
+                # per-atom energy 
                 self.normalizers["target"] = NormalizerPerAtom(mean=shift, std=scale, device=self.device)
             else:
                 self.normalizers["target"] = Normalizer(mean=shift, std=scale, device=self.device)
-                
-               
-            
 
             bm_logging.info(f"Set normalizers")
-            bm_logging.info(f" - energy : shift ({self.normalizers['target'].mean}) scale ({self.normalizers['target'].std})")
-            bm_logging.info(f" - forces : shift ({self.normalizers['grad_target'].mean}) scale ({self.normalizers['grad_target'].std})")
+            bm_logging.info(f" - energy ({type(self.normalizers['target'])}): shift ({self.normalizers['target'].mean}) scale ({self.normalizers['target'].std})")
+            bm_logging.info(f" - forces ({type(self.normalizers['grad_target'])}): shift ({self.normalizers['grad_target'].mean}) scale ({self.normalizers['grad_target'].std})")
             
     def _set_task(self):
         # most models have a scaler energy output (meaning that num_targets = 1)
