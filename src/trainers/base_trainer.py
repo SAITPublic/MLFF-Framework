@@ -507,11 +507,9 @@ class BaseTrainer(ABC):
         # Match the "module." count in the keys of model and checkpoint state_dict
         # DataParallel model has 1 "module.",  DistributedDataParallel has 2 "module."
         # Not using either of the above two would have no "module."
-
         ckpt_key_count = next(iter(checkpoint["state_dict"])).count("module")
         mod_key_count = next(iter(self.model.state_dict())).count("module")
         key_count_diff = mod_key_count - ckpt_key_count
-
         if key_count_diff > 0:
             new_dict = {
                 key_count_diff * "module." + k: v
@@ -530,8 +528,10 @@ class BaseTrainer(ABC):
 
         if "optimizer" in checkpoint and self.mode == "train":
             self.optimizer.load_state_dict(checkpoint["optimizer"])
+
         if "scheduler" in checkpoint and checkpoint["scheduler"] is not None and self.mode == "train":
             self.scheduler.scheduler.load_state_dict(checkpoint["scheduler"])
+            
         if "ema" in checkpoint and checkpoint["ema"] is not None:
             self.ema.load_state_dict(checkpoint["ema"])
         else:
@@ -548,11 +548,12 @@ class BaseTrainer(ABC):
 
         for key in checkpoint["normalizers"]:
             if key in self.normalizers:
-                self.normalizers[key].load_state_dict(
-                    checkpoint["normalizers"][key]
-                )
-            if self.scaler and checkpoint["amp"]:
-                self.scaler.load_state_dict(checkpoint["amp"])
+                self.normalizers[key].load_state_dict(checkpoint["normalizers"][key])
+            else:
+                bm_logging.warning(f"{key} in checkpoint cannot be used")
+
+        if self.scaler and checkpoint["amp"]:
+            self.scaler.load_state_dict(checkpoint["amp"])
 
     def save(
         self,
@@ -561,6 +562,8 @@ class BaseTrainer(ABC):
         training_state=True,
     ):
         if not self.is_debug and distutils.is_master():
+            normalizers = {key: value.state_dict() for key, value in self.normalizers.items()}
+            amp_scaler = self.scaler.state_dict() if self.scaler else None
             if training_state:
                 return save_checkpoint(
                     {
@@ -568,19 +571,12 @@ class BaseTrainer(ABC):
                         "step": self.step,
                         "state_dict": self.model.state_dict(),
                         "optimizer": self.optimizer.state_dict(),
-                        "scheduler": self.scheduler.scheduler.state_dict()
-                        if self.scheduler.scheduler_type != "Null"
-                        else None,
-                        "normalizers": {
-                            key: value.state_dict()
-                            for key, value in self.normalizers.items()
-                        },
+                        "scheduler": self.scheduler.scheduler.state_dict(),
+                        "normalizers": normalizers,
                         "config": self.config,
                         "val_metrics": metrics,
                         "ema": self.ema.state_dict() if self.ema else None,
-                        "amp": self.scaler.state_dict()
-                        if self.scaler
-                        else None,
+                        "amp": amp_scaler,
                         "best_val_metric": self.best_val_metric,
                         "primary_metric": self.config["task"].get(
                             "primary_metric",
@@ -597,15 +593,10 @@ class BaseTrainer(ABC):
                 ckpt_path = save_checkpoint(
                     {
                         "state_dict": self.model.state_dict(),
-                        "normalizers": {
-                            key: value.state_dict()
-                            for key, value in self.normalizers.items()
-                        },
+                        "normalizers": normalizers,
                         "config": self.config,
                         "val_metrics": metrics,
-                        "amp": self.scaler.state_dict()
-                        if self.scaler
-                        else None,
+                        "amp": amp_scaler,
                     },
                     checkpoint_dir=self.config["cmd"]["checkpoint_dir"],
                     checkpoint_file=checkpoint_file,
@@ -614,20 +605,6 @@ class BaseTrainer(ABC):
                     self.ema.restore()
                 return ckpt_path
         return None
-
-    # def save_model_as_class(self, ckpt_name=None):
-    #     if self.ema:
-    #         self.ema.store()
-    #         self.ema.copy_to()
-        
-    #     if ckpt_name is None:
-    #         ckpt_name = self.config["model_name"] + ".model"
-    #     path = os.path.join(self.config["cmd"]["checkpoint_dir"], ckpt_name)
-    #     model = self._unwrapped_model
-    #     model.to("cpu")
-    #     torch.save(model, path)
-    #     if self.ema:
-    #         self.ema.restore()
 
     @abstractmethod
     def train(self):

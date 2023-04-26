@@ -117,6 +117,21 @@ def energy_per_atom_mse(prediction, target):
     return squared_error_per_atom(prediction["energy"], target["energy"], target["natoms"])
 
 
+def energy_rmse(prediction, target):
+    mse = energy_mse(prediction, target)
+    return torch.sqrt(mse)
+
+
+def energy_per_atom_rmse(prediction, target):
+    mse = energy_per_atom_mse(prediction, target)
+    return torch.sqrt(mse)
+
+
+def forces_rmse(prediction, target):
+    mse = forces_mse(prediction, target)
+    return torch.sqrt(mse)
+
+
 def absolute_error_per_atom(prediction, target, natoms):
     error = torch.abs( (target - prediction) / natoms )
     return {

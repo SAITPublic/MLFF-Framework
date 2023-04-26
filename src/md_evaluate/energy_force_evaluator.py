@@ -31,7 +31,7 @@ class EnergyForceEvaluator(BaseEvaluator):
 
         self.metric_evaluator = MetricEvaluator(
             task="s2ef", 
-            task_metrics=["energy_per_atom_mae", "forces_mae"],
+            task_metrics=["energy_per_atom_mae", "energy_per_atom_rmse", "forces_mae", "forces_rmse"],
             device=self.device,
         )
 
