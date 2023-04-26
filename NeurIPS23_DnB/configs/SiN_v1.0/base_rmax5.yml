@@ -4,6 +4,8 @@ dataset:
 #  - src: /DB/SiN_v1.0/ocp_lmdb_rcut5/Validset_ocp_graph_rmax5.lmdb
 #  - src: /DB/SiN_v1.0/ocp_lmdb_rcut5/Testset_ocp_graph_rmax5.lmdb
   - src: /home/workspace/MLFF/SiN_v1.0/atom_graph_rmax5.0/train.lmdb
+      normalize_labels: True # In NequIP, Allegro, and MACE, it becomes False forcely.
+      per_atom: True
   - src: /home/workspace/MLFF/SiN_v1.0/atom_graph_rmax5.0/valid.lmdb
   - src: /home/workspace/MLFF/SiN_v1.0/atom_graph_rmax5.0/test.lmdb
 
