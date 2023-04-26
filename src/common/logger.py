@@ -2,6 +2,7 @@ import os
 import logging
 import torch
 import yaml
+import math
 
 from ocpmodels.common.logger import Logger
 from ocpmodels.common.registry import registry
@@ -21,12 +22,21 @@ def parse_logs(update_dict):
     for key, val in update_dict.items():
         if key in ["epoch", "step"]:
             continue
-        elif torch.is_tensor(val):
+
+        mse_metric = "mse" in key
+        if mse_metric:
+            key = key.replace("mse", "rmse")
+
+        if torch.is_tensor(val):
+            if mse_metric:
+                val = torch.sqrt(val)
             ss += f" {key} {val.item():.5f}"
         elif isinstance(val, float):
             if key == "lr":
                 ss += f" {key} {val:.2e}"
             else:
+                if mse_metric:
+                    val = math.sqrt(val)
                 ss += f" {key} {val:.5f}"
         else:
             ss += f" {key} {val}"

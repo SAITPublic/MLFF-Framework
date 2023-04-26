@@ -22,6 +22,7 @@ import os
 import random
 import yaml
 import json
+import math
 
 from pathlib import Path
 from abc import ABC, abstractmethod
@@ -717,7 +718,14 @@ class BaseTrainer(ABC):
 
     def create_metric_table(self, display_meV=True, dataloaders=None):
         table = PrettyTable()
-        table.field_names = ["dataset"] + [metric_name for metric_name in self.evaluator.metric_fn]
+        field_names = ["dataset"]
+        for metric_name in self.evaluator.metric_fn:
+            if "mse" in metric_name:
+                # mse -> rmse for printing
+                field_names.append(metric_name.replace("mse", "rmse"))
+            else:
+                field_names.append(metric_name)
+        table.field_names = field_names
         
         if dataloaders is None:
             dataloaders = {"train": self.train_loader}
@@ -734,10 +742,14 @@ class BaseTrainer(ABC):
                 if display_meV and "mae" in metric_name:
                     table_row_metrics.append(f"{metrics[metric_name]['metric'] * 1000:.1f}")
                 elif display_meV and "mse" in metric_name:
-                    table_row_metrics.append(f"{metrics[metric_name]['metric'] * 1000000:.1f}")
+                    # mse
+                    # table_row_metrics.append(f"{metrics[metric_name]['metric'] * 1000000:.1f}") 
+                    # rmse
+                    table_row_metrics.append(f"{math.sqrt(metrics[metric_name]['metric']) * 1000:.1f}")
                 else:
                     table_row_metrics.append(f"{metrics[metric_name]['metric']:.1f}")
             table.add_row(table_row_metrics)
+
         return table
 
     def _end_train(self):
