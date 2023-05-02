@@ -21,6 +21,8 @@ from mace.tools.torch_geometric.batch import Batch as BatchMACE
 from src.common.collaters.parallel_collater_nequip import convert_ocp_Data_into_nequip_AtomicData
 from src.common.collaters.parallel_collater_mace import convert_ocp_Data_into_mace_AtomicData
 from src.common.utils import bm_logging # benchmark logging
+from src.modules.normalizer import NormalizerPerAtom # per_atom_normalizer
+
 
 class BenchmarkCalculator(Calculator):
     
@@ -48,10 +50,9 @@ class BenchmarkCalculator(Calculator):
         # load the trained parameters of the model (and move it to GPU)
         model_state_dict = OrderedDict()
         for key, val in ckpt["state_dict"].items():
-            if key.startswith("module."):
-                k = key[7:]
-            else:
-                k = key
+            k = key
+            while k.startswith("module."):
+                k = k[7:]
             model_state_dict[k] = val
         load_state_dict(module=self.model, state_dict=model_state_dict, strict=True)
         self.model = self.model.to(self.device)
@@ -64,10 +65,17 @@ class BenchmarkCalculator(Calculator):
         # set normalizers (if it exists)
         self.normalizers = {}
         if ckpt_config["dataset"].get("normalize_labels", False):
-            for key in ["target", "grad_target"]:
-                self.normalizers[key] = Normalizer(mean=0.0, std=1.0, device=self.device)
-                self.normalizers[key].load_state_dict(ckpt["normalizers"][key])
+            self.normalization_per_atom = ckpt_config["dataset"].get("per_atom", False)
+            if self.normalization_per_atom:
+                self.normalizers["target"] = NormalizerPerAtom(mean=0.0, std=1.0, device=self.device)
+            else:
+                self.normalizers["target"] = Normalizer(mean=0.0, std=1.0, device=self.device)
+            self.normalizers["target"].load_state_dict(ckpt["normalizers"]["target"])
+            self.normalizers["grad_target"] = Normalizer(mean=0.0, std=1.0, device=self.device)
+            self.normalizers["grad_target"].load_state_dict(ckpt["normalizers"]["grad_target"])
             bm_logging.info(f"Loaded normalizers")
+            bm_logging.info(f" - energy ({type(self.normalizers['target'])}): shift ({self.normalizers['target'].mean}) scale ({self.normalizers['target'].std})")
+            bm_logging.info(f" - forces ({type(self.normalizers['grad_target'])}): shift ({self.normalizers['grad_target'].mean}) scale ({self.normalizers['grad_target'].std})")
         
         # extract arguments required to convert atom data into graph ocp data
         self.cutoff = self.model.cutoff
@@ -141,7 +149,12 @@ class BenchmarkCalculator(Calculator):
             if len(self.normalizers) > 0:
                 # if normalization is used in the trainer, model output values should be de-normalized.
                 # (because ground truth trained by a model was normalized)
-                energy = self.normalizers["target"].denorm(energy)
+                if self.normalization_per_atom:
+                    # Inference is performed on a single snapshot
+                    # Thus, for N in denorm(), we use forces.shape[0] which is num of atoms of this snapshot.
+                    energy = self.normalizers["target"].denorm(energy, forces.shape[0])
+                else:
+                    energy = self.normalizers["target"].denorm(energy)
                 forces = self.normalizers["grad_target"].denorm(forces)
             return energy, forces
 

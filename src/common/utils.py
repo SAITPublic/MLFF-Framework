@@ -128,15 +128,14 @@ def new_trainer_context(*, config: Dict[str, Any], args: Namespace):
         trainer: "BaseTrainer"
 
     def _set_timestamp_id(config):
-        if config["timestamp_id"] is None:
-            # merging timestamp and expr ID when timestamp_id is empty
-            timestamp = torch.tensor(int(datetime.datetime.now().timestamp())).to(get_device(config))
-            distutils.broadcast(timestamp, 0)
-            timestamp = datetime.datetime.fromtimestamp(timestamp).strftime("%Y%m%d_%H%M%S")
-            if config["identifier"] in ["", None]:
-                return timestamp
-            else:
-                return f"{config['identifier']}-{timestamp}"
+        # merging timestamp and expr ID when timestamp_id is empty
+        timestamp = torch.tensor(int(datetime.datetime.now().timestamp())).to(get_device(config))
+        distutils.broadcast(timestamp, 0)
+        timestamp = datetime.datetime.fromtimestamp(timestamp).strftime("%Y%m%d_%H%M%S")
+        if config["identifier"] in ["", None]:
+            return timestamp
+        else:
+            return f"{config['identifier']}-{timestamp}"
    
     original_config = copy.deepcopy(config)
     if args.distributed:
@@ -144,8 +143,12 @@ def new_trainer_context(*, config: Dict[str, Any], args: Namespace):
         if config["gp_gpus"] is not None:
             gp_utils.setup_gp(config)
     
-    # make timestamp_id not empty
-    config["timestamp_id"] = _set_timestamp_id(config) 
+    if config["timestamp_id"] is None:
+        if config["checkpoint"] is None:
+            # make timestamp_id not empty
+            config["timestamp_id"] = _set_timestamp_id(config)
+        else:
+            config["timestamp_id"] = Path(config["checkpoint"]).parent.name
 
     # check whether arguments which are required to initiate a Trainer class exist in a configuration
     config = check_config(config)

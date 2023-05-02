@@ -38,6 +38,9 @@ from ocpmodels.modules.scaling.util import ensure_fitted
 from src.common.utils import bm_logging # benchmark logging
 from src.common.logger import parse_logs
 from src.trainers.base_trainer import BaseTrainer
+from src.modules.normalizer import NormalizerPerAtom # per_atom_normalizer
+
+
 
 @registry.register_trainer("forces")
 class ForcesTrainer(BaseTrainer):
@@ -49,8 +52,12 @@ class ForcesTrainer(BaseTrainer):
         if self.normalizer.get("normalize_labels", False):
             if self.mode != "train":
                 # just empty normalizer (which will be loaded from the given checkpoint)
-                self.normalizers["target"] = Normalizer(mean=0.0, std=1.0, device=self.device,)
+                if self.normalizer.get("per_atom", False):
+                    self.normalizers["target"] = NormalizerPerAtom(mean=0.0, std=1.0, device=self.device,)
+                else:
+                    self.normalizers["target"] = Normalizer(mean=0.0, std=1.0, device=self.device,)
                 self.normalizers["grad_target"] = Normalizer(mean=0.0, std=1.0, device=self.device)
+                bm_logging.info(f"Normalizers are not set")
                 return
 
             # force normalizer
@@ -71,7 +78,6 @@ class ForcesTrainer(BaseTrainer):
                 forces_train = torch.concat([data.force for data in self.train_loader.dataset])
                 scale = torch.std(forces_train), # 3-dim vetors -> scala value
             self.normalizers["grad_target"] = Normalizer(mean=0.0, std=scale, device=self.device)
-            bm_logging.info(f"Normalizer of forces: mean {self.normalizers['grad_target'].mean}, std {self.normalizers['grad_target'].std}")
 
             # energy normalizer
             if "target_mean" in self.normalizer:
@@ -80,16 +86,35 @@ class ForcesTrainer(BaseTrainer):
                 if scale != self.normalizers["grad_target"].std:
                     bm_logging.warning(f"Scaling factors of energy and force are recommended to be equal")
             elif "normalize_labels_json" in self.normalizer:
-                shift = normalize_stats["energy_mean"]
+                if self.normalizer.get("per_atom", False):
+                    # per-atom energy mean
+                    shift = normalize_stats["energy_per_atom_mean"]
+                else:
+                    shift = normalize_stats["energy_mean"]
                 if "energy_std":
                     bm_logging.info("`energy_std` is ignored and set as the value of `force_std` explicitly.")
                 scale = self.normalizers["grad_target"].std # energy scale factor should be force std
             else:
-                energy_train = torch.tensor([data.y for data in self.train_loader.dataset])
-                shift = torch.mean(energy_train)
+                
+                if self.normalizer.get("per_atom", False):
+                    # per-atom energy mean
+                    energy_per_atom_train = torch.tensor([data.y / data.force.shape[0] for data in self.train_loader.dataset])
+                    shift = torch.mean(energy_per_atom_train)
+                else:
+                    # total energy mean
+                    energy_train = torch.tensor([data.y for data in self.train_loader.dataset])
+                    shift = torch.mean(energy_train)
                 scale = self.normalizers["grad_target"].std # energy scale factor should be force std
-            self.normalizers["target"] = Normalizer(mean=shift, std=scale, device=self.device)
-            bm_logging.info(f"Normalizer of energy: mean {self.normalizers['target'].mean}, std {self.normalizers['target'].std}")
+
+            if self.normalizer.get("per_atom", False):
+                # per-atom energy 
+                self.normalizers["target"] = NormalizerPerAtom(mean=shift, std=scale, device=self.device)
+            else:
+                self.normalizers["target"] = Normalizer(mean=shift, std=scale, device=self.device)
+
+            bm_logging.info(f"Set normalizers")
+            bm_logging.info(f" - energy ({type(self.normalizers['target'])}): shift ({self.normalizers['target'].mean}) scale ({self.normalizers['target'].std})")
+            bm_logging.info(f" - forces ({type(self.normalizers['grad_target'])}): shift ({self.normalizers['grad_target'].mean}) scale ({self.normalizers['grad_target'].std})")
             
     def _set_task(self):
         # most models have a scaler energy output (meaning that num_targets = 1)
@@ -240,7 +265,7 @@ class ForcesTrainer(BaseTrainer):
         # final evaluation
         bm_logging.info("Performing the final evaluation (last model)")
         metric_table = self.create_metric_table(display_meV=True)
-        bm_logging.info("\n"+str(metric_table))
+        bm_logging.info(f"\n{metric_table}")
         if self.logger:
             self.logger.log_final_metrics(metric_table, train_elapsed_time)
 
@@ -274,7 +299,10 @@ class ForcesTrainer(BaseTrainer):
             [batch.y.to(self.device) for batch in batch_list], dim=0
         )
         if self.normalizer.get("normalize_labels", False):
-            energy_target = self.normalizers["target"].norm(energy_target)
+            if self.normalizer.get("per_atom", False):
+                energy_target = self.normalizers["target"].norm(energy_target,batch_list[0].natoms)
+            else:
+                energy_target = self.normalizers["target"].norm(energy_target)
 
         if self.config["optim"].get("loss_energy", "energy_per_atom_mse") in ["energy_per_atom_mse", "mse_per_atom"]:
             natoms = torch.cat(
@@ -374,7 +402,13 @@ class ForcesTrainer(BaseTrainer):
 
         # To calculate metrics, model output values are in real units
         if self.normalizer.get("normalize_labels", False):
-            out["energy"] = self.normalizers["target"].denorm(out["energy"])
+            if self.normalizer.get("per_atom", False):
+                N=torch.cat(
+                [batch.natoms.to(self.device) for batch in batch_list], dim=0
+                )
+                out["energy"] = self.normalizers["target"].denorm(out["energy"],N)
+            else:
+                out["energy"] = self.normalizers["target"].denorm(out["energy"])
             out["forces"] = self.normalizers["grad_target"].denorm(out["forces"])
 
         metrics = evaluator.eval(out, target, prev_metrics=metrics)

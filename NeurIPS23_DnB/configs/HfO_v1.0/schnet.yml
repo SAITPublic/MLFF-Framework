@@ -1,6 +1,8 @@
 includes:
 #- NeurIPS23_DnB/configs/HfO_v1.0/base_dataset_2_rmax6_maxneighbor50.yml # atom cloud (without edges)
-- NeurIPS23_DnB/configs/HfO_v1.0/base_dataset_3_rmax6_maxneighbor50.yml # atom cloud (without edges)
+#- NeurIPS23_DnB/configs/HfO_v1.0/base_dataset_3_rmax6_maxneighbor50.yml # atom cloud (without edges)
+#- NeurIPS23_DnB/configs/HfO_v1.0/base_dataset_2.yml
+- NeurIPS23_DnB/configs/HfO_v1.0/base_dataset_3.yml
 
 trainer: forces
 
@@ -17,7 +19,7 @@ model:
 
   # graph
   cutoff: 6.0 # OC20 config (max neighbor = 50 fixed in model)
-  otf_graph: False # True when atom cloud is used
+  otf_graph: True # True when atom cloud is used
   use_pbc: True # periodic system
 
 optim:
