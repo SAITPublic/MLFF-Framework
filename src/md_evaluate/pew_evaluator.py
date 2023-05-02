@@ -192,7 +192,7 @@ class PEWEvaluator(BaseEvaluator):
             # df_mlff["dist"] = df_mlff["dist"].round(5)  # to truncate spurious tailing numbers
             df_mlff.set_index("dist", inplace=True)
 
-            out_dir = Path(self.config["out_dir"])
+            out_dir = Path(self.config["res_out_dir"])
             os.makedirs(out_dir, exist_ok=True)
             structure_energy_save_name = "{}_{}.csv".format(self.config["energy_save_name"],
                                                             structure_name)

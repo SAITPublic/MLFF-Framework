@@ -33,31 +33,31 @@ unit_structures:
     end: 180
     interval: 5  
   reference_scale_energy_relation_path: /workspace/structures/HfO/pe_well_test/Hf_O4_2_energy_angle.dat
-# - name: O_O
-#   path: /workspace/structures/HfO/pe_well_test/O_O/POSCAR
-#   format: vasp
-#   interatomic_distances:
-#     start: 0.5
-#     end: 8.0
-#     interval: 0.1
-#   reference_scale_energy_relation_path: /workspace/structures/HfO/pe_well_test/O_O_energy_distance.dat
-# - name: Hf_O
-#   path: /workspace/structures/HfO/pe_well_test/Hf_O/POSCAR
-#   format: vasp
-#   interatomic_distances:
-#     start: 1.0
-#     end: 8.0
-#     interval: 0.1
-#   reference_scale_energy_relation_path: /workspace/structures/HfO/pe_well_test/Hf_O_energy_distance.dat
-# - name: Hf_Hf
-#   path: /workspace/structures/HfO/pe_well_test/Hf_Hf/POSCAR
-#   format: vasp
-#   interatomic_distances:
-#     start: 1.0
-#     end: 8.0
-#     interval: 0.1
-#   reference_scale_energy_relation_path: /workspace/structures/HfO/pe_well_test/Hf_Hf_energy_distance.dat
+- name: O_O
+  path: /workspace/structures/HfO/pe_well_test/O_O/POSCAR
+  format: vasp
+  interatomic_distances:
+    start: 0.5
+    end: 8.0
+    interval: 0.1
+  reference_scale_energy_relation_path: /workspace/structures/HfO/pe_well_test/O_O_energy_distance.dat
+- name: Hf_O
+  path: /workspace/structures/HfO/pe_well_test/Hf_O/POSCAR
+  format: vasp
+  interatomic_distances:
+    start: 1.0
+    end: 8.0
+    interval: 0.1
+  reference_scale_energy_relation_path: /workspace/structures/HfO/pe_well_test/Hf_O_energy_distance.dat
+- name: Hf_Hf
+  path: /workspace/structures/HfO/pe_well_test/Hf_Hf/POSCAR
+  format: vasp
+  interatomic_distances:
+    start: 1.0
+    end: 8.0
+    interval: 0.1
+  reference_scale_energy_relation_path: /workspace/structures/HfO/pe_well_test/Hf_Hf_energy_distance.dat
 
 energy_save_name: length_penergy_relation
 error_save_name: pe_error_metrics
-out_dir: /workspace/ocp/traj_and_metrics/GemNet-dT_HfOv1-dataset2/pe_well/test
+res_out_dir: /workspace/ocp/traj_and_metrics/GemNet-dT_HfOv1-dataset2/pe_well/test
