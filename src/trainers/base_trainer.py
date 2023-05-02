@@ -280,15 +280,15 @@ class BaseTrainer(ABC):
             dataset_path = self.config["model_attributes"].get("dataset_path", self.config["dataset"]["src"]) # train dataset
             if os.path.isfile(dataset_path):
                 # single lmdb file
-                scale_pca_path = Path(dataset_path).parent / "BPNN_scale_pca.pt"
+                pca_path = Path(dataset_path).parent / "BPNN_pca.pt"
             elif os.path.isdir(dataset_path):
                 # multi lmdb files
                 # TODO: handling multi lmdb files
-                scale_pca_path = os.path.join(dataset_path, "BPNN_scale_pca.pt")
+                pca_path = os.path.join(dataset_path, "BPNN_pca.pt")
                 raise NotImplementedError("Not implemented for dealing with multiple LMDB files.")
             else:
                 raise RuntimeError("Error")
-            self.config["model_attributes"]["scale_pca_path"] = scale_pca_path
+            self.config["model_attributes"]["pca_path"] = pca_path
             self.config["model_attributes"]["dataset_path"] = dataset_path
 
     def _set_datasets_and_generate_loaders_samplers(self):
