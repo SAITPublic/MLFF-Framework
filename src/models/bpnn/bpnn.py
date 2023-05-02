@@ -614,7 +614,7 @@ class BPNN(BaseModel):
             c = np.flip(b,axis=1).T
             max_abs_rows = np.argmax(np.abs(c), axis=1)
             signs = np.sign(c[range(c.shape[0]), max_abs_rows])
-            c *= signs
+            c *= signs.reshape(-1, 1)
             c = c.copy()
             sigma_ = (n_tot.detach().cpu().numpy() / (n_tot.detach().cpu().numpy() - 1)) * np.flip(a).copy()
             # eigh can result negative eigen value therefore set threshold for lower bound.
