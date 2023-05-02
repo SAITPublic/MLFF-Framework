@@ -18,8 +18,7 @@ from src.md_evaluate.base_evaluator import BaseEvaluator
 @md_evaluate_registry.register_md_evaluate("pe_well")
 class PEWEvaluator(BaseEvaluator):
 
-    @staticmethod
-    def calculate_pe_well_error_metric(df_ref_in, df_mlff_in, res_out_path):
+    def calculate_pe_well_error_metric(self, df_ref_in, df_mlff_in, res_out_path):
         df_ref = df_ref_in.rename(columns={"PE": "PE_ref"})
         df_mlff = df_mlff_in.rename(columns={"PE": "PE_mlff"})
 
@@ -48,8 +47,8 @@ class PEWEvaluator(BaseEvaluator):
         r0_mlff = min(min_dist_list, key=lambda x: abs(x-r0_ref))
         E0_mlff = float(f_mlff(r0_mlff))
 
-        print("[mlff model] r0: {}, E0: {}".format(r0_mlff, E0_mlff))
-        print("[mlff model] min_dist_list: {}, min_PE_list: {}".format(
+        self.logger.debug("[mlff model] r0: {}, E0: {}".format(r0_mlff, E0_mlff))
+        self.logger.debug("[mlff model] min_dist_list: {}, min_PE_list: {}".format(
             min_dist_list, min_PE_list))
 
         pe_mae = calc_error_metric(df_combined["PE_mlff"].values,
@@ -98,28 +97,7 @@ class PEWEvaluator(BaseEvaluator):
             f.write("4'') PE derivative (F) error trimmed - MAE: {}, RMSE: {}\n".format(
                 pe_deriv_mae_trimmed, pe_deriv_rmse_trimmed))
 
-        print("Interatomic distances considered for interpolation: {}".format(
-            dist_array.tolist()))
-        print("Interatomic distances considered for PE and PE' error calc. trimmed: {}".format(
-            dist_array_trimmed.tolist()))
-        print("1) interatomic distances that are local minima: {}, \n\
-                r0 (local minimum closest to ref r0): {}, \n\
-                error in r0: {}".format(
-            min_dist_list, r0_mlff, r0_mlff-r0_ref))
-        print("2) PE at local minima: {}, \n\
-                E0 (PE at local minimum that is closet to ref r0): {}, \n\
-                error in E0: {}".format(
-            min_PE_list, E0_mlff, E0_mlff - E0_ref))
-        print("3) PE error - MAE: {}, RMSE: {}".format(pe_mae, pe_rmse))
-        print("3') PE error trimmed - MAE: {}, RMSE: {}".format(
-            pe_mae_trimmed, pe_rmse_trimmed))
-        print("4) PE derivative (F) error - MAE: {}, RMSE: {}".format(
-            pe_deriv_mae, pe_deriv_rmse))
-        print("4'') PE derivative (F) error trimmed - MAE: {}, RMSE: {}".format(
-            pe_deriv_mae_trimmed, pe_deriv_rmse_trimmed))
-
-    @staticmethod
-    def generate_comparison_plot(df_ref, df_mlff, fig_out_path, save_res):
+    def generate_comparison_plot(self, df_ref, df_mlff, fig_out_path, save_res):
         plt.figure()
         ax = df_ref.plot(y="PE", use_index=True)
         df_mlff.plot(y="PE", use_index=True, ax=ax)
@@ -134,11 +112,10 @@ class PEWEvaluator(BaseEvaluator):
         # plt.show()
         if save_res:
             plt.savefig(fig_out_path)
-            print("Figure to compare PE Well was saved in {}".format(fig_out_path))
+            self.logger.debug("Figure to compare PE Well was saved in {}".format(fig_out_path))
         # plt.close('all')
 
-    @staticmethod
-    def load_reference_results(file_path):
+    def load_reference_results(self, file_path):
         data_ref = defaultdict(list)
         with open(file_path, "r") as f:
             content = f.read().splitlines()
@@ -148,7 +125,7 @@ class PEWEvaluator(BaseEvaluator):
 
         df_ref = pd.DataFrame(data_ref)
         df_ref.set_index("dist", inplace=True)
-        print("Number of data points for pe_well (reference): {}".format(
+        self.logger.debug("Number of data points for pe_well (reference): {}".format(
             df_ref.shape[0]))
         return df_ref
 
@@ -174,18 +151,16 @@ class PEWEvaluator(BaseEvaluator):
                 atoms.set_pbc(False)
                 atoms.calc = self.calculator
                 data = defaultdict(list)
-                # cell = atoms.get_cell().__array__()
-                # print("cell is defined as: {}".format(cell))
                 for dist in PEWEvaluator.construct_range_array(unit_structure_dict["interatomic_distances"]):
                     try:
                         atoms.set_positions([(0, 0, 0), (dist, 0, 0)])
                         pe = atoms.get_potential_energy()
                     except:
-                        print(calc_failure_msg_template.format(
+                        self.logger.debug(calc_failure_msg_template.format(
                             structure_name, dist))
                         pe = np.nan
 
-                    print("dist: {}, PE: {}".format(dist, pe))
+                    self.logger.debug("dist: {}, PE: {}".format(dist, pe))
                     data["dist"].append(dist)
                     data["PE"].append(pe)
 
@@ -201,11 +176,11 @@ class PEWEvaluator(BaseEvaluator):
                     try:
                         pe = atoms.get_potential_energy()
                     except:
-                        print(calc_failure_msg_template.format(
+                        self.logger.debug(calc_failure_msg_template.format(
                             structure_name, scale_suffix))
                         pe = np.nan
 
-                    print("dist: {}, PE: {}".format(scale_suffix, pe))
+                    self.logger.debug("dist: {}, PE: {}".format(scale_suffix, pe))
                     data["dist"].append(scale_suffix)
                     data["PE"].append(pe)
 
@@ -228,13 +203,13 @@ class PEWEvaluator(BaseEvaluator):
 
             structure_error_save_name = "{}_{}.txt".format(self.config["error_save_name"],
                                                            structure_name)
-            PEWEvaluator.calculate_pe_well_error_metric(
+            self.calculate_pe_well_error_metric(
                 df_ref,
                 df_mlff,
                 out_dir / structure_error_save_name
             )
 
-            PEWEvaluator.generate_comparison_plot(
+            self.generate_comparison_plot(
                 df_ref,
                 df_mlff,
                 out_dir / "compare_pe_well_{}.png".format(structure_name),

@@ -7,6 +7,7 @@ import copy
 import json
 from collections import defaultdict
 import os
+from math import log10, floor, isnan
 from pathlib import Path
 import matplotlib.pyplot as plt
 from ase import io
@@ -40,12 +41,10 @@ class EoSEvaluator(BaseEvaluator):
             res_df.to_csv(
                 Path(self.config["res_out_dir"]) / "eos_error_metrics.csv")
 
-        # with pd.option_context('display.max_rows', None, 'display.max_columns', None):
-        #     print(res_df.applymap(lambda x: round(x, 3 - int(floor(log10(abs(x))))) if not isnan(x) else x))
-            # print(res_df)
+        with pd.option_context('display.max_rows', None, 'display.max_columns', None):
+            self.logger.debug(res_df.applymap(lambda x: round(x, 3 - int(floor(log10(abs(x))))) if not isnan(x) else x))
 
-    @staticmethod
-    def plot_eos(df_vasp, df_mlff, fig_out_path, save_res):
+    def plot_eos(self, df_vasp, df_mlff, fig_out_path, save_res):
         plt.figure()
         ax = df_vasp.plot(x="volume", y="e-e0", marker=".")
         df_mlff.plot(x="volume", y="e-e0", marker=".", ax=ax)
@@ -57,7 +56,7 @@ class EoSEvaluator(BaseEvaluator):
         # plt.show()
         if save_res:
             plt.savefig(fig_out_path)
-            print("Figure to compare EoS was saved in {}".format(fig_out_path))
+            self.logger.debug("Figure to compare EoS was saved in {}".format(fig_out_path))
         # plt.close('all')
 
     @staticmethod
@@ -78,7 +77,7 @@ class EoSEvaluator(BaseEvaluator):
         range_mask = (df["scale_factor"] >= scale_factors[0]) & \
             (df["scale_factor"] <= scale_factors[-1])
         df = df[range_mask]
-        print("Number of data points to consider for eos (reference): {}".format(
+        self.logger.debug("Number of data points to consider for eos (reference): {}".format(
             df.shape[0]))
 
         eos_fit_dict = self.calculate_eos_fit(df, eos_type)
@@ -148,7 +147,7 @@ class EoSEvaluator(BaseEvaluator):
 
         fig_out_dir = Path(
             self.config["res_out_dir"]) / self.config["res_fig_name"]
-        EoSEvaluator.plot_eos(df_ref,
-                              df_mlff,
-                              fig_out_dir,
-                              save_res=True)
+        self.plot_eos(df_ref,
+                      df_mlff,
+                      fig_out_dir,
+                      save_res=True)

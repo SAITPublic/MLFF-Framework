@@ -93,7 +93,7 @@ class Simulator(BaseEvaluator):
 
         # for debugging purposes
         traj_temp = atoms.get_temperature()
-        print("temp after initialization: {}".format(traj_temp))
+        self.logger.debug("temp after initialization: {}".format(traj_temp))
 
         return atoms
 
@@ -137,7 +137,7 @@ class Simulator(BaseEvaluator):
         test_metrics = {}
         test_metrics['n_steps'] = n_steps
         test_metrics['running_time'] = elapsed
-        print(test_metrics)
+        self.logger.debug(test_metrics)
 
         with open(out_dir / 'run_time.json', 'a') as f:
             json.dump(test_metrics, f)
