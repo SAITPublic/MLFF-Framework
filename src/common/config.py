@@ -83,7 +83,7 @@ def build_run_md_config(args):
     config = load_config_with_warn(
         args.md_config_yml,
         "'md-config-yml' should be given to set up a md simulation!!"
-        )
+    )
     config["mode"] = args.mode
     assert args.checkpoint is not None, "--checkpoint should be given."
     config["checkpoint"] = args.checkpoint
@@ -91,14 +91,24 @@ def build_run_md_config(args):
 
 
 def build_evaluate_config(args):
-    config = load_config_with_warn(
-        args.evaluation_config_yml,
-        "'evaluation-config-yml' should be given to set up an evalutation by a materials metric!!"
+    if (args.evaluation_metric in ["ef", "energy_force"]
+        and args.evaluation_config_yml is None):
+        assert args.reference_trajectory is not None
+        config = {"reference_trajectory": args.reference_trajectory}
+    else:
+        config = load_config_with_warn(
+            args.evaluation_config_yml,
+            "'evaluation-config-yml' should be given to set up an evalutation by a materials metric!!"
         )
     config["mode"] = args.mode
-    assert args.evaluation_metric is not None, "--evaluation-metric should be given." ## can be read from the config file...
-    config["evaluation_metric"] = args.evaluation_metric
-    if config["evaluation_metric"] in ["eos", "pe_well"]:
-        assert args.checkpoint is not None, "--checkpoint should be given."
+    if args.evaluation_metric is not None:
+        if "evaluation_metric" in config:
+            assert config["evaluation_metric"] == args.evaluation_metric, "Please check the evaluation_metric in the config file and '--evaluation-metric'"
+        else:
+            config["evaluation_metric"] = args.evaluation_metric
+    else:
+        assert "evaluation_metric" in config, "'evaluation_metric' in the config file or '--evaluation-metric' should be given."
+    if config["evaluation_metric"] in ["ef", "energy-force", "eos", "equation-of-state", "pe-well", "potential-energy-well"]:
+        assert args.checkpoint is not None, f"--checkpoint should be given for {config['evaluation_metric']}."
         config["checkpoint"] = args.checkpoint
     return config

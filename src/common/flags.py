@@ -105,13 +105,19 @@ class BenchmarkFlags(Flags):
             "--evaluation-metric",
             default=None,
             type=str,
-            help="Evaluation metrics (distribution_functions, eos, pe_well)",
+            help="Evaluation metrics: energy_force (ef), distribution_functions (df), equation_of_state (eos), potential_energy_well (pe_well)",
         )
         self.parser.add_argument(
             "--evaluation-config-yml",
             default=None,
             type=str,
             help="Path to a config file listing evaluation configurations",
+        )
+        self.parser.add_argument(
+            "--reference-trajectory",
+            default=None,
+            type=str,
+            help="Path to a reference trajectory (.extxyz)",
         )
         
 

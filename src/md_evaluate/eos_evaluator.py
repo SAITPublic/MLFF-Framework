@@ -18,6 +18,7 @@ from src.md_evaluate.base_evaluator import BaseEvaluator
 
 
 @md_evaluate_registry.register_md_evaluate("eos")
+@md_evaluate_registry.register_md_evaluate("equation-of-state")
 class EoSEvaluator(BaseEvaluator):
 
     def calculate_eos_error(self, eos_fit_ref, eos_fit_mlff, save_res=True):

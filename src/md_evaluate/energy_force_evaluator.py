@@ -3,6 +3,7 @@ Written by byunggook.na
 """
 import torch
 import numpy as np
+import math
 
 from prettytable import PrettyTable
 from pathlib import Path
@@ -24,14 +25,11 @@ class EnergyForceEvaluator(BaseEvaluator):
         
         self.ref_traj_path = self.config["reference_trajectory"]
         assert self.ref_traj_path is not None, "--reference-trajectory should be given."
-        if self.config["generated_trajectory"] is not None:
-            bm_logging.warning(f"In energy and force evaluation, --gerenated-trajectory is ignored.")
-
         self.display_meV = True
 
         self.metric_evaluator = MetricEvaluator(
             task="s2ef", 
-            task_metrics=["energy_per_atom_mae", "energy_per_atom_rmse", "forces_mae", "forces_rmse"],
+            task_metrics=["energy_per_atom_mae", "energy_per_atom_mse", "forces_mae", "forces_mse"],
             device=self.device,
         )
 
@@ -61,7 +59,10 @@ class EnergyForceEvaluator(BaseEvaluator):
             if self.display_meV and "mae" in metric_name:
                 table_row_metrics.append(f"{metrics[metric_name]['metric'] * 1000:.1f}")
             elif self.display_meV and "mse" in metric_name:
-                table_row_metrics.append(f"{metrics[metric_name]['metric'] * 1000000:.1f}")
+                # mse
+                # table_row_metrics.append(f"{metrics[metric_name]['metric'] * 1000000:.1f}") 
+                # rmse
+                table_row_metrics.append(f"{math.sqrt(metrics[metric_name]['metric']) * 1000:.1f}")
             else:
                 table_row_metrics.append(f"{metrics[metric_name]['metric']:.1f}")
         table.add_row(table_row_metrics)
