@@ -15,18 +15,20 @@ CONFIG=/nas/SAIT-MLFF-Framework/NeurIPS23_DnB/configs/SiN_v2.0/schnet.yml
 
 # with some SAIT modifications
 #EXPID=Rmax6_MaxNeigh50_otf_NormOn_LinearLR_LR1e-4_EP200_E1_MSE_F100_MSE_BS16_1V100
-EXPID=Rmax6_MaxNeigh50_NormOn_LinearLR_LR1e-4_EP200_E1_MSE_F100_MSE_BS16_1V100
+#EXPID=Rmax6_MaxNeigh50_NormOn_LinearLR_LR1e-4_EP200_E1_MSE_F100_MSE_BS16_1V100
 
-
-
-EXPID=Rmax6_MaxNeigh50_NormOff_LinearLR_LR1e-4_EP200_E1_MSE_F100_MSE_BS16_1V100
+#EXPID=Rmax6_MaxNeigh50_NormOff_LinearLR_LR1e-4_EP200_E1_MSE_F100_MSE_BS16_1V100
 
 # SAIT research
 #CONFIG=/nas/SAIT-MLFF-Framework/NeurIPS23_DnB/configs/SiN_v2.0/SAIT_research/schnet.yml
 #EXPID=Rmax6_MaxNeigh50_otf_LinearLR_LR1e-4_EP80_E1_EnergyPerAtomMSE_F1_ForcePerDimMSE_BS16_1GPU 
-#EXPID=Rmax6_MaxNeigh50_otf_NormOn_LinearLR_LR1e-4_EP80_E1_EnergyPerAtomMSE_F1_ForcePerDimMSE_BS16_1GPU 
 #EXPID=Rmax6_MaxNeigh50_otf_LinearLR_LR1e-4_EP80_E1_MSE_F100_MSE_BS16_1GPU 
 
+# norm off + SAIT loss
+EXPID=Rmax6_MaxNeigh50_otf_NormOff_LinearLR_LR1e-4_EP200_SAITLoss_BS16_1GPU 
+
+# norm per atom + SAIT loss
+#EXPID=Rmax6_MaxNeigh50_otf_NormPerAtomOn_LinearLR_LR1e-4_EP200_SAITLoss_BS16_1GPU 
 
 CUDA_VISIBLE_DEVICES=$GPU python /nas/SAIT-MLFF-Framework/main.py \
     --mode train \

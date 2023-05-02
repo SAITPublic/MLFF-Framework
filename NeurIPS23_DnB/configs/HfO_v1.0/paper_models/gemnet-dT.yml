@@ -1,5 +1,5 @@
 includes:
-- NeurIPS23_DnB/configs/HfO_v1.0/base_dataset_2.yml
+- NeurIPS23_DnB/configs/HfO_v1.0/base_dataset_3.yml
 
 trainer: forces
 
@@ -31,7 +31,7 @@ model:
   activation: silu # OC20 GemNet-dT config
 
   # data-related arg
-  scale_file: NeurIPS23_DnB/configs/HfO_v1.0/auxiliary/gemnet-dT_paper_model_scale_dataset_2.json
+  scale_file: NeurIPS23_DnB/configs/HfO_v1.0/auxiliary/gemnet-dT_paper_model_scale_dataset_3.json
 
   # force
   regress_forces: True
@@ -65,7 +65,13 @@ optim:
   lr_initial: 5.e-4 
 
   # loss
-  energy_coefficient: 1 # OC20 GemNet-dT config
-  loss_energy: mae # OC20 GemNet-dT config
-  force_coefficient: 100 # OC20 GemNet-dT config
-  loss_force: l2mae # OC20 GemNet-dT config
+  #energy_coefficient: 1 # OC20 GemNet-dT config
+  #loss_energy: mae # OC20 GemNet-dT config
+  #force_coefficient: 100 # OC20 GemNet-dT config
+  #loss_force: l2mae # OC20 GemNet-dT config
+
+  # SAIT loss
+  energy_coefficient: 1
+  loss_energy: energy_per_atom_mse
+  force_coefficient: 1
+  loss_force: force_per_dim_mse

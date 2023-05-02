@@ -46,7 +46,13 @@ optim:
   lr_initial: 1.e-4
 
   # loss function is defined in Eq. (5) in SchNet paper (NeurIPS17)
-  energy_coefficient: 1 # OC20 config
-  loss_energy: mse # OC20 config
-  force_coefficient: 100 # OC20-2M config
-  loss_force: mse # OC20 config
+  #energy_coefficient: 1 # OC20 config
+  #loss_energy: mse # OC20 config
+  #force_coefficient: 100 # OC20-2M config
+  #loss_force: mse # OC20 config
+
+  # SAIT loss
+  energy_coefficient: 1
+  loss_energy: energy_per_atom_mse
+  force_coefficient: 1
+  loss_force: force_per_dim_mse
