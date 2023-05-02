@@ -50,7 +50,13 @@ optim:
   lr_initial: 1.e-4
 
   # loss function is defined in Eq. (2) in DimeNet paper (ICLR20) 
-  energy_coefficient: 1 # OC20 config
-  loss_energy: mse # OC20 config (paper: mae)
-  force_coefficient: 50 # OC20 config
-  loss_force: mse # OC20 config (paper: force_per_dim_mae)
+  #energy_coefficient: 1 # OC20 config
+  #loss_energy: mse # OC20 config (paper: mae)
+  #force_coefficient: 50 # OC20 config
+  #loss_force: mse # OC20 config (paper: force_per_dim_mae)
+
+  # SAIT loss
+  energy_coefficient: 1
+  loss_energy: energy_per_atom_mse
+  force_coefficient: 1
+  loss_force: force_per_dim_mse

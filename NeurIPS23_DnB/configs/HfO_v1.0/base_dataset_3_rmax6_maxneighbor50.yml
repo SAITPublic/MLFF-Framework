@@ -2,6 +2,7 @@ dataset:
   # atom cloud
   - src: /home/workspace/MLFF/HfO_v1.0/dataset_3/atom_graph_rmax6.0_maxneighbor50/train.lmdb
     normalize_labels: True # In NequIP, Allegro, and MACE, it becomes False forcely.
+    per_atom: True
     normalize_labels_json: /home/workspace/MLFF/HfO_v1.0/dataset_3/atom_graph_rmax6.0_maxneighbor50/normalize_stats.json
   - src: /home/workspace/MLFF/HfO_v1.0/dataset_3/atom_graph_rmax6.0_maxneighbor50/valid.lmdb
   - src: /home/workspace/MLFF/HfO_v1.0/dataset_3/atom_graph_rmax6.0_maxneighbor50/test.lmdb

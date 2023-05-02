@@ -1,5 +1,5 @@
 includes:
-- NeurIPS23_DnB/configs/HfO_v1.0/base_dataset_2.yml
+- NeurIPS23_DnB/configs/HfO_v1.0/base_dataset_3.yml
 
 trainer: forces
 
@@ -54,3 +54,9 @@ optim:
   loss_energy: mse # OC20 config (paper: mae)
   force_coefficient: 50 # OC20 config
   loss_force: mse # OC20 config (paper: force_per_dim_mae)
+
+  # SAIT loss
+  #energy_coefficient: 1
+  #loss_energy: energy_per_atom_mse
+  #force_coefficient: 1
+  #loss_force: force_per_dim_mse

@@ -1,7 +1,7 @@
 includes:
-#- NeurIPS23_DnB/configs/HfO_v1.0/base_dataset_2.yml
-- NeurIPS23_DnB/configs/HfO_v1.0/base_dataset_2_rmax6_maxneighbor50.yml
-#- NeurIPS23_DnB/configs/HfO_v1.0/base_dataset_3_rmax6_maxneighbor50.yml 
+#- NeurIPS23_DnB/configs/HfO_v1.0/base_dataset_3.yml
+#- NeurIPS23_DnB/configs/HfO_v1.0/base_dataset_2_rmax6_maxneighbor50.yml
+- NeurIPS23_DnB/configs/HfO_v1.0/base_dataset_3_rmax6_maxneighbor50.yml 
 
 trainer: forces
 
@@ -22,7 +22,7 @@ model:
   # graph
   cutoff: 6.0
   max_neighbors: 50
-  otf_graph: False
+  otf_graph: True
   use_pbc: True
 
   # data-related arg
@@ -41,8 +41,15 @@ optim:
   scheduler: LinearLR # SIMPLENN: constant LR
   lr_initial: 5.e-3
 
+  # loss
+  #energy_coefficient: 1
+  #loss_energy: energy_per_atom_mse
+  #force_coefficient: 0.1
+  #loss_force: force_per_dim_mse
+
+  # SAIT loss
   energy_coefficient: 1
   loss_energy: energy_per_atom_mse
-  force_coefficient: 0.1
+  force_coefficient: 1
   loss_force: force_per_dim_mse
 

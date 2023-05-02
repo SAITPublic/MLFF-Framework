@@ -7,7 +7,7 @@ BENCHMARK_HOME=$(realpath ../../../)
 
 cd $BENCHMARK_HOME
 
-EXPDIR=/home/workspace/MLFF/NeurIPS23_DnB-exp/HfO_v1.0/dataset_2/SchNet
+#EXPDIR=/home/workspace/MLFF/NeurIPS23_DnB-exp/HfO_v1.0/dataset_2/SchNet
 
 # OCP config
 CONFIG=/nas/SAIT-MLFF-Framework/NeurIPS23_DnB/configs/HfO_v1.0/schnet.yml
@@ -16,14 +16,26 @@ CONFIG=/nas/SAIT-MLFF-Framework/NeurIPS23_DnB/configs/HfO_v1.0/schnet.yml
 # with some SAIT modifications
 #EXPID=Rmax6_MaxNeigh50_NormOn_LinearLR_LR1e-4_EP200_E1_MSE_F100_MSE_BS16_1V100
 
-
-EXPID=Rmax6_MaxNeigh50_NormOff_LinearLR_LR1e-4_EP200_E1_MSE_F100_MSE_BS16_1V100
+#EXPID=Rmax6_MaxNeigh50_NormOff_LinearLR_LR1e-4_EP200_E1_MSE_F100_MSE_BS16_1V100
 
 ## dataset 3
 EXPDIR=/home/workspace/MLFF/NeurIPS23_DnB-exp/HfO_v1.0/dataset_3/SchNet
 
+# norm off + SAIT loss
+EXPID=Rmax6_MaxNeigh50_otf_NormOff_LinearLR_LR1e-4_EP200_SAITLoss_BS16_1V100 
 
-CUDA_VISIBLE_DEVICES=$GPU python /nas/SAIT-MLFF-Framework/main.py \
+CUDA_VISIBLE_DEVICES=$GPU python main.py \
+    --mode train \
+    --config-yml $CONFIG \
+    --run-dir $EXPDIR \
+    --identifier $EXPID \
+    --print-every 100 \
+    --save-ckpt-every-epoch 10
+
+# norm per atom + SAIT loss
+EXPID=Rmax6_MaxNeigh50_otf_NormPerAtomOn_LinearLR_LR1e-4_EP200_SAITLoss_BS16_1V100 
+
+CUDA_VISIBLE_DEVICES=$GPU python main.py \
     --mode train \
     --config-yml $CONFIG \
     --run-dir $EXPDIR \

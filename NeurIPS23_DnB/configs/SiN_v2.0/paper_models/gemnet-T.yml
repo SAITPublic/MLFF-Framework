@@ -65,7 +65,13 @@ optim:
   lr_initial: 5.e-4 
 
   # loss
-  energy_coefficient: 1 # OC20 GemNet-dT config
-  loss_energy: mae # OC20 GemNet-dT config
-  force_coefficient: 100 # OC20 GemNet-dT config
-  loss_force: l2mae # OC20 GemNet-dT config
+  #energy_coefficient: 1 # OC20 GemNet-dT config
+  #loss_energy: mae # OC20 GemNet-dT config
+  #force_coefficient: 100 # OC20 GemNet-dT config
+  #loss_force: l2mae # OC20 GemNet-dT config
+
+  # SAIT loss
+  energy_coefficient: 1
+  loss_energy: energy_per_atom_mse
+  force_coefficient: 1
+  loss_force: force_per_dim_mse
