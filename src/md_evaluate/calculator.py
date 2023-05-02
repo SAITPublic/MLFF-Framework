@@ -25,6 +25,9 @@ from src.modules.normalizer import NormalizerPerAtom # per_atom_normalizer
 
 
 class BenchmarkCalculator(Calculator):
+    
+    implemented_properties = ["energy", "forces"]
+    
     def __init__(self, ckpt=None, device=torch.device("cpu"), **kwargs):
         Calculator.__init__(self, **kwargs)
 
@@ -84,8 +87,8 @@ class BenchmarkCalculator(Calculator):
         self.atoms_to_pyg_data = AtomsToGraphs(
             max_neigh=self.max_neighbors,
             radius=self.cutoff,
-            r_energy=True,
-            r_forces=True,
+            r_energy=False, #True,
+            r_forces=False, #True,
             r_fixed=True,
             r_distances=False,
             r_pbc=self.model.use_pbc,

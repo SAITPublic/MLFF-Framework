@@ -61,11 +61,11 @@ def check_config(config):
     return config
     
 
-def load_md_config(md_config_yml):
-    if md_config_yml is None:
-        return {}
+def load_config_with_warn(config_yml, warn_string):
+    if config_yml is None:
+        raise Exception(warn_string)
 
-    config, duplicates_warning, duplicates_error = load_config(md_config_yml)
+    config, duplicates_warning, duplicates_error = load_config(config_yml)
     if len(duplicates_warning) > 0:
         logging.warning(
             f"Overwritten config parameters from included configs "
@@ -80,22 +80,25 @@ def load_md_config(md_config_yml):
 
 
 def build_run_md_config(args):
-    config = load_md_config(args.md_config_yml)
+    config = load_config_with_warn(
+        args.md_config_yml,
+        "'md-config-yml' should be given to set up a md simulation!!"
+        )
     config["mode"] = args.mode
-    assert args.checkpoint is not None, "--checkpoint is should be given."
+    assert args.checkpoint is not None, "--checkpoint should be given."
     config["checkpoint"] = args.checkpoint
-    config["initial_structure"] = args.initial_structure
-    config["output_trajectory"] = args.output_trajectory
     return config
 
 
 def build_evaluate_config(args):
-    config = load_md_config(args.md_config_yml)
+    config = load_config_with_warn(
+        args.evaluation_config_yml,
+        "'evaluation-config-yml' should be given to set up an evalutation by a materials metric!!"
+        )
     config["mode"] = args.mode
-    assert args.evaluation_metric is not None, "--evaluation-metric is should be given."
+    assert args.evaluation_metric is not None, "--evaluation-metric should be given." ## can be read from the config file...
     config["evaluation_metric"] = args.evaluation_metric
-    assert args.checkpoint is not None, "--checkpoint is should be given."
-    config["checkpoint"] = args.checkpoint
-    config["reference_trajectory"] = args.reference_trajectory
-    config["generated_trajectory"] = args.generated_trajectory
+    if config["evaluation_metric"] in ["eos", "pe_well"]:
+        assert args.checkpoint is not None, "--checkpoint should be given."
+        config["checkpoint"] = args.checkpoint
     return config
