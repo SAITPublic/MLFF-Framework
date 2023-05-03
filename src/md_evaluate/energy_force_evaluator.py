@@ -18,7 +18,7 @@ from src.md_evaluate.base_evaluator import BaseEvaluator
 
 
 @md_evaluate_registry.register_md_evaluate("ef")
-@md_evaluate_registry.register_md_evaluate("energy-force")
+@md_evaluate_registry.register_md_evaluate("energy_force")
 class EnergyForceEvaluator(BaseEvaluator):
     def __init__(self, config):
         super().__init__(config)

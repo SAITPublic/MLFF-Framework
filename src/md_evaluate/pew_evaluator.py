@@ -1,22 +1,24 @@
 """
 Written by byunggook.na and heesun88.lee
 """
-from ase import io
-from pathlib import Path
 import os
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+
+from pathlib import Path
 from scipy import interpolate, optimize
 from collections import defaultdict
-import matplotlib.pyplot as plt
+
+from ase import io
 
 from src.common.utils import calc_error_metric
 from src.common.registry import md_evaluate_registry
 from src.md_evaluate.base_evaluator import BaseEvaluator
 
 
-@md_evaluate_registry.register_md_evaluate("pe-well")
-@md_evaluate_registry.register_md_evaluate("potential-energy-well")
+@md_evaluate_registry.register_md_evaluate("pe_well")
+@md_evaluate_registry.register_md_evaluate("potential_energy_well")
 class PEWEvaluator(BaseEvaluator):
 
     def calculate_pe_well_error_metric(self, df_ref_in, df_mlff_in, res_out_path):

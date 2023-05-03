@@ -1,10 +1,12 @@
 """
 Written by byunggook.na and heesun88.lee
 """
-from pathlib import Path
-import matplotlib.pyplot as plt
 import json
+import matplotlib.pyplot as plt
+
+from pathlib import Path
 from collections import defaultdict
+
 from ase import io
 from ase.build.supercells import make_supercell
 from FOX import MultiMolecule
@@ -14,7 +16,7 @@ from src.common.registry import md_evaluate_registry
 from src.md_evaluate.base_evaluator import BaseEvaluator
 
 @md_evaluate_registry.register_md_evaluate("df")
-@md_evaluate_registry.register_md_evaluate("distribution-functions")
+@md_evaluate_registry.register_md_evaluate("distribution_functions")
 class DFEvaluator(BaseEvaluator):
 
     def calculate_rdf_fox(self, traj_atoms, out_identifier):
