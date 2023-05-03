@@ -547,11 +547,15 @@ class BaseTrainer(ABC):
             )
             load_scales_compat(self._unwrapped_model, scale_dict)
 
-        for key in checkpoint["normalizers"]:
-            if key in self.normalizers:
-                self.normalizers[key].load_state_dict(checkpoint["normalizers"][key])
-            else:
-                bm_logging.warning(f"{key} in checkpoint cannot be used")
+        if len(checkpoint["normalizers"]) > 0:
+            for key in checkpoint["normalizers"]:
+                if key in self.normalizers:
+                    self.normalizers[key].load_state_dict(checkpoint["normalizers"][key])
+                else:
+                    bm_logging.warning(f"{key} in checkpoint cannot be used")
+            bm_logging.info(f"Load normalizers from the checkpoint")
+            bm_logging.info(f" - energy ({type(self.normalizers['target'])}): shift ({self.normalizers['target'].mean}) scale ({self.normalizers['target'].std})")
+            bm_logging.info(f" - forces ({type(self.normalizers['grad_target'])}): shift ({self.normalizers['grad_target'].mean}) scale ({self.normalizers['grad_target'].std})")
 
         if self.scaler and checkpoint["amp"]:
             self.scaler.load_state_dict(checkpoint["amp"])

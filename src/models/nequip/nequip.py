@@ -29,46 +29,52 @@ from src.datasets.nequip.statistics import (
 from src.common.utils import bm_logging # benchmark logging
 
 
-def compute_statistics(model_config, type_mapper, dataset_name, global_rescale_shift=None):
+def set_model_config_based_on_data_statistics(model_config, type_mapper, dataset_name, data_normalization=True, initialize=True):
     # add statistics results to config
+    assert dataset_name is not None
     dataset = LmdbDataset(dataset_name)
 
     # 1) avg_num_neighbors (required by EnergyModel)
-    model_config["avg_num_neighbors"] = compute_avg_num_neighbors(
+    avg_num_neighbors = compute_avg_num_neighbors(
         config=model_config, 
-        initialize=True, 
+        initialize=initialize, 
         dataset=dataset,
         transform=type_mapper,
     )
+    model_config["avg_num_neighbors"] = avg_num_neighbors
+    bm_logging.info(f"avg_num_neighbors used in interaction layers is {avg_num_neighbors}")
 
     # 2) per_species_rescale_shifts and per_species_rescale_scales (required by PerSpeciesRescale)
     if "PerSpeciesRescale" in model_config["model_builders"]:
-        shifts, scales, arguments_in_dataset_units = compute_per_species_shift_and_scale(
-            config=model_config, 
-            initialize=True, 
-            dataset=dataset,
-            transform=type_mapper,
-        )
+        if data_normalization:
+            shifts, scales, arguments_in_dataset_units = compute_per_species_shift_and_scale(
+                config=model_config, 
+                initialize=initialize, 
+                dataset=dataset,
+                transform=type_mapper,
+            )
+        else:
+            shifts = None
+            scales = None
+            arguments_in_dataset_units = False
+            bm_logging.info("[per species rescale] Scales and shifts are not used")
         model_config["per_species_rescale_shifts"] = shifts
         model_config["per_species_rescale_scales"] = scales
         model_config["arguments_in_dataset_units"] = arguments_in_dataset_units
 
     # 3) global_rescale_shift and global_rescale_scale (required by RescaleEnergyEtc (i.e., GlobalRescale))
-    if ("RescaleEnergyEtc" in model_config["model_builders"] or
-        "GlobalRescale" in model_config["model_builders"]
-    ):
-        if global_rescale_shift is not None:
-            default_shift_keys = [AtomicDataDict.TOTAL_ENERGY_KEY]
-            bm_logging.warning(
-                f"!!!! Careful global_shift is set to {global_rescale_shift}."
-                f"The model for {default_shift_keys} will no longer be size extensive"
+    if "RescaleEnergyEtc" in model_config["model_builders"]:
+        if data_normalization:
+            global_shift, global_scale = compute_global_shift_and_scale(
+                config=model_config, 
+                initialize=initialize, 
+                dataset=dataset,
+                transform=type_mapper,
             )
-        global_shift, global_scale = compute_global_shift_and_scale(
-            config=model_config, 
-            initialize=True, 
-            dataset=dataset,
-            transform=type_mapper,
-        )
+        else:
+            global_shift = None
+            global_scale = None
+            bm_logging.info("[global rescale] Scale and shift are not used")
         model_config["global_rescale_shift"] = global_shift
         model_config["global_rescale_scale"] = global_scale
 
@@ -146,6 +152,10 @@ class NequIPWrap(BaseModel):
         global_rescale_scale_trainable=False,
         global_rescale_shift=None,
         global_rescale_scale="dataset_forces_rms",
+        # normalization on/off
+        data_normalization=True,
+        # initialize: False = load checkpoint, True = data seeing is the first
+        initialize=True,
     ):
         self.num_targets = num_targets
         self.use_pbc = use_pbc
@@ -206,11 +216,14 @@ class NequIPWrap(BaseModel):
         model_config["type_names"] = self.type_mapper.type_names
 
         # compute statistics (similar to Normalizers of OCP)
-        model_config = compute_statistics(
-            model_config = model_config, 
-            type_mapper = self.type_mapper, 
-            dataset_name = dataset, 
-            global_rescale_shift=global_rescale_shift,
+        # or load the pre-computed values
+        self.data_normalization = data_normalization
+        model_config = set_model_config_based_on_data_statistics(
+            model_config=model_config, 
+            type_mapper=self.type_mapper, 
+            dataset_name=dataset,
+            data_normalization=data_normalization,
+            initialize=initialize,
         )
 
         # constrcut the NequIP model
@@ -218,7 +231,7 @@ class NequIPWrap(BaseModel):
         self.nequip_model = initiate_model_by_builders(
             builders=builders, 
             config=model_config, 
-            initialize=True,
+            initialize=initialize,
         )
 
         # maintain rescale layers individually
@@ -229,34 +242,31 @@ class NequIPWrap(BaseModel):
             outer_layer = getattr(outer_layer, "model", None)
 
     def do_unscale(self, data, force_process=False):
-        # rescaling
-        # do copy in unscale()
-        # assert AtomicDataDict.TOTAL_ENERGY_KEY in data.keys() and AtomicDataDict.FORCE_KEY in data.keys()
+        if not self.data_normalization:
+            return data
+            
+        # unscaling (by RescaleEnergyEtc, or GlobalRescale)
+        # : (x - shift) / scale
         for layer in self.rescale_layers:
             data = layer.unscale(data, force_process=force_process)
         return data
 
-    def undo_unscale(self, data, force_process=False):
-        # undo rescaling
-        # do copy in scale()
-        # assert AtomicDataDict.TOTAL_ENERGY_KEY in out.keys() and AtomicDataDict.FORCE_KEY in out.keys()
+    def do_scale(self, data, force_process=False):
+        if not self.data_normalization:
+            return data
+
+        # scaling (by RescaleEnergyEtc, or GlobalRescale)
+        # : x * scale + shift
         for layer in self.rescale_layers[::-1]:
             data = layer.scale(data, force_process=force_process)
         return data
 
     @conditional_grad(torch.enable_grad())
     def forward(self, data):
-        # data is already moved to device 
-        # by OCPDataParallel (ocpmodels/common/data_parallel.py)
-        #data = self.type_mapper.transform(data.to_dict()) 
+        # data is already moved to device by OCPDataParallel (ocpmodels/common/data_parallel.py)
         input_data = AtomicData.to_AtomicDataDict(data)
 
-        # This is not necessary in model forward,
-        # because this changes energy/force/atomic_energy (i.e., ground target).
-        #input_data = self.do_unscale(data)
-
         # model forward
-        # : output is dict
         out = self.nequip_model(input_data)
         
         # return values required in an OCP-based trainer

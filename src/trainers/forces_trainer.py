@@ -50,14 +50,15 @@ class ForcesTrainer(BaseTrainer):
     def _set_normalizer(self):
         self.normalizers = {}
         if self.normalizer.get("normalize_labels", False):
-            if self.mode != "train":
+            if self.mode in ["validate", "fit-scale"]:
                 # just empty normalizer (which will be loaded from the given checkpoint)
                 if self.normalizer.get("per_atom", False):
                     self.normalizers["target"] = NormalizerPerAtom(mean=0.0, std=1.0, device=self.device,)
                 else:
                     self.normalizers["target"] = Normalizer(mean=0.0, std=1.0, device=self.device,)
                 self.normalizers["grad_target"] = Normalizer(mean=0.0, std=1.0, device=self.device)
-                bm_logging.info(f"Normalizers are not set")
+                if self.mode == "fit-scale":
+                    bm_logging.info(f"Normalizers are not set")
                 return
 
             # force normalizer

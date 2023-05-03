@@ -11,6 +11,7 @@ from nequip.data.transforms import TypeMapper
 
 from src.trainers.forces_trainer import ForcesTrainer
 from src.common.collaters.parallel_collater_nequip import ParallelCollaterNequIP
+from src.common.utils import bm_logging # benchmark logging
 
 
 @registry.register_trainer("forces_nequip")
@@ -31,9 +32,13 @@ class NequIPForcesTrainer(ForcesTrainer):
     
     def _parse_config(self, config):
         trainer_config = super()._parse_config(config)
+        if not trainer_config["dataset"].get("normalize_labels", True):
+            bm_logging.info("Applying the data normalization is default in NequIP (or Allegro), but the normalization turns off in this training")
+        trainer_config["model_attributes"]["data_normalization"] = trainer_config["dataset"].get("normalize_labels", True)
+        trainer_config["model_attributes"]["dataset"] = trainer_config["dataset"]
+
         # NequIP, Allegro does not need normalizer (they use own normaliation strategy)
         trainer_config["dataset"]["normalize_labels"] = False
-        trainer_config["model_attributes"]["dataset"] = trainer_config["dataset"]
         return trainer_config
     
     def initiate_collater(self):
@@ -113,7 +118,7 @@ class NequIPForcesTrainer(ForcesTrainer):
             # train mode
             # prediction is converted normalized unit -> real unit
             with torch.no_grad():
-                _out = self._unwrapped_model.undo_unscale(
+                _out = self._unwrapped_model.do_scale(
                     {
                         AtomicDataDict.TOTAL_ENERGY_KEY: out["energy"], 
                         AtomicDataDict.FORCE_KEY: out["forces"],
