@@ -13,8 +13,8 @@ from src.common.utils import calc_error_metric
 from src.common.registry import md_evaluate_registry
 from src.md_evaluate.base_evaluator import BaseEvaluator
 
-
-@md_evaluate_registry.register_md_evaluate("distribution_functions")
+@md_evaluate_registry.register_md_evaluate("df")
+@md_evaluate_registry.register_md_evaluate("distribution-functions")
 class DFEvaluator(BaseEvaluator):
 
     def calculate_rdf_fox(self, traj_atoms, out_identifier):

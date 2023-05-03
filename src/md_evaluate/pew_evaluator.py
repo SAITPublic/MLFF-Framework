@@ -15,7 +15,8 @@ from src.common.registry import md_evaluate_registry
 from src.md_evaluate.base_evaluator import BaseEvaluator
 
 
-@md_evaluate_registry.register_md_evaluate("pe_well")
+@md_evaluate_registry.register_md_evaluate("pe-well")
+@md_evaluate_registry.register_md_evaluate("potential-energy-well")
 class PEWEvaluator(BaseEvaluator):
 
     def calculate_pe_well_error_metric(self, df_ref_in, df_mlff_in, res_out_path):
