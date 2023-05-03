@@ -41,14 +41,14 @@ optim:
   lr_initial: 5.e-3
 
   # loss
-  energy_coefficient: 1
-  loss_energy: energy_per_atom_mse
-  force_coefficient: 0.1
-  loss_force: force_per_dim_mse
-
-  # SAIT loss
   #energy_coefficient: 1
   #loss_energy: energy_per_atom_mse
-  #force_coefficient: 1
+  #force_coefficient: 0.1
   #loss_force: force_per_dim_mse
+
+  # SAIT loss
+  energy_coefficient: 1
+  loss_energy: energy_per_atom_mse
+  force_coefficient: 1
+  loss_force: force_per_dim_mse
 

@@ -20,7 +20,10 @@ from nequip.model import ForceOutput, PartialForceOutput
 # modified modules to enable to be compatible with LMDB datasets
 from src.common.utils import bm_logging # benchmark logging
 from src.models.nequip.rescale import RescaleEnergyEtc, PerSpeciesRescale
-from src.models.nequip.nequip import compute_statistics, initiate_model_by_builders
+from src.models.nequip.nequip import (
+    set_model_config_based_on_data_statistics, 
+    initiate_model_by_builders
+)
 from src.datasets.nequip.statistics import (
     compute_avg_num_neighbors, 
     compute_global_shift_and_scale,
@@ -86,6 +89,10 @@ class AllegroWrap(BaseModel):
         global_rescale_scale_trainable=False, # RescaleEnergyEtc
         global_rescale_shift=None, # RescaleEnergyEtc
         global_rescale_scale="dataset_forces_rms", # RescaleEnergyEtc
+        # normalization on/off
+        data_normalization=True,
+        # initialize: False = load checkpoint, True = data seeing is the first
+        initialize=True,
     ):
         self.num_targets = num_targets
         self.use_pbc = use_pbc
@@ -153,11 +160,14 @@ class AllegroWrap(BaseModel):
         model_config["type_names"] = self.type_mapper.type_names
 
         # compute statistics (similar to Normalizers of OCP)
-        model_config = compute_statistics(
-            model_config = model_config, 
-            type_mapper = self.type_mapper, 
-            dataset_name = dataset, 
-            global_rescale_shift=global_rescale_shift,
+        # or load the pre-computed values
+        self.data_normalization = data_normalization
+        model_config = set_model_config_based_on_data_statistics(
+            model_config=model_config, 
+            type_mapper=self.type_mapper, 
+            dataset_name=dataset,
+            data_normalization=data_normalization,
+            initialize=initialize,
         )
 
         # constrcut the NequIP model
@@ -165,7 +175,7 @@ class AllegroWrap(BaseModel):
         self.allegro_model = initiate_model_by_builders(
             builders=builders, 
             config=model_config, 
-            initialize=True,
+            initialize=initialize,
         )
 
         # maintain rescale layers individually
@@ -176,34 +186,31 @@ class AllegroWrap(BaseModel):
             outer_layer = getattr(outer_layer, "model", None)
 
     def do_unscale(self, data, force_process=False):
-        # rescaling
-        # do copy in unscale()
-        # assert AtomicDataDict.TOTAL_ENERGY_KEY in data.keys() and AtomicDataDict.FORCE_KEY in data.keys()
+        if not self.data_normalization:
+            return data
+            
+        # unscaling (by RescaleEnergyEtc, or GlobalRescale)
+        # : (x - shift) / scale
         for layer in self.rescale_layers:
             data = layer.unscale(data, force_process=force_process)
         return data
 
-    def undo_unscale(self, data, force_process=False):
-        # undo rescaling
-        # do copy in scale()
-        # assert AtomicDataDict.TOTAL_ENERGY_KEY in out.keys() and AtomicDataDict.FORCE_KEY in out.keys()
+    def do_scale(self, data, force_process=False):
+        if not self.data_normalization:
+            return data
+
+        # scaling (by RescaleEnergyEtc, or GlobalRescale)
+        # : x * scale + shift
         for layer in self.rescale_layers[::-1]:
             data = layer.scale(data, force_process=force_process)
         return data
 
     @conditional_grad(torch.enable_grad())
     def forward(self, data):
-        # data is already moved to device 
-        # by OCPDataParallel (ocpmodels/common/data_parallel.py)
-        #data = self.type_mapper.transform(data.to_dict()) 
+        # data is already moved to device by OCPDataParallel (ocpmodels/common/data_parallel.py)
         input_data = AtomicData.to_AtomicDataDict(data)
 
-        # This is not necessary in model forward,
-        # because this changes energy/force/atomic_energy (i.e., ground target).
-        #input_data = self.do_unscale(data)
-
         # model forward
-        # : output is dict
         out = self.allegro_model(input_data)
         
         # return values required in an OCP-based trainer

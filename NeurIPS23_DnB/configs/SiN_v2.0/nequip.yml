@@ -21,10 +21,10 @@ model:
   PolynomialCutoff_p: 6 # LiPS config
   invariant_layers: 2
   invariant_neurons: 64 # paper, LiPS config
-  avg_num_neighbors: auto
+  avg_num_neighbors: auto # 'auto' requires to set 'initialize' as True, meaning that data statistics will be calculated
   use_sc: True # LiPS config
   nonlinearity_type: gate # LiPS config
-  resnet: True #False # LiPS config
+  resnet: False # LiPS config
   nonlinearity_scalars: # LiPS config
     e: silu
     o: tanh

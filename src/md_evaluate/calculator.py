@@ -30,14 +30,15 @@ class BenchmarkCalculator(Calculator):
     
     def __init__(self, ckpt=None, device=torch.device("cpu"), **kwargs):
         Calculator.__init__(self, **kwargs)
-
-        assert ckpt is not None
-
-        ckpt_config = ckpt["config"]
         self.device = device
 
-        # construct a model in the ckpt
+        assert ckpt is not None
+        ckpt_config = ckpt["config"]
         self.model_name = ckpt_config["model_name"]
+        if self.model_name in ["nequip", "allegro"]:
+            ckpt_config["model_attributes"]["initialize"] = False
+
+        # construct a model in the ckpt
         model_class = registry.get_model_class(self.model_name)
         self.model = model_class(
             num_atoms = None, # not used

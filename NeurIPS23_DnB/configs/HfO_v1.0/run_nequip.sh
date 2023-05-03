@@ -7,15 +7,14 @@ BENCHMARK_HOME=$(realpath ../../../)
 
 cd $BENCHMARK_HOME
 
-EXPDIR=/home/workspace/MLFF/NeurIPS23_DnB-exp/HfO_v1.0/dataset_2/NequIP
+EXPDIR=/home/workspace/MLFF/NeurIPS23_DnB-exp/HfO_v1.0/dataset_3/NequIP
 
 # SAIT config
-#CONFIG=/nas/SAIT-MLFF-Framework/NeurIPS23_DnB/configs/HfO_v1.0/nequip.yml
 CONFIG=NeurIPS23_DnB/configs/HfO_v1.0/nequip.yml
-EXPID=Rmax6_MaxNeigh50_LinearLR_LR5e-3_EP200_E1_EnergyPerAtomMSE_F1_ForcePerDimMSE_EMA99_BS16_1V100
+#EXPID=Rmax6_MaxNeigh50_LinearLR_LR5e-3_EP200_E1_EnergyPerAtomMSE_F1_ForcePerDimMSE_EMA99_BS16_1V100
 
-
-EXPDIR=/home/workspace/MLFF/NeurIPS23_DnB-exp/HfO_v1.0/dataset_3/NequIP
+# norm off + SAIT loss (same in NequIP loss)
+EXPID=Rmax6_MaxNeigh50_NormOff_LinearLR_LR5e-3_EP200_SAITLoss_EMA99_BS16_1V100
 
 
 # single GPU

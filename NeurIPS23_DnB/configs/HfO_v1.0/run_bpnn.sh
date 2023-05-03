@@ -22,19 +22,13 @@ CONFIG=NeurIPS23_DnB/configs/HfO_v1.0/bpnn.yml
 # norm off + SAIT loss
 EXPID=Rmax6_MaxNeigh50_NormOff_LinearLR_LR5e-3_EP200_SAITLoss_BS16_1V100 
 
-CUDA_VISIBLE_DEVICES=$GPU python main.py \
-    --mode train \
-    --config-yml $CONFIG \
-    --run-dir $EXPDIR \
-    --identifier $EXPID \
-    --print-every 100 \
-    --save-ckpt-every-epoch 10 
-
-
 # norm per atom + SAIT loss
-EXPID=Rmax6_MaxNeigh50_NormPerAtomOn_LinearLR_LR5e-3_EP200_SAITLoss_BS16_1V100 
+#EXPID=Rmax6_MaxNeigh50_NormPerAtomOn_LinearLR_LR5e-3_EP200_SAITLoss_BS16_1V100 
 
-# single GPU
+# norm per snapshot + SAIT loss
+#EXPID=Rmax6_MaxNeigh50_NormOn_LinearLR_LR5e-3_EP200_SAITLoss_BS16_1V100 
+
+
 CUDA_VISIBLE_DEVICES=$GPU python main.py \
     --mode train \
     --config-yml $CONFIG \

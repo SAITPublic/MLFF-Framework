@@ -41,7 +41,10 @@ def compute_avg_num_neighbors(config, initialize, dataset, transform):
     ann = config.get("avg_num_neighbors", "auto")
     if ann == "auto":
         if not initialize:
-            raise RuntimeError("avg_num_neighbors = auto but initialize is False")
+            # raise RuntimeError("avg_num_neighbors = auto but initialize is False")
+            # TODO: exclude the avg_num_neighbors computation when loading a checkpoint
+            bm_logging.info("When `initialize` is set as False, the avg_num_neighbors will be loaded from the checkpoint")
+            bm_logging.ifno("But, for now, you need to a file which includes avg_num_neighbors")
         if dataset is None:
             raise RuntimeError("When avg_num_neighbors = auto, the dataset is required")
         _mean, _std = statistics(
@@ -65,6 +68,13 @@ def compute_global_shift_and_scale(config, initialize, dataset, transform):
         "global_rescale_scale", 
         f"dataset_{AtomicDataDict.FORCE_KEY}_rms" # default string when training forces
     )
+
+    if global_shift is not None:
+        default_shift_keys = [AtomicDataDict.TOTAL_ENERGY_KEY]
+        bm_logging.warning(
+            f"!!!! Careful global_shift is set to {global_rescale_shift}."
+            f"The model for {default_shift_keys} will no longer be system-size extensive"
+        )
 
     if initialize:
         str_names = []
@@ -91,24 +101,23 @@ def compute_global_shift_and_scale(config, initialize, dataset, transform):
         if isinstance(global_shift, str):
             s = global_shift
             global_shift = stats[str_names.index(global_shift)]
-            bm_logging.info(f"[global rescale] Replace string `{s}` in the model configuration to {global_shift}")
+
         if isinstance(global_scale, str):
             s = global_scale
             global_scale = stats[str_names.index(global_scale)]
-            bm_logging.info(f"[global rescale] Replace string `{s}` in the model configuration to {global_scale}")
-
-        if global_scale is not None and global_scale < RESCALE_THRESHOLD:
-            raise ValueError(
-                f"Global energy scaling was very low: {global_scale}. If dataset values were used, does the dataset contain insufficient variation? Maybe try disabling global scaling with global_scale=None."
-            )
+            if global_scale < RESCALE_THRESHOLD:
+                raise ValueError(
+                    f"Global energy scaling was very low: {global_scale}. If dataset values were used, does the dataset contain insufficient variation? Maybe try disabling global scaling with global_scale=None."
+                )
+        
         bm_logging.info(
-            f"Initially outputs are globally scaled by: {global_scale}, total_energy are globally shifted by {global_shift}."
+            f"[global rescale] Globally, energy and forces are scaled by: {global_scale}, and energy is shifted by {global_shift}."
         )
     else:
-        if global_shift is not None:
-            global_shift = 0.0
-        if global_scale is not None:
-            global_scale = 1.0
+        # put dummy node
+        global_shift = 0.0 if global_shift is not None else None
+        global_scale = 1.0 if global_scale is not None else None
+        bm_logging.info("[global rescale] When `initialize` is set as False, the global scale and shift will be loaded from the checkpoint")
     
     return global_shift, global_scale
 
@@ -132,7 +141,7 @@ def compute_per_species_shift_and_scale(config, initialize, dataset, transform):
             and shifts is not None
         ):
             raise RuntimeError(
-                "A global_rescale_shift was provided, but the default per-atom energy shift was not disabled."
+                "A global_rescale_shift was provided, but the default per-atom energy shift was not disabled (one of them should be disabled)."
             )
     
     arguments_in_dataset_units = False
@@ -175,14 +184,12 @@ def compute_per_species_shift_and_scale(config, initialize, dataset, transform):
         if isinstance(shifts, str):
             s = shifts
             shifts = stats[str_names.index(shifts)].squeeze(-1)  # energy is 1D
-            bm_logging.info(f"[per species rescale] Replace string `{s}` in the model configuration to {shifts}")
         elif isinstance(shifts, (list, float)):
             shifts = torch.as_tensor(shifts)
 
         if isinstance(scales, str):
             s = scales
             scales = stats[str_names.index(scales)].squeeze(-1)  # energy is 1D
-            bm_logging.info(f"[per species rescale] Replace string `{s}` in the model configuration to {scales}")
         elif isinstance(scales, (list, float)):
             scales = torch.as_tensor(scales)
 
@@ -190,14 +197,15 @@ def compute_per_species_shift_and_scale(config, initialize, dataset, transform):
             raise ValueError(
                 f"Per species energy scaling was very low: {scales}. Maybe try setting {module_prefix}_scales = 1."
             )
-
+        
         bm_logging.info(
-            f"Atomic outputs are scaled by: {TypeMapper.format(scales, config.type_names)}, shifted by {TypeMapper.format(shifts, config.type_names)}."
+            f"[per species rescale] Atomic outputs are scaled by: {TypeMapper.format(scales, config.type_names)}, shifted by {TypeMapper.format(shifts, config.type_names)}."
         )
-
     else:
-        shifts = 0.0 if shifts is not None else None
+        # Put dummy values
         scales = 1.0 if scales is not None else None
+        shifts = 0.0 if shifts is not None else None
+        bm_logging.info("[per species rescale] When `initialize` is set as False, the per species scales and shifts will be loaded from the checkpoint")
 
     return shifts, scales, arguments_in_dataset_units
 
@@ -245,9 +253,9 @@ def statistics(dataset, transform, fields, modes, stride, unbiased=True, kwargs=
         return []
 
     if isinstance(fields[0], str):
-        filepath = "nequip_statistics-" + ",".join(modes) + "-" + ",".join(fields) + ".pt"
+        filepath = "NequIP_statistics-" + ",".join(modes) + "-" + ",".join(fields) + ".pt"
     else:
-        filepath = "nequip_statistics-" + ",".join(modes) + "-func.pt"
+        filepath = "NequIP_statistics-" + ",".join(modes) + "-num_neighbors.pt"
 
     # dataset.path is pathlib.Path
     if dataset.path.is_dir():
