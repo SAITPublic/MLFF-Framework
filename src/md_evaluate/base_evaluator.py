@@ -24,7 +24,7 @@ class BaseEvaluator:
         self.config = config
 
         # load a checkpoint if given (derived evaluator "distribution_functions" does not require ckpt)
-        checkpoint_path = self.config.get("checkpoint")
+        checkpoint_path = self.config.get("checkpoint", None)
         self.calculator = None
         if checkpoint_path:
             if not os.path.isfile(checkpoint_path):

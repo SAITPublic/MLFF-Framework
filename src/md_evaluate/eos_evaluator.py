@@ -1,15 +1,17 @@
 """
 Written by byunggook.na and heesun88.lee
 """
-import numpy as np
-import pandas as pd
+import os
 import copy
 import json
-from collections import defaultdict
-import os
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
 from math import log10, floor, isnan
 from pathlib import Path
-import matplotlib.pyplot as plt
+from collections import defaultdict
+
 from ase import io
 from ase.eos import EquationOfState
 
@@ -18,7 +20,7 @@ from src.md_evaluate.base_evaluator import BaseEvaluator
 
 
 @md_evaluate_registry.register_md_evaluate("eos")
-@md_evaluate_registry.register_md_evaluate("equation-of-state")
+@md_evaluate_registry.register_md_evaluate("equation_of_state")
 class EoSEvaluator(BaseEvaluator):
 
     def calculate_eos_error(self, eos_fit_ref, eos_fit_mlff, save_res=True):
