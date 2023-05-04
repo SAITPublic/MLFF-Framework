@@ -3,7 +3,7 @@ Written by byunggook.na and heesun88.lee
 """
 from pathlib import Path
 from tqdm import tqdm
-import json
+import json, yaml
 import os
 import time
 import random
@@ -141,3 +141,6 @@ class Simulator(BaseEvaluator):
 
         with open(out_dir / 'run_time.json', 'a') as f:
             json.dump(test_metrics, f)
+        
+        with open(out_dir / 'config.yml', 'w') as f:
+            yaml.dump(self.config, f, default_flow_style=False)
