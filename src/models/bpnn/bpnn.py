@@ -84,6 +84,14 @@ class ACSF(torch.nn.Module):
         self.cutoff = cutoff
         self.atomic_numbers = atomic_numbers
 
+        self.max_atom=torch.max(torch.tensor(self.atomic_numbers))+1
+        self.atom_to_index=(self.max_atom+1)*torch.ones(self.max_atom,dtype=torch.long)
+        atomic_number_str=[str(v) for v in atomic_numbers]
+        atomic_number_str.sort()
+        
+        for i,atomic_number in enumerate(atomic_number_str):
+            atomic_number=eval(atomic_number)
+            self.atom_to_index[atomic_number]=i
         if g2_params is None:
             # default G2 parameters
             g2_etas = torch.tensor([0.003214,0.035711,0.071421,0.124987,0.214264,0.357106,0.714213,1.428426])
@@ -103,94 +111,129 @@ class ACSF(torch.nn.Module):
                 etas = torch.tensor([eval(v) for v in lines[0].split(",")])
                 zetas = torch.tensor([eval(v) for v in lines[1].split(",")])
                 lmdas = torch.tensor([eval(v) for v in lines[2].split(",")])
-
+                
+        
         n_species = len(self.atomic_numbers)
+        self.n_species =n_species
+        self.g2_shape=(len(g2_etas),n_species)
+        self.g4_shape=(len(etas),len(lmdas),len(zetas),(n_species*(n_species+1)) //2)
         self.dim_descriptor = n_species*len(g2_etas) + n_species*(n_species+1)*len(etas)*len(zetas)*len(lmdas)//2
-        self.G2_params = {}
-        self.G4_params_etas = {}
-        self.G4_params_zetas = {}
-        self.G4_params_lmdas = {}
+        self.G2_params = torch.nn.Parameter(torch.zeros(       (n_species,n_species,len(g2_etas)) ),requires_grad=trainable)
+        self.G4_params_etas = torch.nn.Parameter(torch.zeros(  (n_species,n_species,n_species,len(etas)) ),requires_grad=trainable)
+        self.G4_params_zetas = torch.nn.Parameter(torch.zeros( (n_species,n_species,n_species,len(zetas)) ),requires_grad=trainable)
+        self.G4_params_lmdas = torch.nn.Parameter(torch.zeros( (n_species,n_species,n_species,len(lmdas)) ),requires_grad=trainable)
+
+
+        for i,atom1 in enumerate(self.atomic_numbers):
+            for j, atom2 in enumerate(self.atomic_numbers):
+                self.G2_params[i,j,:] = g2_etas.clone().detach()
+                for k in range( len(self.atomic_numbers)):
+                    atom3 = self.atomic_numbers[k]
+                    self.G4_params_etas [i,j,k,:] =  etas.clone().detach()
+                    self.G4_params_zetas[i,j,k,:] = zetas.clone().detach()
+                    self.G4_params_lmdas[i,j,k,:] = lmdas.clone().detach()
+
+
+
+        ## this is dummy.... need to be fixed later.... for index sorting
+
+        G2_params=[]
+        G4_params=[]
         for atom1 in self.atomic_numbers:
             for i, atom2 in enumerate(self.atomic_numbers):
-                self.G2_params[str((atom1,atom2))] = torch.nn.Parameter(g2_etas.clone().detach(), requires_grad=trainable)
+                G2_params.append(str((atom1,atom2)) )
                 for j in range(i, len(self.atomic_numbers)):
                     atom3 = self.atomic_numbers[j]
-                    self.G4_params_etas[str((atom1,atom2,atom3))] = torch.nn.Parameter(etas.clone().detach(), requires_grad=trainable)
-                    self.G4_params_zetas[str((atom1,atom2,atom3))] = torch.nn.Parameter(zetas.clone().detach(), requires_grad=trainable)
-                    self.G4_params_lmdas[str((atom1,atom2,atom3))] = torch.nn.Parameter(lmdas.clone().detach(), requires_grad=trainable)
-        self.G2_params       = torch.nn.ParameterDict(self.G2_params)
-        self.G4_params_etas  = torch.nn.ParameterDict(self.G4_params_etas)
-        self.G4_params_zetas = torch.nn.ParameterDict(self.G4_params_zetas)
-        self.G4_params_lmdas = torch.nn.ParameterDict(self.G4_params_lmdas)
+                    G4_params.append(str((atom1,atom2,atom3)))
+        self.idx_mapping=torch.zeros(self.max_atom,self.max_atom,self.max_atom,dtype=torch.long)
+        count=torch.zeros(self.max_atom,dtype=torch.long)
+        G4_params.sort()
+        G2_params.sort()
+        for atoms_triplet in G4_params:
 
+            atoms_triplet=eval(atoms_triplet)
+            self.idx_mapping[atoms_triplet[0],atoms_triplet[2],atoms_triplet[1]]=count[atoms_triplet[0]]
+            self.idx_mapping[atoms_triplet[0],atoms_triplet[1],atoms_triplet[2]]=count[atoms_triplet[0]]
+            count[atoms_triplet[0]]+=1
+        self.idx_mapping_g2=torch.zeros(self.max_atom,self.max_atom,dtype=torch.long)
+        count=torch.zeros(self.max_atom,dtype=torch.long)
+        for atoms_triplet in G2_params:
+            atoms_triplet=eval(atoms_triplet)
+            self.idx_mapping_g2[atoms_triplet[0],atoms_triplet[1]]=count[atoms_triplet[0]]
+            count[atoms_triplet[0]]+=1
     def forward(self, atomic_numbers, edge_index, D_st, id3_ba, id3_ca, cosφ_cab):
         eba_idx = id3_ba[id3_ba>id3_ca]
         eca_idx = id3_ca[id3_ba>id3_ca]
         cos_idx = cosφ_cab[id3_ba>id3_ca]
         D_ba = D_st[eba_idx]
         D_ca = D_st[eca_idx]
-
-        atom_idx = {atom: atomic_numbers == atom for atom in self.atomic_numbers}
-        atom_exist = {atom: atom_idx[atom].sum() > 0 for atom in self.atomic_numbers}
-
-        res_G4 = {atom: [] for atom in self.atomic_numbers}
-        for atoms_triplet in self.G4_params_etas.keys():
-            atom_a, atom_b, atom_c = eval(atoms_triplet)
-            eta = self.G4_params_etas[atoms_triplet]
-            zeta = self.G4_params_zetas[atoms_triplet]
-            lmda = self.G4_params_lmdas[atoms_triplet]
-            idx = ((atomic_numbers[edge_index[:,eba_idx][0,:]] == atom_b)
-                    *(atomic_numbers[edge_index[:,eba_idx][1,:]] == atom_a)
-                    *(atomic_numbers[edge_index[:,eca_idx][0,:]] == atom_c)) + \
-                  ((atomic_numbers[edge_index[:,eba_idx][0,:]] == atom_c)
-                    *(atomic_numbers[edge_index[:,eba_idx][1,:]] == atom_a)
-                    *(atomic_numbers[edge_index[:,eca_idx][0,:]] == atom_b)) 
-            R_ba = D_ba[idx]
-            R_ca = D_ca[idx]
-            R_bc = (R_ba*R_ba + R_ca*R_ca-2*R_ba*R_ca*cos_idx[idx]).sqrt()
-            cutoff = (
-                (0.5*torch.cos(torch.pi*R_ca/self.cutoff) + 0.5) * 
+        atom_exist = [atom  for atom in self.atomic_numbers if (atomic_numbers == atom).sum() > 0]
+        atomb=atomic_numbers[edge_index[:,eba_idx][0,:]] 
+        atomc=atomic_numbers[edge_index[:,eca_idx][0,:]] 
+        atoma=atomic_numbers[edge_index[:,eca_idx][1,:]] 
+        lmdas=self.G4_params_lmdas[self.atom_to_index[atoma],self.atom_to_index[atomb],self.atom_to_index[atomc],:]
+        etas=self.G4_params_etas  [self.atom_to_index[atoma],self.atom_to_index[atomb],self.atom_to_index[atomc],:]
+        zetas=self.G4_params_zetas[self.atom_to_index[atoma],self.atom_to_index[atomb],self.atom_to_index[atomc],:]
+        R_ba = D_ba                                                                                                                                                                    
+        R_ca = D_ca
+        R_bc = (R_ba*R_ba + R_ca*R_ca-2*R_ba*R_ca*cos_idx).sqrt()
+        cutoff = ((0.5*torch.cos(torch.pi*R_ca/self.cutoff) + 0.5) * 
                 (0.5*torch.cos(torch.pi*R_bc/self.cutoff) + 0.5) * 
-                (0.5*torch.cos(torch.pi*R_ba/self.cutoff) + 0.5) * 
-                (R_bc<self.cutoff) * 
-                (R_ba<self.cutoff) * 
-                (R_ca<self.cutoff)
-            )
-            rad = torch.exp(-eta.reshape(1,-1)*(R_bc*R_bc + R_ba*R_ba + R_ca*R_ca).reshape(-1,1))
-            cos_lmda = torch.pow(torch.abs(1+lmda.reshape(1,-1,1)*cos_idx[idx].reshape(-1,1,1)), zeta.reshape(1,1,-1))
-            res = cos_lmda.reshape(cos_lmda.shape[0],1,cos_lmda.shape[1],cos_lmda.shape[2]) * rad.reshape(rad.shape+(1,1)) * cutoff.reshape(-1,1,1,1)
-            g4_per_atom = torch.zeros((atomic_numbers.shape[0],)+res.shape[1:], device=res.device)
-            scatter(res, edge_index[:,eba_idx[idx]][1,:], dim=0, out=g4_per_atom)
-            if atom_exist[atom_a]:
-                res_G4[atom_a].append(torch.pow(2, 1-zeta) * g4_per_atom[atom_idx[atom_a]])
+                        (0.5*torch.cos(torch.pi*R_ba/self.cutoff) + 0.5) * 
+                        (R_bc<self.cutoff) * 
+                        (R_ba<self.cutoff) * 
+                        (R_ca<self.cutoff)
+                    )
+        rad = torch.exp(-etas*(R_bc*R_bc + R_ba*R_ba + R_ca*R_ca).reshape(-1,1))
+        cos_lmda = torch.pow(torch.abs(1+lmdas.unsqueeze(2)*cos_idx.reshape(-1,1,1)), zetas.unsqueeze(1))
+        res = cos_lmda.unsqueeze(1) * rad.reshape(rad.shape+(1,1)) * cutoff.reshape(-1,1,1,1)
+        res=torch.pow(2, 1-zetas.unsqueeze(1)).unsqueeze(1)*res
 
-        res_G2 = {atom: [] for atom in self.atomic_numbers}        
-        for atoms_pair, eta in self.G2_params.items():
-            source_atom, target_atom = eval(atoms_pair)
-            idx = (atomic_numbers[edge_index[1,:]] == target_atom) * (atomic_numbers[edge_index[0,:]] == source_atom)
-            cutoff = 0.5*torch.cos(torch.pi*D_st[idx]/self.cutoff) + 0.5
-            # eta = eta.to(D_st.device)
-            rad = torch.exp(-(eta).reshape(1,-1) * (D_st[idx]*D_st[idx]).reshape(-1,1))
-            res = cutoff.reshape(-1,1) * rad
-            out_per_atom = torch.zeros(atomic_numbers.shape[0], len(eta), device=res.device)
-            scatter(res, edge_index[1,idx], dim=0, out=out_per_atom)
-            if atom_exist[target_atom]:
-                res_G2[target_atom].append(out_per_atom[atom_idx[target_atom]])
+        res_g4=torch.zeros(self.g4_shape+atomic_numbers.shape)
+        res_g4=res_g4.reshape(-1,*res_g4.shape[:-2])
 
-        non_empty_atoms = []
-        for atom, val in res_G4.items():
-            if len(val) > 0:
-                val = torch.stack(val,dim=-1)
-                val = val.reshape(val.shape[0],-1)
-                res_G4[atom] = val
-                non_empty_atoms.append(atom)
-        for atom, val in res_G2.items():
-            if len(val) > 0:
-                val = torch.stack(val,dim=-1)
-                val = val.reshape(val.shape[0],-1)
-                res_G2[atom] = val
-        res = {atom: torch.cat([res_G2[atom],res_G4[atom]], dim=-1) for atom in non_empty_atoms}
+
+        descriptor_idx=self.idx_mapping[atoma,atomb,atomc]
+        descriptor_idx=descriptor_idx.to(edge_index.device)
+        res_g4=res_g4.to(edge_index.device)
+        idx=edge_index[:,eca_idx][1,:]+descriptor_idx*len(atomic_numbers)
+        scatter(res,idx,dim=0,out=res_g4)
+        res_g4=res_g4.reshape((self.n_species*(self.n_species+1))//2,len(atomic_numbers),*res_g4.shape[1:])
+        res_g4=res_g4.permute(1,2,3,4,0)
+
+
+        cutoff = 0.5*torch.cos(torch.pi*D_st/self.cutoff) + 0.5
+        eta=self.G2_params[self.atom_to_index[atomic_numbers[edge_index[1,:]]],self.atom_to_index[atomic_numbers[edge_index[0,:]]],:]
+        eta = eta.to(D_st.device)
+
+        rad = torch.exp(-(eta)* (D_st*D_st).reshape(-1,1))
+        res = cutoff.reshape(-1,1) * rad
+
+
+        res_g2 = torch.zeros(self.g2_shape+atomic_numbers.shape).to(edge_index.device)
+        res_g2=res_g2.reshape(-1,*res_g2.shape[:-2])
+        descriptor_idx=self.idx_mapping_g2[atomic_numbers[edge_index[1,:]],atomic_numbers[edge_index[0,:]]]
+        descriptor_idx=descriptor_idx.to(edge_index.device)
+        idx=edge_index[1,:]+descriptor_idx*len(atomic_numbers)
+        scatter(res, idx, dim=0, out=res_g2)
+        res_g2=res_g2.reshape(self.n_species ,len(atomic_numbers),*res_g2.shape[1:])
+        res_g2=res_g2.permute(1,2,0)
+
+
+        res={}
+        for atom in atom_exist:
+            res[atom]=res_g4[atom==atomic_numbers ,:]
+            g2=res_g2[atom==atomic_numbers ,:]
+            g4=res_g4[atom==atomic_numbers ,:]
+            res[atom]=torch.cat((g2.reshape(g2.shape[0],-1),g4.reshape(g4.shape[0],-1)),dim=-1)
         return res
+
+
+
+
+
+
+
 
 
 # some functions are defined in GemNet (ocpmodels.models.gemnet.gemnet.py)
@@ -209,6 +252,7 @@ class BPNN(BaseModel):
         direct_forces=False,
         # BPNN arguments
         atom_species=None,
+        use_pca=True, 
         pca_path=None,
         dataset_path=None,
         trainable=False,
@@ -218,7 +262,7 @@ class BPNN(BaseModel):
         g4_params=None,
     ):
         assert atom_species is not None
-
+       
         super().__init__()
 
         self.cutoff = cutoff
@@ -246,7 +290,7 @@ class BPNN(BaseModel):
             atom_types=self.atomic_numbers,
         )
 
-        if pca_path is None and dataset_path is None:
+        if not use_pca:
             bm_logging.warning("PCA is not used (if using PCA, BPNN accuarcy could be improved)")
             self.pca = None
         else:
@@ -484,6 +528,7 @@ class BPNN(BaseModel):
 
     @conditional_grad(torch.enable_grad())
     def forward(self, data):
+
         pos = data.pos
         batch = data.batch
         atomic_numbers = data.atomic_numbers.long()
@@ -513,8 +558,7 @@ class BPNN(BaseModel):
         out = self.per_atom_fcn(res)
         energy = torch.zeros(batch.max().item()+1, device=device)
         for atom in out.keys():
-            scatter(out[atom].squeeze(), batch_per_atom[atom], dim=0, out=energy)
-
+            scatter(out[atom].reshape(-1), batch_per_atom[atom], dim=0, out=energy)
         if self.regress_forces:
             forces = -torch.autograd.grad(energy.sum(), pos, create_graph=True)[0]
             return energy, forces
