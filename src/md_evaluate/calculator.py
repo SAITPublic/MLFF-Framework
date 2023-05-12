@@ -10,7 +10,6 @@ from ase.calculators.singlepoint import SinglePointCalculator
 from ocpmodels.common.registry import registry
 from ocpmodels.common.utils import load_state_dict
 from ocpmodels.modules.normalizer import Normalizer
-from ocpmodels.preprocessing import AtomsToGraphs
 
 from nequip.data import AtomicData, AtomicDataDict
 from nequip.utils.torch_geometric.batch import Batch as BatchNequIP
@@ -22,7 +21,7 @@ from src.common.collaters.parallel_collater_nequip import convert_ocp_Data_into_
 from src.common.collaters.parallel_collater_mace import convert_ocp_Data_into_mace_AtomicData
 from src.common.utils import bm_logging # benchmark logging
 from src.modules.normalizer import NormalizerPerAtom # per_atom_normalizer
-
+from src.preprocessing.atoms_to_graphs import AtomsToGraphsWithTolerance
 
 class BenchmarkCalculator(Calculator):
     
@@ -61,7 +60,7 @@ class BenchmarkCalculator(Calculator):
         # evaluation mode
         self.model.eval() 
         # because the input snapshots are new, we should use on-the-fly graph generation
-        self.model.otf_graph = True 
+        # self.model.otf_graph = ckpt_config["model_attributes"]["otf_graph"]        
 
         # set normalizers (if it exists)
         self.normalizers = {}
@@ -85,7 +84,7 @@ class BenchmarkCalculator(Calculator):
 
         # set data converter
         # 1) ase.Atoms -> torch_geometric (pyg) Data structure
-        self.atoms_to_pyg_data = AtomsToGraphs(
+        self.atoms_to_pyg_data = AtomsToGraphsWithTolerance(
             max_neigh=self.max_neighbors,
             radius=self.cutoff,
             r_energy=False, #True,
@@ -93,7 +92,8 @@ class BenchmarkCalculator(Calculator):
             r_fixed=True,
             r_distances=False,
             r_pbc=self.model.use_pbc,
-            r_edges=True, ## for on-the-fly
+            r_edges=(not self.model.otf_graph), # if model does not support on-the-fly edge generation, the data converter needs to get edges.
+            tolerance=1e-8,
         )
 
         # 2) pyg Data structure -> a data structure defined in each model
