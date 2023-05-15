@@ -85,7 +85,11 @@ class ACSF(torch.nn.Module):
         self.atomic_numbers = atomic_numbers
 
         self.max_atom=torch.max(torch.tensor(self.atomic_numbers))+1
-        self.atom_to_index=(self.max_atom+1)*torch.ones(self.max_atom,dtype=torch.long)
+        atom_to_index=(self.max_atom+1)*torch.ones(self.max_atom,dtype=torch.long)
+
+
+        self.register_buffer("atom_to_index", atom_to_index)
+
         atomic_number_str=[str(v) for v in atomic_numbers]
         atomic_number_str.sort()
         
@@ -145,7 +149,8 @@ class ACSF(torch.nn.Module):
                 for j in range(i, len(self.atomic_numbers)):
                     atom3 = self.atomic_numbers[j]
                     G4_params.append(str((atom1,atom2,atom3)))
-        self.idx_mapping=torch.zeros(self.max_atom,self.max_atom,self.max_atom,dtype=torch.long)
+        idx_mapping=torch.zeros(self.max_atom,self.max_atom,self.max_atom,dtype=torch.long)
+        self.register_buffer("idx_mapping", idx_mapping)
         count=torch.zeros(self.max_atom,dtype=torch.long)
         G4_params.sort()
         G2_params.sort()
@@ -155,7 +160,8 @@ class ACSF(torch.nn.Module):
             self.idx_mapping[atoms_triplet[0],atoms_triplet[2],atoms_triplet[1]]=count[atoms_triplet[0]]
             self.idx_mapping[atoms_triplet[0],atoms_triplet[1],atoms_triplet[2]]=count[atoms_triplet[0]]
             count[atoms_triplet[0]]+=1
-        self.idx_mapping_g2=torch.zeros(self.max_atom,self.max_atom,dtype=torch.long)
+        idx_mapping_g2=torch.zeros(self.max_atom,self.max_atom,dtype=torch.long)
+        self.register_buffer("idx_mapping_g2", idx_mapping_g2)
         count=torch.zeros(self.max_atom,dtype=torch.long)
         for atoms_triplet in G2_params:
             atoms_triplet=eval(atoms_triplet)
