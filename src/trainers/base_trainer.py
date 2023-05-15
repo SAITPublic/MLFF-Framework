@@ -395,12 +395,13 @@ class BaseTrainer(ABC):
         )
         if distutils.initialized() and not self.config["noddp"]:
             # wrapping pytorch DDP
-            if(self.config["model_name"]=='bpnn'):
+            if(self.config["model_name"]=='bpnn' or self.config["model_name"]=='allegro'):
                 self.model = DistributedDataParallel(
                 module=self.model, 
                 device_ids=[self.device],
                 find_unused_parameters=True
-            )
+                )
+            
             else:
                 self.model = DistributedDataParallel(
                 module=self.model, 
