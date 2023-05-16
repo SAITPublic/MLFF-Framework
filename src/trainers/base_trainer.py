@@ -283,9 +283,7 @@ class BaseTrainer(ABC):
                 pca_path = Path(dataset_path).parent / "BPNN_pca.pt"
             elif os.path.isdir(dataset_path):
                 # multi lmdb files
-                # TODO: handling multi lmdb files
                 pca_path = os.path.join(dataset_path, "BPNN_pca.pt")
-                raise NotImplementedError("Not implemented for dealing with multiple LMDB files.")
             else:
                 raise RuntimeError("Error")
             self.config["model_attributes"]["pca_path"] = pca_path
@@ -397,7 +395,15 @@ class BaseTrainer(ABC):
         )
         if distutils.initialized() and not self.config["noddp"]:
             # wrapping pytorch DDP
-            self.model = DistributedDataParallel(
+            if(self.config["model_name"]=='bpnn' or self.config["model_name"]=='allegro'):
+                self.model = DistributedDataParallel(
+                module=self.model, 
+                device_ids=[self.device],
+                find_unused_parameters=True
+                )
+            
+            else:
+                self.model = DistributedDataParallel(
                 module=self.model, 
                 device_ids=[self.device],
             )
