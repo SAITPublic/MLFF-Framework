@@ -305,7 +305,7 @@ class ForcesTrainer(BaseTrainer):
             else:
                 energy_target = self.normalizers["target"].norm(energy_target)
 
-        if self.config["optim"].get("loss_energy", "energy_per_atom_mse") in ["energy_per_atom_mse", "mse_per_atom"]:
+        if "per_atom" in self.config["optim"].get("loss_energy", "energy_per_atom_mse"):
             natoms = torch.cat(
                 [batch.natoms.to(self.device) for batch in batch_list], dim=0
             )
