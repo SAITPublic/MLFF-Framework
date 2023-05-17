@@ -1,8 +1,9 @@
 """
 Written by byunggook.na 
 
-functions which help to preprocess scripts
+functions used in the preprocessing script
 """
+
 import os
 import json
 import numpy as np
