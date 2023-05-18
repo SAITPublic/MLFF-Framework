@@ -43,10 +43,17 @@ class MACEForcesTrainer(ForcesTrainer):
     def _parse_config(self, config):
         trainer_config = super()._parse_config(config)
 
+        if trainer_config["dataset"].get("normalize_labels", True):
+            no_scale = trainer_config["model_attributes"].get("scaling", "rms_forces_scaling") == "no_scaling"
+            no_shift = not trainer_config["model_attributes"].get("shifting", False)
+            if no_scale and no_shift:
+                raise AttributeError("Please make the normalization option consistent. Change normalize_labels = False, or use scale or shift")
+        else:
+            bm_logging.info("Applying the data normalization is default in MACE, but the normalization turns off in this training")
+        
         # MACE does not need normalizer (they use own normaliation strategy)
         trainer_config["dataset"]["normalize_labels"] = False
-        trainer_config["model_attributes"]["dataset"] = trainer_config["dataset"]
-
+        
         # set hidden irreps
         hidden_irreps = trainer_config["model_attributes"].get("hidden_irreps", None)
         num_channels = trainer_config["model_attributes"].get("num_channels", None)
@@ -162,8 +169,8 @@ class MACEForcesTrainer(ForcesTrainer):
         bm_logging.info(f"Average number of neighbors: {avg_num_neighbors}")
 
         # 4. set scaling and shifting
+        scaling = self.config["model_attributes"].get("scaling", "rms_forces_scaling")
         if "scaling_type" not in mace_statistics:
-            scaling = self.config["model_attributes"].get("scaling", "rms_forces_scaling")
             if scaling == "no_scaling":
                 mean, std = 0.0, 1.0
                 bm_logging.info("No scaling (and neither shifting) selected")
@@ -183,10 +190,13 @@ class MACEForcesTrainer(ForcesTrainer):
             mace_statistics["mean"] = mean
             mace_statistics["std"] = std
         else:
+            if scaling != mace_statistics["scaling_type"]:
+                raise RuntimeError(f"There is difference between `scaling_type` in this training config and `scaling_type` saved in {mace_statistics_file_path}")
             mean = mace_statistics["mean"]
             std = mace_statistics["std"]
+
         if not self.config["model_attributes"].get("shifting", False):
-            # MACE
+            # MACE : no shifting
             self.config["model_attributes"]["atomic_inter_scale"] = std
             self.config["model_attributes"]["atomic_inter_shift"] = 0.0
         else:
