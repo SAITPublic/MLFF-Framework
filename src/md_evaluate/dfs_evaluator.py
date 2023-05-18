@@ -114,25 +114,34 @@ class DFEvaluator(BaseEvaluator):
         rdf_dict_mlff = {}
         adf_dict_mlff = {}
         for mlff_uid, mlff_traj_dict in self.config["mlff_md_traj"].items():
-            traj_atoms_mlff = \
-                DFEvaluator.get_traj_atoms(
-                    mlff_traj_dict["path"],
-                    index=mlff_traj_dict.get("index", ":"),
-                    format=mlff_traj_dict.get("format"),
-                    n_extend=mlff_traj_dict.get("n_extend")
-                )
+            try:
+                traj_atoms_mlff = \
+                    DFEvaluator.get_traj_atoms(
+                        mlff_traj_dict["path"],
+                        index=mlff_traj_dict.get("index", ":"),
+                        format=mlff_traj_dict.get("format"),
+                        n_extend=mlff_traj_dict.get("n_extend")
+                    )
+            except:
+                self.logger.info("trajectory for {} is missing. Skipping calculation for this trajectory".format(mlff_uid))
+                continue
+            
             out_identifier_mlff = "{}_{}".format(mlff_uid,
                                                  mlff_traj_dict["out_identifier"])
 
             self.logger.info(
                 "Start calculating distrubution functions for model '{}'".format(mlff_uid))
-            rdf_dict_mlff[mlff_uid], pair_list_mlff = \
-                self.calculate_rdf_fox(traj_atoms_mlff, out_identifier_mlff)
-            assert pair_list_ref == pair_list_mlff, \
-                "Atom types in 'mlff_md_traj' should be the same as those in 'ai_md_traj'"
+            try:
+                rdf_dict_mlff[mlff_uid], pair_list_mlff = \
+                    self.calculate_rdf_fox(traj_atoms_mlff, out_identifier_mlff)
+                assert pair_list_ref == pair_list_mlff, \
+                    "Atom types in 'mlff_md_traj' should be the same as those in 'ai_md_traj'"
 
-            adf_dict_mlff[mlff_uid], _ = self.calculate_adf_fox(
-                traj_atoms_mlff, out_identifier_mlff)
+                adf_dict_mlff[mlff_uid], _ = self.calculate_adf_fox(
+                    traj_atoms_mlff, out_identifier_mlff)
+            except:
+                self.logger.info("Failed to calculate rdf, adf for {}.".format(mlff_uid))
+                continue
 
         self.generate_comparison_figure(rdf_ref, rdf_dict_mlff, pair_list_ref,
                                         fig_name='RDF_compare')
