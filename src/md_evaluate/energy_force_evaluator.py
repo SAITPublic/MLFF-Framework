@@ -34,8 +34,6 @@ class EnergyForceEvaluator(BaseEvaluator):
             bm_logging.info(f"The output trajectory filling with the predicted energy and forces is saved at {self.save_traj_path}")
         
         self.measure_time = self.config["measure_time"]
-        if self.measure_time:
-            bm_logging.info(f"Time per snapshot and per atom will be displayed")
 
         self.metric_evaluator = MetricEvaluator(
             task="s2ef", 
@@ -51,6 +49,8 @@ class EnergyForceEvaluator(BaseEvaluator):
             for atoms in ref_traj[:10]:
                 self.calculator.calculate(atoms=atoms)
             time_per_sample = []
+            time_per_sample_data_preparation = []
+            time_per_sample_model_inference = []
             time_per_atom = []
 
         bm_logging.info("Start evaluation to predict energy and forces")
@@ -63,7 +63,7 @@ class EnergyForceEvaluator(BaseEvaluator):
             }
 
             start_calc = time.time()
-            self.calculator.calculate(atoms=atoms)
+            self.calculator.calculate(atoms=atoms, measure_time=self.measure_time)
             end_calc = time.time()
 
             pred = {
@@ -84,6 +84,8 @@ class EnergyForceEvaluator(BaseEvaluator):
             if self.measure_time:
                 time_per_sample.append(end_calc - start_calc)
                 time_per_atom.append((end_calc - start_calc)/target["natoms"])
+                time_per_sample_data_preparation.append(self.calculator.time_data_preparation)
+                time_per_sample_model_inference.append(self.calculator.time_model_inference)
 
         table = PrettyTable()
         table.field_names = ["dataset"] + [metric_name for metric_name in self.metric_evaluator.metric_fn]
@@ -109,6 +111,8 @@ class EnergyForceEvaluator(BaseEvaluator):
                     bm_logging.info(f"{time_type}: {avg_time*1000000:.2f} us")
 
             print_log("Time per sample", np.mean(time_per_sample))
+            print_log("-- data preparation", np.mean(time_per_sample_data_preparation))
+            print_log("-- model inference", np.mean(time_per_sample_model_inference))
             print_log("Time per atom", np.mean(time_per_atom))
                 
 
