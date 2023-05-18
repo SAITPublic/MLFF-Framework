@@ -10,7 +10,6 @@ import ase
 from ocpmodels.common.registry import registry
 from ocpmodels.common.utils import conditional_grad
 from ocpmodels.models.base import BaseModel
-from ocpmodels.datasets import LmdbDataset 
 
 # pre-defined modules in MACE
 from mace.modules import ScaleShiftMACE

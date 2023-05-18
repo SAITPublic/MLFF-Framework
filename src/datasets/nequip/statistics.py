@@ -44,7 +44,7 @@ def compute_avg_num_neighbors(config, initialize, dataset, transform):
             # raise RuntimeError("avg_num_neighbors = auto but initialize is False")
             # TODO: exclude the avg_num_neighbors computation when loading a checkpoint
             bm_logging.info("When `initialize` is set as False, the avg_num_neighbors will be loaded from the checkpoint")
-            bm_logging.ifno("But, for now, you need to a file which includes avg_num_neighbors")
+            bm_logging.info("But, for now, you need to a file which includes avg_num_neighbors")
         if dataset is None:
             raise RuntimeError("When avg_num_neighbors = auto, the dataset is required")
         _mean, _std = statistics(
