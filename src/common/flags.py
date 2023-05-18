@@ -119,6 +119,18 @@ class BenchmarkFlags(Flags):
             type=str,
             help="Path to a reference trajectory (.extxyz)",
         )
+        self.parser.add_argument(
+            "--save-ef",
+            default=False,
+            action="store_true", 
+            help="Save a trajectory where energy and forces are predicted by a given MLFF model",
+        )
+        self.parser.add_argument(
+            "--measure-time-per-snapshot",
+            default=False,
+            action="store_true", 
+            help="Measure the inference time per snapshot",
+        )
         
 
 benchmark_flags = BenchmarkFlags()

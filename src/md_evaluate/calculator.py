@@ -87,8 +87,8 @@ class BenchmarkCalculator(Calculator):
         self.atoms_to_pyg_data = AtomsToGraphsWithTolerance(
             max_neigh=self.max_neighbors,
             radius=self.cutoff,
-            r_energy=False, #True,
-            r_forces=False, #True,
+            r_energy=True, #True,
+            r_forces=True, #True,
             r_fixed=True,
             r_distances=False,
             r_pbc=self.model.use_pbc,

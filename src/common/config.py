@@ -93,8 +93,12 @@ def build_run_md_config(args):
 def build_evaluate_config(args):
     if (args.evaluation_metric in ["ef", "energy_force"]
         and args.evaluation_config_yml is None):
-        assert args.reference_trajectory is not None
-        config = {"reference_trajectory": args.reference_trajectory}
+        assert args.reference_trajectory is not None, "--reference-trajectory should be given."
+        config = {
+            "reference_trajectory": args.reference_trajectory,
+            "save_ef": args.save_ef,
+            "measure_time_per_snapshot": args.measure_time_per_snapshot,
+        }
     else:
         config = load_config_with_warn(
             args.evaluation_config_yml,
