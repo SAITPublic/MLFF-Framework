@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 from scipy import interpolate, optimize
 from collections import defaultdict
+import traceback
 
 from ase import io
 
@@ -50,8 +51,8 @@ class PEWEvaluator(BaseEvaluator):
         r0_mlff = min(min_dist_list, key=lambda x: abs(x-r0_ref))
         E0_mlff = float(f_mlff(r0_mlff))
 
-        self.logger.debug("[mlff model] r0: {}, E0: {}".format(r0_mlff, E0_mlff))
-        self.logger.debug("[mlff model] min_dist_list: {}, min_PE_list: {}".format(
+        self.logger.info("[mlff model] r0: {}, E0: {}".format(r0_mlff, E0_mlff))
+        self.logger.info("[mlff model] min_dist_list: {}, min_PE_list: {}".format(
             min_dist_list, min_PE_list))
 
         pe_mae = calc_error_metric(df_combined["PE_mlff"].values,
@@ -115,7 +116,7 @@ class PEWEvaluator(BaseEvaluator):
         # plt.show()
         if save_res:
             plt.savefig(fig_out_path)
-            self.logger.debug("Figure to compare PE Well was saved in {}".format(fig_out_path))
+            self.logger.info("Figure to compare PE Well was saved in {}".format(fig_out_path))
         # plt.close('all')
 
     def load_reference_results(self, file_path):
@@ -128,7 +129,7 @@ class PEWEvaluator(BaseEvaluator):
 
         df_ref = pd.DataFrame(data_ref)
         df_ref.set_index("dist", inplace=True)
-        self.logger.debug("Number of data points for pe_well (reference): {}".format(
+        self.logger.info("Number of data points for pe_well (reference): {}".format(
             df_ref.shape[0]))
         return df_ref
 
@@ -159,11 +160,12 @@ class PEWEvaluator(BaseEvaluator):
                         atoms.set_positions([(0, 0, 0), (dist, 0, 0)])
                         pe = atoms.get_potential_energy()
                     except:
-                        self.logger.debug(calc_failure_msg_template.format(
+                        print(calc_failure_msg_template.format(
                             structure_name, dist))
+                        print(traceback.format_exc())
                         pe = np.nan
 
-                    self.logger.debug("dist: {}, PE: {}".format(dist, pe))
+                    print("dist: {}, PE: {}".format(dist, pe))
                     data["dist"].append(dist)
                     data["PE"].append(pe)
 
@@ -179,11 +181,12 @@ class PEWEvaluator(BaseEvaluator):
                     try:
                         pe = atoms.get_potential_energy()
                     except:
-                        self.logger.debug(calc_failure_msg_template.format(
+                        print(calc_failure_msg_template.format(
                             structure_name, scale_suffix))
+                        print(traceback.format_exc())
                         pe = np.nan
 
-                    self.logger.debug("dist: {}, PE: {}".format(scale_suffix, pe))
+                    print("dist: {}, PE: {}".format(scale_suffix, pe))
                     data["dist"].append(scale_suffix)
                     data["PE"].append(pe)
 
