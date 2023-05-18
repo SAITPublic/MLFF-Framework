@@ -126,10 +126,10 @@ class BenchmarkFlags(Flags):
             help="Save a trajectory where energy and forces are predicted by a given MLFF model",
         )
         self.parser.add_argument(
-            "--measure-time-per-snapshot",
+            "--measure-time",
             default=False,
             action="store_true", 
-            help="Measure the inference time per snapshot",
+            help="Measure the average inference time per snapshot and per atom",
         )
         
 

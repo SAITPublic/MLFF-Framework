@@ -97,7 +97,7 @@ def build_evaluate_config(args):
         config = {
             "reference_trajectory": args.reference_trajectory,
             "save_ef": args.save_ef,
-            "measure_time_per_snapshot": args.measure_time_per_snapshot,
+            "measure_time": args.measure_time,
         }
     else:
         config = load_config_with_warn(
