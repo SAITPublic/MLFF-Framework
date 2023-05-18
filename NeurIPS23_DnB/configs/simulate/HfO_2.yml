@@ -1,6 +1,6 @@
 identifier: run_20230502
 seed: 20230502
-# device: cuda:5
+# device: cuda:6
 
 initial_structure: 
   path: /workspace/dataset_AIMD/HfO/{STRUCTURE}/POSCAR
@@ -17,4 +17,4 @@ thermostat: NoseHoover   # thermostat: Langevin
 nh_relax_timesteps: 20   # langevin_thermostat_coeff: 0.001
 save_freq: 20
 
-# n_super: [ 2, 2, 2]  # optional
+n_super: [ 2, 2, 2]  # optional

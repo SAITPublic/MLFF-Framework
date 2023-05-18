@@ -2,16 +2,16 @@
 eos_type: birchmurnaghan
 
 ref_structure:
-  path: /workspace/structures/HfO/1/POSCAR_no_scale
+  path: /workspace/structures/{STRUCTURE}/POSCAR_no_scale
   format: vasp
 scale_factors: 
   start: 0.97
   end: 1.05
   interval: 0.005
 reference_result:
-  dir: /workspace/structures/HfO/1
+  dir: /workspace/structures/{STRUCTURE}
   volume_energy_fname: energy_volume.dat
   save_eos_fit: True
 
-res_out_dir: /workspace/ocp/traj_and_metrics/GemNet-dT_HfOv1-dataset2/1/test
-res_fig_name: compare_eos_gemnet_dT_birchmurnaghan.png
+res_out_dir: /workspace/for_benchmark/HfO_v1/materials_metrics/eos/{STRUCTURE}/{MODEL_NAME}
+res_fig_name: compare_eos_birchmurnaghan.png
