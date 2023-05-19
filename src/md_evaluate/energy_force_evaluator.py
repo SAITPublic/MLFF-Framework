@@ -8,6 +8,7 @@ import time
 
 from prettytable import PrettyTable
 from pathlib import Path
+from tqdm import tqdm
 
 import ase
 import ase.io
@@ -55,7 +56,7 @@ class EnergyForceEvaluator(BaseEvaluator):
 
         bm_logging.info("Start evaluation to predict energy and forces")
         metrics = {}
-        for atoms in ref_traj:
+        for atoms in tqdm(ref_traj):
             target = {
                 "energy": torch.tensor(atoms.info["energy"], dtype=torch.float32),
                 "forces": torch.tensor(atoms.arrays["forces"]),
