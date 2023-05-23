@@ -15,5 +15,6 @@ CUDA_VISIBLE_DEVICES=$GPU python main.py \
     --evaluation-metric ef \
     --checkpoint ${CKPT} \
     --reference-trajectory $DATA \
+    --measure-time \
+#    --save-ef \
 
-#cd $CURRENT_PATH
