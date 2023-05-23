@@ -23,6 +23,8 @@ from src.common.utils import bm_logging # benchmark logging
 from src.modules.normalizer import NormalizerPerAtom # per_atom_normalizer
 from src.preprocessing.atoms_to_graphs import AtomsToGraphsWithTolerance
 
+import time
+
 class BenchmarkCalculator(Calculator):
     
     implemented_properties = ["energy", "forces"]
@@ -87,8 +89,8 @@ class BenchmarkCalculator(Calculator):
         self.atoms_to_pyg_data = AtomsToGraphsWithTolerance(
             max_neigh=self.max_neighbors,
             radius=self.cutoff,
-            r_energy=False, #True,
-            r_forces=False, #True,
+            r_energy=True, #True,
+            r_forces=True, #True,
             r_fixed=True,
             r_distances=False,
             r_pbc=self.model.use_pbc,
@@ -159,7 +161,7 @@ class BenchmarkCalculator(Calculator):
                 forces = self.normalizers["grad_target"].denorm(forces)
             return energy, forces
 
-    def calculate(self, atoms=None, properties=["energy", "forces"], system_changes=all_changes):
+    def calculate(self, atoms=None, properties=["energy", "forces"], system_changes=all_changes, measure_time=False):
         """
         atoms: ase.Atoms
         """
@@ -167,17 +169,24 @@ class BenchmarkCalculator(Calculator):
         Calculator.calculate(self, atoms=atoms, properties=properties, system_changes=system_changes)
 
         # convert atoms (ASE) into a data batch format compaitible with MLFF models
+        t1 = time.time()
         batch = self.convert_atoms_to_batch(atoms)
         batch = batch.to(self.device)
         
         # MLFF model inference
+        t2 = time.time()
         energy, forces = self.model(batch)
 
         # de-normalization (if it is used)
         energy, forces = self.denormalization(energy, forces)
+        t3 = time.time()
         
         # save the results
         self.results = {
             "energy": energy.item(),
             "forces": forces.detach().cpu().numpy(),
         }
+
+        if measure_time:
+            self.time_data_preparation = t2-t1
+            self.time_model_inference = t3-t2
