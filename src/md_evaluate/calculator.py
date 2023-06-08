@@ -1,4 +1,5 @@
 from collections import OrderedDict
+import time
 
 import torch
 from torch_geometric.data import Data, Batch
@@ -23,7 +24,6 @@ from src.common.utils import bm_logging # benchmark logging
 from src.modules.normalizer import NormalizerPerAtom, log_and_check_normalizers
 from src.preprocessing.atoms_to_graphs import AtomsToGraphsWithTolerance
 
-import time
 
 class BenchmarkCalculator(Calculator):
     
@@ -44,10 +44,10 @@ class BenchmarkCalculator(Calculator):
         self.model = model_class(
             num_atoms = None, # not used
             bond_feat_dim = None, # not used
-            num_targets = 1, # always 1
+            num_targets = 1, # always 1 (for energy)
             **ckpt_config["model_attributes"],
         )
-        bm_logging.info(f"Set a calculator based on {self.model_name} class (direct force prediction: {ckpt_config['model_attributes']['direct_forces']})")
+        bm_logging.info(f"Set a calculator based on {self.model_name} class (direct force prediction: {ckpt_config['model_attributes'].get('direct_forces', False)})")
 
         # load the trained parameters of the model (and move it to GPU)
         model_state_dict = OrderedDict()
@@ -61,8 +61,6 @@ class BenchmarkCalculator(Calculator):
 
         # evaluation mode
         self.model.eval() 
-        # because the input snapshots are new, we should use on-the-fly graph generation
-        # self.model.otf_graph = ckpt_config["model_attributes"]["otf_graph"]        
 
         # set normalizers (if it exists)
         self.normalizers = {}
@@ -87,8 +85,8 @@ class BenchmarkCalculator(Calculator):
         self.atoms_to_pyg_data = AtomsToGraphsWithTolerance(
             max_neigh=self.max_neighbors,
             radius=self.cutoff,
-            r_energy=True, #True,
-            r_forces=True, #True,
+            r_energy=False,
+            r_forces=False,
             r_fixed=True,
             r_distances=False,
             r_pbc=self.model.use_pbc,
@@ -105,38 +103,20 @@ class BenchmarkCalculator(Calculator):
             self.convert_atoms_to_batch = self.convert_atoms_to_ocp_batch
 
     def convert_atoms_to_ocp_batch(self, atoms):
-        # convert atoms into pytorch_geometric data
-        # : otf = True, which means the atoms are converted into graph in model forward() on-the-fly
+        # convert ase.Atoms into pytorch_geometric data
         data = self.atoms_to_pyg_data.convert(atoms)
         batch = Batch.from_data_list([data]) # batch size = 1
         return batch
 
     def convert_atoms_to_nequip_batch(self, atoms):
-        # convert atoms into AtomicData of NequIP
-        # : When constructing AtomicData, the atoms are converted into graph
-        # data = AtomicData.from_ase(atoms=atoms, r_max=self.cutoff)
-        # # remove labels
-        # for k in AtomicDataDict.ALL_ENERGY_KEYS:
-        #     if k in data:
-        #         del data[k]
-        # data = self.model.type_mapper(data)
-        # data.pbc = self.pbc
-        # batch = BatchNequIP.from_data_list([data]) # batch size = 1
-        # batch = batch.to(self.device)
-        # return batch
+        # convert ase.Atoms into AtomicData of NequIP
         data = self.atoms_to_pyg_data.convert(atoms)
         data = convert_ocp_Data_into_nequip_AtomicData(data, self.model.type_mapper)
         batch = BatchNequIP.from_data_list([data]) # batch size = 1
         return batch
 
     def convert_atoms_to_mace_batch(self, atoms):
-        # convert atoms into AtomicData of MACE
-        # : When constructing mace_data.AtomicData, the atoms are converted into graph
-        # config = mace_data.config_from_atoms(atoms)
-        # data = mace_data.AtomicData.from_config(config, z_table=self.model.z_table, cutoff=self.cutoff)
-        # data.pbc = self.pbc
-        # batch = BatchMACE.from_data_list([data]) # batch size = 1
-        # return batch
+        # convert ase.Atoms into AtomicData of MACE
         data = self.atoms_to_pyg_data.convert(atoms)
         data = convert_ocp_Data_into_mace_AtomicData(data, self.model.z_table)
         batch = BatchMACE.from_data_list([data]) # batch size = 1
@@ -166,7 +146,7 @@ class BenchmarkCalculator(Calculator):
         # set atoms attribute
         Calculator.calculate(self, atoms=atoms, properties=properties, system_changes=system_changes)
 
-        # convert atoms (ASE) into a data batch format compaitible with MLFF models
+        # convert ase.Atoms into a data batch format compaitible with MLFF models
         t1 = time.time()
         batch = self.convert_atoms_to_batch(atoms)
         batch = batch.to(self.device)
@@ -175,7 +155,7 @@ class BenchmarkCalculator(Calculator):
         t2 = time.time()
         energy, forces = self.model(batch)
 
-        # de-normalization (if it is used)
+        # de-normalization (if it was used during training the model)
         energy, forces = self.denormalization(energy, forces)
         t3 = time.time()
         
