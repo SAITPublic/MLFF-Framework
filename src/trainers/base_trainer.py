@@ -126,7 +126,6 @@ class BaseTrainer(ABC):
         timestamp_id = config["timestamp_id"]
         trainer_config = {
             "task": config["task"],
-            # "trainer": config["trainer"],
             "model_name": config["model"].pop("name"),
             "model_attributes": config["model"],
             "optim": config["optim"],
@@ -243,37 +242,6 @@ class BaseTrainer(ABC):
             otf_graph=self.config["model_attributes"].get("otf_graph", False),
         )
 
-    def check_self_edge_in_same_cell(self, dataset):
-        if self.config["model_attributes"].get("otf_graph", False):
-            return True
-
-        def _check(data):
-            mask_self_edge = (data.edge_index[0] == data.edge_index[1])
-            mask_self_edge_in_same_cell = mask_self_edge & torch.all(data.cell_offsets == 0, dim=1)
-            assert (mask_self_edge_in_same_cell).sum() == 0
-
-        if self.config["gpus"] <= 1:
-            for data in dataset:
-                _check(data)
-        else:
-            return True
-            # check using multiple ranks
-            # num_devices = min(self.config["gpus"], len(data_list))
-            # count = torch.tensor([data.num_nodes for data in data_list])
-            # cumsum = count.cumsum(0)
-            # cumsum = torch.cat([cumsum.new_zeros(1), cumsum], dim=0)
-            # device_id = num_devices * cumsum.to(torch.float) / cumsum[-1].item()
-            # device_id = (device_id[:-1] + device_id[1:]) / 2.0
-            # device_id = device_id.to(torch.long)
-            # split = device_id.bincount().cumsum(0)
-            # split = torch.cat([split.new_zeros(1), split], dim=0)
-            # split = torch.unique(split, sorted=True)
-            # split = split.tolist()
-            
-            # rank = distutils.get_rank()
-            # for data in dataset[split[rank] : split[rank+1]]:
-            #     _check(data)
-
     def _do_data_related_settings(self):
         """ After setting dataset and loader, this function is called."""
         if self.config["model_name"] == "bpnn":
@@ -305,7 +273,6 @@ class BaseTrainer(ABC):
         if self.config.get("dataset", None) and self.flag_loading_dataset:
             bm_logging.info(f"Loading train dataset (type: {self.config['task']['dataset']}): {self.config['dataset']['src']}")
             self.train_dataset = dataset_class(self.config["dataset"])
-            self.check_self_edge_in_same_cell(self.train_dataset)
             self.train_sampler = self.get_sampler(
                 dataset=self.train_dataset,
                 batch_size=train_local_batch_size,
@@ -322,7 +289,6 @@ class BaseTrainer(ABC):
         if self.config.get("val_dataset", None) and self.flag_loading_dataset:
             bm_logging.info(f"Loading validation dataset (type: {self.config['task']['dataset']}): {self.config['val_dataset']['src']}")
             self.val_dataset = dataset_class(self.config["val_dataset"])
-            self.check_self_edge_in_same_cell(self.val_dataset)
             self.val_sampler = self.get_sampler(
                 dataset=self.val_dataset,
                 batch_size=eval_local_batch_size,
@@ -339,7 +305,6 @@ class BaseTrainer(ABC):
         if self.config.get("test_dataset", None) and self.flag_loading_dataset:
             bm_logging.info(f"Loading test dataset (type: {self.config['task']['dataset']}): {self.config['test_dataset']['src']}")
             self.test_dataset = dataset_class(self.config["test_dataset"])
-            self.check_self_edge_in_same_cell(self.test_dataset)
             self.test_sampler = self.get_sampler(
                 dataset=self.test_dataset,
                 batch_size=eval_local_batch_size,
@@ -366,15 +331,6 @@ class BaseTrainer(ABC):
     def _set_model(self):
         # Build model
         bm_logging.info(f"Loading model: {self.config['model_name']}")
-
-        # TODO : check and remove if it is useless
-        # num_atoms = None
-        # if (self.train_loader 
-        #     and hasattr(self.train_loader.dataset[0], "x") 
-        #     and self.train_loader.dataset[0].x is not None
-        # ):
-        #     num_atoms = loader.dataset[0].x.shape[-1]
-        
         model_class = registry.get_model_class(self.config["model_name"])
         self.model = model_class(
             num_atoms = None, # useless
