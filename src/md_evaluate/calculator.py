@@ -20,7 +20,7 @@ from mace.tools.torch_geometric.batch import Batch as BatchMACE
 from src.common.collaters.parallel_collater_nequip import convert_ocp_Data_into_nequip_AtomicData
 from src.common.collaters.parallel_collater_mace import convert_ocp_Data_into_mace_AtomicData
 from src.common.utils import bm_logging # benchmark logging
-from src.modules.normalizer import NormalizerPerAtom # per_atom_normalizer
+from src.modules.normalizer import NormalizerPerAtom, log_and_check_normalizers
 from src.preprocessing.atoms_to_graphs import AtomsToGraphsWithTolerance
 
 import time
@@ -47,7 +47,7 @@ class BenchmarkCalculator(Calculator):
             num_targets = 1, # always 1
             **ckpt_config["model_attributes"],
         )
-        bm_logging.info(f"Set a calculator based on {self.model_name} class")
+        bm_logging.info(f"Set a calculator based on {self.model_name} class (direct force prediction: {ckpt_config['model_attributes']['direct_forces']})")
 
         # load the trained parameters of the model (and move it to GPU)
         model_state_dict = OrderedDict()
@@ -75,9 +75,7 @@ class BenchmarkCalculator(Calculator):
             self.normalizers["target"].load_state_dict(ckpt["normalizers"]["target"])
             self.normalizers["grad_target"] = Normalizer(mean=0.0, std=1.0, device=self.device)
             self.normalizers["grad_target"].load_state_dict(ckpt["normalizers"]["grad_target"])
-            bm_logging.info(f"Loaded normalizers")
-            bm_logging.info(f" - energy ({type(self.normalizers['target'])}): shift ({self.normalizers['target'].mean}) scale ({self.normalizers['target'].std})")
-            bm_logging.info(f" - forces ({type(self.normalizers['grad_target'])}): shift ({self.normalizers['grad_target'].mean}) scale ({self.normalizers['grad_target'].std})")
+            log_and_check_normalizers(self.normalizers["target"], self.normalizers["grad_target"], loaded=True)
         
         # extract arguments required to convert atom data into graph ocp data
         self.cutoff = self.model.cutoff

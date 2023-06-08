@@ -113,9 +113,8 @@ class ForcesTrainer(BaseTrainer):
             else:
                 self.normalizers["target"] = Normalizer(mean=shift, std=scale, device=self.device)
 
-            bm_logging.info(f"Set normalizers")
-            bm_logging.info(f" - energy ({type(self.normalizers['target'])}): shift ({self.normalizers['target'].mean}) scale ({self.normalizers['target'].std})")
-            bm_logging.info(f" - forces ({type(self.normalizers['grad_target'])}): shift ({self.normalizers['grad_target'].mean}) scale ({self.normalizers['grad_target'].std})")
+            # logging the status of normalizers
+            log_and_check_normalizers(self.normalizers["target"], self.normalizers["grad_target"], loaded=False)
             
     def _set_task(self):
         # most models have a scaler energy output (meaning that num_targets = 1)

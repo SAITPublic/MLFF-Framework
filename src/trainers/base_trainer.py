@@ -54,6 +54,7 @@ from src.modules.loss import initiate_loss
 from src.modules.scheduler import LRScheduler
 from src.modules.metric_evaluator import MetricEvaluator
 from src.common.collaters.parallel_collater import ParallelCollater
+from src.modules.normalizer import log_and_check_normalizers
 
 
 @registry.register_trainer("base")
@@ -559,9 +560,7 @@ class BaseTrainer(ABC):
                     self.normalizers[key].load_state_dict(checkpoint["normalizers"][key])
                 else:
                     bm_logging.warning(f"{key} in checkpoint cannot be used")
-            bm_logging.info(f"Load normalizers from the checkpoint")
-            bm_logging.info(f" - energy ({type(self.normalizers['target'])}): shift ({self.normalizers['target'].mean}) scale ({self.normalizers['target'].std})")
-            bm_logging.info(f" - forces ({type(self.normalizers['grad_target'])}): shift ({self.normalizers['grad_target'].mean}) scale ({self.normalizers['grad_target'].std})")
+            log_and_check_normalizers(self.normalizers["target"], self.normalizers["grad_target"], loaded=True)
 
         if self.scaler and checkpoint["amp"]:
             self.scaler.load_state_dict(checkpoint["amp"])
