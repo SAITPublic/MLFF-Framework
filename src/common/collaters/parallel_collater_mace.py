@@ -43,10 +43,10 @@ def convert_ocp_Data_into_mace_AtomicData(ocp_data, z_table):
     kwargs["shifts"] = torch.mm(kwargs["unit_shifts"], kwargs["cell"])  # [n_edges, 3]
     
     # forces
-    kwargs["forces"] = ocp_data.force
+    kwargs["forces"] = ocp_data.force if hasattr(ocp_data, 'force') else None
 
     # total_energy and free_energy (which are identical for now)
-    kwargs["energy"] = torch.tensor(ocp_data.y)
+    kwargs["energy"] = torch.tensor(ocp_data.y) if hasattr(ocp_data, 'y') and ocp_data.y is not None else None
 
     # the arguments below are not used in this benchmark
     kwargs['weight'] = None
@@ -63,7 +63,7 @@ def convert_ocp_Data_into_mace_AtomicData(ocp_data, z_table):
     data = AtomicData(**kwargs)
 
     # for free_energy
-    data.free_energy = torch.tensor(ocp_data.y)
+    data.free_energy = torch.tensor(ocp_data.y) if hasattr(ocp_data, 'y') and ocp_data.y is not None else None
 
     # Additional information used in an OCP-based trainer
     # fixed atoms

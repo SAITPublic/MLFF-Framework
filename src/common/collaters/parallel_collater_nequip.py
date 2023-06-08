@@ -41,11 +41,13 @@ def convert_ocp_Data_into_nequip_AtomicData(ocp_data, transform):
     kwargs["edge_index"] = ocp_data.edge_index[[1, 0]] 
     
     # forces
-    kwargs["forces"] = ocp_data.force
+    if hasattr(ocp_data, 'force'):
+        kwargs["forces"] = ocp_data.force
 
     # total_energy and free_energy (which are identical for now)
-    kwargs["total_energy"] = torch.tensor(ocp_data.y)
-    kwargs["free_energy"] = torch.tensor(ocp_data.y)
+    if hasattr(ocp_data, 'y') and ocp_data.y is not None:
+        kwargs["total_energy"] = torch.tensor(ocp_data.y)
+        kwargs["free_energy"] = torch.tensor(ocp_data.y)
 
     # pbc (deprecated)
     # : this is not used in NequIP model forward
