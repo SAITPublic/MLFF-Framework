@@ -36,8 +36,15 @@ class BenchmarkCalculator(Calculator):
         assert ckpt is not None
         ckpt_config = ckpt["config"]
         self.model_name = ckpt_config["model_name"]
+
+        # adjust the model-specific attributes for evaluation mode
         if self.model_name in ["nequip", "allegro"]:
             ckpt_config["model_attributes"]["initialize"] = False
+        elif self.model_name in ["bpnn"]:
+            # make the model independent to training dataset
+            ckpt_config["model_attributes"]["otf_graph"] = True
+            ckpt_config["model_attributes"]["pca_path"] = None
+            ckpt_config["model_attributes"]["dataset_path"] = None
 
         # construct a model in the ckpt
         model_class = registry.get_model_class(self.model_name)
@@ -57,6 +64,12 @@ class BenchmarkCalculator(Calculator):
                 k = k[7:]
             model_state_dict[k] = val
         load_state_dict(module=self.model, state_dict=model_state_dict, strict=True)
+
+        # load auxiliary tensors for some models
+        if self.model_name in ["bpnn"]:
+            self.model.pca = ckpt["pca"]
+
+        # move the model in GPU
         self.model = self.model.to(self.device)
 
         # evaluation mode
