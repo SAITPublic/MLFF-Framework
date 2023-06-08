@@ -31,8 +31,11 @@ from src.common.utils import bm_logging # benchmark logging
 
 def set_model_config_based_on_data_statistics(model_config, type_mapper, dataset_name, data_normalization=True, initialize=True):
     # add statistics results to config
-    assert dataset_name is not None
-    dataset = LmdbDataset(dataset_name)
+    if initialize:
+        assert dataset_name is not None
+        dataset = LmdbDataset(dataset_name)
+    else:
+        dataset = None
 
     # 1) avg_num_neighbors (required by EnergyModel)
     avg_num_neighbors = compute_avg_num_neighbors(
@@ -78,7 +81,8 @@ def set_model_config_based_on_data_statistics(model_config, type_mapper, dataset
         model_config["global_rescale_shift"] = global_shift
         model_config["global_rescale_scale"] = global_scale
 
-    dataset.close_db()
+    if dataset is not None:
+        dataset.close_db()
     return model_config
 
 
@@ -225,6 +229,8 @@ class NequIPWrap(BaseModel):
             data_normalization=data_normalization,
             initialize=initialize,
         )
+
+        self.avg_num_neighbors = model_config["avg_num_neighbors"]
 
         # constrcut the NequIP model
         builders = [eval(module) for module in model_config["model_builders"]]

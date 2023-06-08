@@ -38,8 +38,7 @@ from ocpmodels.modules.scaling.util import ensure_fitted
 from src.common.utils import bm_logging # benchmark logging
 from src.common.logger import parse_logs
 from src.trainers.base_trainer import BaseTrainer
-from src.modules.normalizer import NormalizerPerAtom # per_atom_normalizer
-
+from src.modules.normalizer import NormalizerPerAtom, log_and_check_normalizers
 
 
 @registry.register_trainer("forces")
@@ -162,7 +161,7 @@ class ForcesTrainer(BaseTrainer):
         else:
             primary_metric = self.primary_metric
         self.metrics = {}
-
+        
         # Calculate start_epoch from step instead of loading the epoch number
         # to prevent inconsistencies due to different batch size in checkpoint.
         start_epoch = self.step // len(self.train_loader)

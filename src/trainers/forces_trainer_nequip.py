@@ -35,7 +35,7 @@ class NequIPForcesTrainer(ForcesTrainer):
         if not trainer_config["dataset"].get("normalize_labels", True):
             bm_logging.info("Applying the data normalization is default in NequIP (or Allegro), but the normalization turns off in this training")
         trainer_config["model_attributes"]["data_normalization"] = trainer_config["dataset"].get("normalize_labels", True)
-        trainer_config["model_attributes"]["dataset"] = trainer_config["dataset"]
+        trainer_config["model_attributes"]["dataset"] = {"src": trainer_config["dataset"]["src"]}
 
         # NequIP, Allegro does not need normalizer (they use own normaliation strategy)
         trainer_config["dataset"]["normalize_labels"] = False
@@ -128,4 +128,12 @@ class NequIPForcesTrainer(ForcesTrainer):
                 out["energy"] = _out[AtomicDataDict.TOTAL_ENERGY_KEY]
                 out["forces"] = _out[AtomicDataDict.FORCE_KEY]
         
-        return super()._compute_metrics(out=out, batch_list=batch_list, evaluator=evaluator, metrics=metrics)    
+        return super()._compute_metrics(out=out, batch_list=batch_list, evaluator=evaluator, metrics=metrics)
+
+    def make_checkpoint_dict(self, metrics, training_state):
+        if "dataset" in self.config["model_attributes"]:
+            del self.config["model_attributes"]["dataset"]
+            self.config["model_attributes"]["avg_num_neighbors"] = self._unwrapped_model.avg_num_neighbors
+
+        ckpt_dict = super().make_checkpoint_dict(metrics, training_state)
+        return ckpt_dict

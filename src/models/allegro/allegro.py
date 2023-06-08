@@ -170,6 +170,8 @@ class AllegroWrap(BaseModel):
             initialize=initialize,
         )
 
+        self.avg_num_neighbors = model_config["avg_num_neighbors"]
+
         # constrcut the NequIP model
         builders = [eval(module) for module in model_config["model_builders"]]
         self.allegro_model = initiate_model_by_builders(

@@ -249,7 +249,8 @@ class BaseTrainer(ABC):
             dataset_path = self.config["model_attributes"].get("dataset_path", self.config["dataset"]["src"]) # train dataset
             if os.path.isfile(dataset_path):
                 # single lmdb file
-                pca_path = Path(dataset_path).parent / "BPNN_pca.pt"
+                # pca_path = Path(dataset_path).parent / "BPNN_pca.pt"
+                pca_path = Path(dataset_path).parent / "BPNN_pca_debug_clean_code.pt"
             elif os.path.isdir(dataset_path):
                 # multi lmdb files
                 pca_path = os.path.join(dataset_path, "BPNN_pca.pt")
@@ -521,6 +522,47 @@ class BaseTrainer(ABC):
         if self.scaler and checkpoint["amp"]:
             self.scaler.load_state_dict(checkpoint["amp"])
 
+    def make_checkpoint_dict(self, metrics, training_state):
+        if self.config["model_name"] == "bpnn":
+            if "dataset_path" in self.config["model_attributes"]:
+                del self.config["model_attributes"]["dataset_path"]
+                del self.config["model_attributes"]["pca_path"]
+
+        normalizers = {key: value.state_dict() for key, value in self.normalizers.items()}
+        amp_scaler = self.scaler.state_dict() if self.scaler else None
+
+        if training_state:
+            ckpt_dict = {
+                "epoch": self.epoch,
+                "step": self.step,
+                "state_dict": self.model.state_dict(),
+                "optimizer": self.optimizer.state_dict(),
+                "scheduler": self.scheduler.scheduler.state_dict(),
+                "normalizers": normalizers,
+                "config": self.config,
+                "val_metrics": metrics,
+                "ema": self.ema.state_dict() if self.ema else None,
+                "amp": amp_scaler,
+                "best_val_metric": self.best_val_metric,
+                "primary_metric": self.config["task"].get(
+                    "primary_metric",
+                    self.evaluator.task_primary_metric[self.task_name],
+                ),
+            }
+        else:
+            ckpt_dict = {
+                "state_dict": self.model.state_dict(),
+                "normalizers": normalizers,
+                "config": self.config,
+                "val_metrics": metrics,
+                "amp": amp_scaler,
+            }
+        
+        if self.config["model_name"] == "bpnn":
+            ckpt_dict["pca"] = self._unwrapped_model.pca
+
+        return ckpt_dict
+
     def save(
         self,
         metrics=None,
@@ -528,49 +570,21 @@ class BaseTrainer(ABC):
         training_state=True,
     ):
         if not self.is_debug and distutils.is_master():
-            normalizers = {key: value.state_dict() for key, value in self.normalizers.items()}
-            amp_scaler = self.scaler.state_dict() if self.scaler else None
-            if training_state:
-                return save_checkpoint(
-                    {
-                        "epoch": self.epoch,
-                        "step": self.step,
-                        "state_dict": self.model.state_dict(),
-                        "optimizer": self.optimizer.state_dict(),
-                        "scheduler": self.scheduler.scheduler.state_dict(),
-                        "normalizers": normalizers,
-                        "config": self.config,
-                        "val_metrics": metrics,
-                        "ema": self.ema.state_dict() if self.ema else None,
-                        "amp": amp_scaler,
-                        "best_val_metric": self.best_val_metric,
-                        "primary_metric": self.config["task"].get(
-                            "primary_metric",
-                            self.evaluator.task_primary_metric[self.task_name],
-                        ),
-                    },
-                    checkpoint_dir=self.config["cmd"]["checkpoint_dir"],
-                    checkpoint_file=checkpoint_file,
-                )
-            else:
-                if self.ema:
-                    self.ema.store()
-                    self.ema.copy_to()
-                ckpt_path = save_checkpoint(
-                    {
-                        "state_dict": self.model.state_dict(),
-                        "normalizers": normalizers,
-                        "config": self.config,
-                        "val_metrics": metrics,
-                        "amp": amp_scaler,
-                    },
-                    checkpoint_dir=self.config["cmd"]["checkpoint_dir"],
-                    checkpoint_file=checkpoint_file,
-                )
-                if self.ema:
-                    self.ema.restore()
-                return ckpt_path
-        return None
+            if (not training_state) and self.ema:
+                self.ema.store()
+                self.ema.copy_to()
+
+            ckpt_path = save_checkpoint(
+                self.make_checkpoint_dict(metrics, training_state),
+                checkpoint_dir=self.config["cmd"]["checkpoint_dir"],
+                checkpoint_file=checkpoint_file,
+            )
+
+            if (not training_state) and self.ema:
+                self.ema.restore()
+            return ckpt_path
+        else:
+            return None
 
     @abstractmethod
     def train(self):

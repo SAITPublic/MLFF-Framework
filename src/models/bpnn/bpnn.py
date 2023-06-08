@@ -27,7 +27,7 @@ from ocpmodels.models.gemnet.utils import (
 )
 from ocpmodels.common import distutils
 
-from src.common.utils import bm_logging # benchmark logging
+from src.common.utils import bm_logging
 
 
 class PerAtomFCN(torch.nn.Module):
@@ -116,7 +116,6 @@ class ACSF(torch.nn.Module):
                 zetas = torch.tensor([eval(v) for v in lines[1].split(",")])
                 lmdas = torch.tensor([eval(v) for v in lines[2].split(",")])
                 
-        
         n_species = len(self.atomic_numbers)
         self.n_species =n_species
         self.g2_shape=(len(g2_etas),n_species)
@@ -127,7 +126,6 @@ class ACSF(torch.nn.Module):
         self.G4_params_zetas = torch.nn.Parameter(torch.zeros( (n_species,n_species,n_species,len(zetas)) ),requires_grad=trainable)
         self.G4_params_lmdas = torch.nn.Parameter(torch.zeros( (n_species,n_species,n_species,len(lmdas)) ),requires_grad=trainable)
 
-
         for i,atom1 in enumerate(self.atomic_numbers):
             for j, atom2 in enumerate(self.atomic_numbers):
                 self.G2_params[i,j,:] = g2_etas.clone().detach()
@@ -136,10 +134,6 @@ class ACSF(torch.nn.Module):
                     self.G4_params_etas [i,j,k,:] =  etas.clone().detach()
                     self.G4_params_zetas[i,j,k,:] = zetas.clone().detach()
                     self.G4_params_lmdas[i,j,k,:] = lmdas.clone().detach()
-
-
-
-        ## this is dummy.... need to be fixed later.... for index sorting
 
         G2_params=[]
         G4_params=[]
@@ -302,13 +296,12 @@ class BPNN(BaseModel):
         else:
             # set PCA
             if pca_path is None:
-                pca_path = Path(dataset_path).parent / "BPNN_pca.pt"
-
-            if os.path.exists(pca_path):
+                bm_logging.info(f"If you load a checkpoint, PCA will be loaded from the checkpoint file.")
+                pca = None
+            elif os.path.exists(pca_path):
                 pca = torch.load(pca_path)
                 bm_logging.info(f"The fitted PCA is loaded from {pca_path}")
-            else:
-                assert dataset_path is not None
+            elif dataset_path is not None:
                 bm_logging.info(f"Start PCA fitting ... ")
                 pca = self._fit_pca(
                     dataset=LmdbDataset({'src': dataset_path}), 
@@ -607,13 +600,12 @@ class BPNN(BaseModel):
             for i in range(sz-1):
                 data_list = [dataset[j] for j in range(idxs[i], idxs[i+1])]
                 data = Batch.from_data_list(data_list)
-                # if not self.otf_graph:
-                    # raise NotImplementedError("To fit PCA, edges are required. Please set otf_graph=False with a dataset including edges")
-                n_neighbors = []
-                for i, data_ in enumerate(data_list):
-                    n_index = data_.edge_index[1, :]
-                    n_neighbors.append(n_index.shape[0])
-                data.neighbors = torch.tensor(n_neighbors)
+                # n_neighbors = []
+                # for i, data_ in enumerate(data_list):
+                #     n_index = data_.edge_index[1, :]
+                #     n_neighbors.append(n_index.shape[0])
+                # data.neighbors = torch.tensor(n_neighbors)
+                #################################
                 data = data.to(device)
 
                 atomic_numbers = data.atomic_numbers.long()

@@ -41,9 +41,8 @@ class BenchmarkCalculator(Calculator):
         if self.model_name in ["nequip", "allegro"]:
             ckpt_config["model_attributes"]["initialize"] = False
         elif self.model_name in ["bpnn"]:
-            # make the model independent to training dataset
-            ckpt_config["model_attributes"]["otf_graph"] = True
-            ckpt_config["model_attributes"]["pca_path"] = None
+            ## TODO : remove this codes after cleaning checkpoints
+            ckpt_config["model_attributes"]["pca_path"] = None 
             ckpt_config["model_attributes"]["dataset_path"] = None
 
         # construct a model in the ckpt
@@ -119,6 +118,8 @@ class BenchmarkCalculator(Calculator):
         # convert ase.Atoms into pytorch_geometric data
         data = self.atoms_to_pyg_data.convert(atoms)
         batch = Batch.from_data_list([data]) # batch size = 1
+        if not self.model.otf_graph:
+            batch.neighbors = torch.tensor([data.edge_index.shape[1]])
         return batch
 
     def convert_atoms_to_nequip_batch(self, atoms):
