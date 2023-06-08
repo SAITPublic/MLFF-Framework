@@ -89,14 +89,22 @@ class EnergyForceEvaluator(BaseEvaluator):
                 time_per_sample_model_inference.append(self.calculator.time_model_inference)
 
         table = PrettyTable()
-        table.field_names = ["dataset"] + [metric_name for metric_name in self.metric_evaluator.metric_fn]
+        field_names = ["dataset"]
+        for metric_name in self.metric_evaluator.metric_fn:
+            if "mse" in metric_name:
+                # mse -> rmse for printing
+                field_names.append(metric_name.replace("mse", "rmse"))
+            else:
+                field_names.append(metric_name)
+        table.field_names = field_names
         table_row_metrics = [self.ref_traj_path.name]
         for metric_name in self.metric_evaluator.metric_fn:
-            if self.display_meV and "mae" in metric_name:
-                table_row_metrics.append(f"{metrics[metric_name]['metric'] * 1000:.1f}")
-            elif self.display_meV and "mse" in metric_name:
-                # mse is displayed by rmse
-                table_row_metrics.append(f"{math.sqrt(metrics[metric_name]['metric']) * 1000:.1f}")
+            if self.display_meV:
+                if "mae" in metric_name:
+                    table_row_metrics.append(f"{metrics[metric_name]['metric'] * 1000:.1f}")
+                elif "mse" in metric_name:
+                    # mse is displayed by rmse after accumulation values through mse
+                    table_row_metrics.append(f"{math.sqrt(metrics[metric_name]['metric']) * 1000:.1f}")
             else:
                 table_row_metrics.append(f"{metrics[metric_name]['metric']:.1f}")
         table.add_row(table_row_metrics)
