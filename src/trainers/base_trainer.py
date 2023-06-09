@@ -249,8 +249,7 @@ class BaseTrainer(ABC):
             dataset_path = self.config["model_attributes"].get("dataset_path", self.config["dataset"]["src"]) # train dataset
             if os.path.isfile(dataset_path):
                 # single lmdb file
-                # pca_path = Path(dataset_path).parent / "BPNN_pca.pt"
-                pca_path = Path(dataset_path).parent / "BPNN_pca_debug_clean_code.pt"
+                pca_path = Path(dataset_path).parent / "BPNN_pca.pt"
             elif os.path.isdir(dataset_path):
                 # multi lmdb files
                 pca_path = os.path.join(dataset_path, "BPNN_pca.pt")
