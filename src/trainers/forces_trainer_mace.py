@@ -33,8 +33,8 @@ from src.datasets.mace.statistics import (
 @registry.register_trainer("forces_mace")
 class MACEForcesTrainer(ForcesTrainer):
     """
-    Trainer class for the Structure to Energy & Force (S2EF) task, 
     Trainer class for the S2EF (Structure to Energy & Force) task, 
+    and this class is especially used to train MACE models.
     """
     def __init__(self, config):
         super().__init__(config)

@@ -61,7 +61,8 @@ from src.modules.normalizer import NormalizerPerAtom, log_and_check_normalizers
 @registry.register_trainer("forces")
 class ForcesTrainer(BaseTrainer):
     """
-    Trainer class for the Structure to Energy & Force (S2EF) task.
+    Trainer class for the S2EF (Structure to Energy & Force) task,
+    and this class is especially used to train models implemented in OCP and BPNN models.
     """
     def _set_normalizer(self):
         self.normalizers = {}

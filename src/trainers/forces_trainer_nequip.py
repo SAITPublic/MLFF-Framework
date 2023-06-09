@@ -24,7 +24,7 @@ from src.common.utils import bm_logging
 class NequIPForcesTrainer(ForcesTrainer):
     """
     Trainer class for the S2EF (Structure to Energy & Force) task, 
-    and this class is especially used to train an NequIP or an Allegro model.
+    and this class is especially used to train NequIP or Allegro models.
     """
     def __init__(self, config):
         super().__init__(config)
