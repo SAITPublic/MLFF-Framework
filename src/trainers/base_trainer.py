@@ -1,13 +1,29 @@
 """
-Copied from ocp.ocpmodels.trainers.base_trainer.py
-Modifications:
-1) use a benchmark logger (named bm_logging) instead of the root logger (named logging)
-2) enable to deal with various loss type
-   -> if you add a new loss, please see src.modules.loss
-3) use learning rate schedulers of this benchmark
-4) remove features that includes to save results and make the corresponding directory
-5) remove features related to hpo
-6) use a benchmark evaluator that provides more options than OCP provides
+Copyright (C) 2023 Samsung Electronics Co. LTD
+
+This software is a property of Samsung Electronics.
+No part of this software, either material or conceptual may be copied or distributed, transmitted,
+transcribed, stored in a retrieval system or translated into any human or computer language in any form by any means,
+electronic, mechanical, manual or otherwise, or disclosed
+to third parties without the express written permission of Samsung Electronics.
+"""
+
+"""
+Reference : ocp/ocpmodels/trainers/base_trainer.py
+
+The following items are modified and they can be claimed as properties of Samsung Electronics. 
+
+(1) Support more MLFF models (BPNN, NequIP, Allegro, and MACE)
+(2) Support simulation indicators for the benchmark evaluation on simulations (RDF, ADF, EoS, PEW)
+(3) Support more loss functions and metrics (loss.py and metric_evaluator.py in src/modules/)
+(4) Support more learning rate schedulers (scheduler.py in src/modules/)
+(5) Support normalization of per-atom energy (NormalizerPerAtom in src/modules/normalizer.py)
+(6) Some different featurs are as follows:
+    (a) Print training results using PrettyTable
+    (b) Use a benchmark logger (named bm_logging) instead of the root logger (named logging in OCP)
+    (c) Remove features that includes to save prediction results and make the corresponding directory named 'results'
+    (d) Remove features related to HPO
+    (e) Set the identifier of an experiment using the starting time
 """
 
 """
@@ -42,13 +58,10 @@ from ocpmodels.common.data_parallel import BalancedBatchSampler, OCPDataParallel
 from ocpmodels.common.registry import registry
 from ocpmodels.common.utils import load_state_dict, save_checkpoint
 from ocpmodels.modules.exponential_moving_average import ExponentialMovingAverage
-from ocpmodels.modules.normalizer import Normalizer
 from ocpmodels.modules.scaling.compat import load_scales_compat
 from ocpmodels.modules.scaling.util import ensure_fitted
 
-# for modifications
-from src.common.utils import bm_logging # benchmark logging
-from src.common.utils import get_device
+from src.common.utils import bm_logging, get_device
 from src.common.logger import parse_logs
 from src.modules.loss import initiate_loss
 from src.modules.scheduler import LRScheduler

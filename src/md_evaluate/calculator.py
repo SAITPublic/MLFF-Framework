@@ -1,5 +1,15 @@
-from collections import OrderedDict
+"""
+Copyright (C) 2023 Samsung Electronics Co. LTD
+
+This software is a property of Samsung Electronics.
+No part of this software, either material or conceptual may be copied or distributed, transmitted,
+transcribed, stored in a retrieval system or translated into any human or computer language in any form by any means,
+electronic, mechanical, manual or otherwise, or disclosed
+to third parties without the express written permission of Samsung Electronics.
+"""
+
 import time
+from collections import OrderedDict
 
 import torch
 from torch_geometric.data import Data, Batch
@@ -20,7 +30,7 @@ from mace.tools.torch_geometric.batch import Batch as BatchMACE
 
 from src.common.collaters.parallel_collater_nequip import convert_ocp_Data_into_nequip_AtomicData
 from src.common.collaters.parallel_collater_mace import convert_ocp_Data_into_mace_AtomicData
-from src.common.utils import bm_logging # benchmark logging
+from src.common.utils import bm_logging
 from src.modules.normalizer import NormalizerPerAtom, log_and_check_normalizers
 from src.preprocessing.atoms_to_graphs import AtomsToGraphsWithTolerance
 

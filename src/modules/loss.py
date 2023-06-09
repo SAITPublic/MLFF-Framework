@@ -1,6 +1,11 @@
 """
-written by byunggook.na (SAIT)
-DDPLoss is different from that of OCP in terms of dealing with forces using multi-gpu
+Copyright (C) 2023 Samsung Electronics Co. LTD
+
+This software is a property of Samsung Electronics.
+No part of this software, either material or conceptual may be copied or distributed, transmitted,
+transcribed, stored in a retrieval system or translated into any human or computer language in any form by any means,
+electronic, mechanical, manual or otherwise, or disclosed
+to third parties without the express written permission of Samsung Electronics.
 """
 
 import torch
@@ -9,22 +14,8 @@ from torch import nn
 from ocpmodels.common import distutils
 from ocpmodels.modules.loss import L2MAELoss, AtomwiseL2Loss
 
-from src.common.utils import bm_logging # benchmark logging
+from src.common.utils import bm_logging
 
-"""
-Available loss
-
-Force:
-    mae or l1 : nn.L1Loss 
-    mse : nn.MSELoss
-    l2mae : ocpmodels.modules.loss.L2MAELoss 
-    atomwisel2 : ocpmodels.modules.loss.AtomwiseL2Loss 
-                (precisely, AtomwiseL2MAELoss, i.e., L2MAELoss multiplying num of atoms for each snapshot)
-    
-Energy:
-    energy_per_atom_mse : EnergyPerAtomMSELoss
-
-"""
 
 def initiate_loss(loss_name):
     if loss_name in ["l1", "mae"]:
@@ -66,8 +57,7 @@ class EnergyPerAtomMAELoss(nn.Module):
                 target: torch.Tensor, 
                 natoms: torch.Tensor,
     ):
-        # batch size
-        assert input.shape[0] == natoms.shape[0] # (batch size,) # ex) [48, 24, 48, 96] for BS=4
+        assert input.shape[0] == natoms.shape[0] # (batch size,)
         
         abs_error = torch.abs((target - input) / natoms)
         if self.reduction == "mean":
@@ -87,8 +77,7 @@ class EnergyPerAtomMSELoss(nn.Module):
                 target: torch.Tensor, 
                 natoms: torch.Tensor,
     ):
-        # batch size
-        assert input.shape[0] == natoms.shape[0] # (batch size,) # ex) [48, 24, 48, 96] for BS=4
+        assert input.shape[0] == natoms.shape[0] # (batch size,)
         
         squared_error = torch.square((target - input) / natoms)
         if self.reduction == "mean":
@@ -97,6 +86,7 @@ class EnergyPerAtomMSELoss(nn.Module):
             return torch.sum(squared_error)
 
 
+# reference : OCPDataParallel class in ocp/ocpmodels/modules/loss.py
 class DDPLoss(nn.Module):
     def __init__(self, loss_fn, reduction="mean"):
         super().__init__()

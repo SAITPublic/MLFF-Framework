@@ -1,5 +1,11 @@
 """
-written by byunggook.na (SAIT)
+Copyright (C) 2023 Samsung Electronics Co. LTD
+
+This software is a property of Samsung Electronics.
+No part of this software, either material or conceptual may be copied or distributed, transmitted,
+transcribed, stored in a retrieval system or translated into any human or computer language in any form by any means,
+electronic, mechanical, manual or otherwise, or disclosed
+to third parties without the express written permission of Samsung Electronics.
 """
 
 import numpy as np
@@ -11,12 +17,11 @@ from ocpmodels.common.registry import registry
 from ocpmodels.common.utils import conditional_grad
 from ocpmodels.models.base import BaseModel
 
-# pre-defined modules in MACE
 from mace.modules import ScaleShiftMACE
 from mace.modules import interaction_classes, gate_dict
 from mace.tools import get_atomic_number_table_from_zs
 
-from src.common.utils import bm_logging # benchmark logging
+from src.common.utils import bm_logging
 
 
 @registry.register_model("mace")
@@ -63,9 +68,7 @@ class MACEWrap(BaseModel):
         self.max_neighbors = max_neighbors
         super().__init__()
 
-        # data-related arguments 
-        # (which should be loaded when using the model as a calculator)
-        # TODO: check the loading!
+        # data-related arguments given a model config file
         assert (z_table is not None or chemical_symbols is not None)
         if chemical_symbols is not None:
             zs = [ase.atom.atomic_numbers[atom] for atom in chemical_symbols]
@@ -115,11 +118,9 @@ class MACEWrap(BaseModel):
 
     @conditional_grad(torch.enable_grad())
     def forward(self, data):
-        # data is already moved to device 
-        # by OCPDataParallel (ocpmodels/common/data_parallel.py)
+        # data is already moved to device by OCPDataParallel (ocp/ocpmodels/common/data_parallel.py)
 
         # model forward
-        # : output is dict
         out = self.mace_model(data, training=self.training)
         
         # return values required in an OCP-based trainer

@@ -1,8 +1,29 @@
 """
-Copied from ocp.ocpmodels.trainers.forces_trainer.py
-Modifications:
-1) modify class explanation
-2) use a benchmark logger (named bm_logging) instead of the root logger (named logging)
+Copyright (C) 2023 Samsung Electronics Co. LTD
+
+This software is a property of Samsung Electronics.
+No part of this software, either material or conceptual may be copied or distributed, transmitted,
+transcribed, stored in a retrieval system or translated into any human or computer language in any form by any means,
+electronic, mechanical, manual or otherwise, or disclosed
+to third parties without the express written permission of Samsung Electronics.
+"""
+
+"""
+Reference : ocp/ocpmodels/trainers/forces_trainer.py
+
+The following items are modified and they can be claimed as properties of Samsung Electronics. 
+
+(1) Support more MLFF models (BPNN, NequIP, Allegro, and MACE)
+(2) Support simulation indicators for the benchmark evaluation on simulations (RDF, ADF, EoS, PEW)
+(3) Support more loss functions and metrics (loss.py and metric_evaluator.py in src/modules/)
+(4) Support more learning rate schedulers (scheduler.py in src/modules/)
+(5) Support normalization of per-atom energy (NormalizerPerAtom in src/modules/normalizer.py)
+(6) Some different featurs are as follows:
+    (a) Print training results using PrettyTable
+    (b) Use a benchmark logger (named bm_logging) instead of the root logger (named logging in OCP)
+    (c) Remove features that includes to save prediction results and make the corresponding directory named 'results'
+    (d) Remove features related to HPO
+    (e) Set the identifier of an experiment using the starting time
 """
 
 """
@@ -12,30 +33,26 @@ This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
 
-import logging
 import os
 import pathlib
 import json 
 import time
+
 from collections import defaultdict
 from pathlib import Path
+from tqdm import tqdm
+from prettytable import PrettyTable
 
 import numpy as np
 import torch
 import torch_geometric
-from tqdm import tqdm
-from prettytable import PrettyTable
 
 from ocpmodels.common import distutils
 from ocpmodels.common.registry import registry
-from ocpmodels.common.relaxation.ml_relaxation import ml_relax
-from ocpmodels.common.utils import check_traj_files
-from ocpmodels.modules.evaluator import Evaluator
 from ocpmodels.modules.normalizer import Normalizer
 from ocpmodels.modules.scaling.util import ensure_fitted
 
-# for modifications
-from src.common.utils import bm_logging # benchmark logging
+from src.common.utils import bm_logging 
 from src.common.logger import parse_logs
 from src.trainers.base_trainer import BaseTrainer
 from src.modules.normalizer import NormalizerPerAtom, log_and_check_normalizers

@@ -1,3 +1,13 @@
+"""
+Copyright (C) 2023 Samsung Electronics Co. LTD
+
+This software is a property of Samsung Electronics.
+No part of this software, either material or conceptual may be copied or distributed, transmitted,
+transcribed, stored in a retrieval system or translated into any human or computer language in any form by any means,
+electronic, mechanical, manual or otherwise, or disclosed
+to third parties without the express written permission of Samsung Electronics.
+"""
+
 import numpy as np
 import torch
 
@@ -6,12 +16,8 @@ from mace.tools.scatter import scatter_sum
 from mace.modules.blocks import AtomicEnergiesBlock
 
 
-# copied from mace.data.utils.py
+# reference : compute_average_E0s() in mace/mace/data/utils.py
 def compute_average_E0s(train_dataset, z_table):
-    """
-    Function to compute the average interaction energy of each chemical element
-    returns dictionary of E0s
-    """
     len_train = len(train_dataset)
     len_zs = len(z_table)
     A = np.zeros((len_train, len_zs))
@@ -35,7 +41,7 @@ def compute_average_E0s(train_dataset, z_table):
     return atomic_energies_dict
 
 
-# reference : mace.modules.utils.py
+# reference : compute_avg_num_neighbors() in mace/mace/modules/utils.py
 def compute_avg_num_neighbors(data_loader):
     num_neighbors = []
     for batch_list in data_loader:
@@ -50,7 +56,7 @@ def compute_avg_num_neighbors(data_loader):
     return to_numpy(avg_num_neighbors).item()
 
 
-# reference : mace.modules.utils.py
+# reference : compute_mean_std_atomic_inter_energy() in mace/mace/modules/utils.py
 def compute_mean_std_atomic_inter_energy(data_loader, atomic_energies):
     atomic_energies_fn = AtomicEnergiesBlock(atomic_energies=atomic_energies)
 
@@ -74,7 +80,7 @@ def compute_mean_std_atomic_inter_energy(data_loader, atomic_energies):
     return mean, std
 
 
-# reference : mace.modules.utils.py
+# reference : compute_mean_rms_energy_forces() in mace/mace/modules/utils.py
 def compute_mean_rms_energy_forces(data_loader, atomic_energies):
     atomic_energies_fn = AtomicEnergiesBlock(atomic_energies=atomic_energies)
 

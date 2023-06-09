@@ -1,6 +1,13 @@
 """
-written by byunggook.na
+Copyright (C) 2023 Samsung Electronics Co. LTD
+
+This software is a property of Samsung Electronics.
+No part of this software, either material or conceptual may be copied or distributed, transmitted,
+transcribed, stored in a retrieval system or translated into any human or computer language in any form by any means,
+electronic, mechanical, manual or otherwise, or disclosed
+to third parties without the express written permission of Samsung Electronics.
 """
+
 import ast
 import torch
 import numpy as np
@@ -12,7 +19,7 @@ from ocpmodels.common.registry import registry
 
 from mace.tools import get_atomic_number_table_from_zs
 
-from src.common.utils import bm_logging # benchmark logging
+from src.common.utils import bm_logging
 from src.common.collaters.parallel_collater_mace import ParallelCollaterMACE
 from src.trainers.forces_trainer import ForcesTrainer
 from src.datasets.mace.statistics import (
@@ -27,7 +34,7 @@ from src.datasets.mace.statistics import (
 class MACEForcesTrainer(ForcesTrainer):
     """
     Trainer class for the Structure to Energy & Force (S2EF) task, 
-    and this class is especially used to train a MACE model.
+    Trainer class for the S2EF (Structure to Energy & Force) task, 
     """
     def __init__(self, config):
         super().__init__(config)

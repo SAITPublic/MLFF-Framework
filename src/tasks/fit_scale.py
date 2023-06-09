@@ -1,3 +1,13 @@
+"""
+Copyright (C) 2023 Samsung Electronics Co. LTD
+
+This software is a property of Samsung Electronics.
+No part of this software, either material or conceptual may be copied or distributed, transmitted,
+transcribed, stored in a retrieval system or translated into any human or computer language in any form by any means,
+electronic, mechanical, manual or otherwise, or disclosed
+to third parties without the express written permission of Samsung Electronics.
+"""
+
 import os
 import math
 import json
@@ -19,11 +29,9 @@ def _train_batch(trainer, batch):
     with torch.no_grad():
         with torch.cuda.amp.autocast(enabled=trainer.scaler is not None):
             trainer._forward(batch)
-        #     out = trainer._forward(batch)
-        # loss = trainer._compute_loss(out, batch)
-        # del out, loss
 
 
+# reference : ocp/ocpmodels/modules/scaling/fit.py
 @registry.register_task("fit-scale")
 class FitScaleTask(BaseTask):
     def run(self):

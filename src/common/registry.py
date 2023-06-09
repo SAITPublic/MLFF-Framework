@@ -1,9 +1,19 @@
+"""
+Copyright (C) 2023 Samsung Electronics Co. LTD
+
+This software is a property of Samsung Electronics.
+No part of this software, either material or conceptual may be copied or distributed, transmitted,
+transcribed, stored in a retrieval system or translated into any human or computer language in any form by any means,
+electronic, mechanical, manual or otherwise, or disclosed
+to third parties without the express written permission of Samsung Electronics.
+"""
 
 import importlib
 
 from ocpmodels.common.registry import _get_absolute_mapping
 
 
+# reference : ocp/ocpmodels/common/registry.py
 class MDEvaluateRegistry:
     r"""Class for registry object which acts as central source of truth."""
     mapping = {
@@ -23,8 +33,8 @@ class MDEvaluateRegistry:
 
             from src.common.registry import registry
 
-            @registry.register_md_evaluate("active_evaluator")
-            class ActiveEvaluator():
+            @registry.register_md_evaluate("custom_evaluator")
+            class CustomEvaluator():
                 ...
         """
 

@@ -1,6 +1,11 @@
 """
-written by byunggook.na (SAIT)
-reference : nequip.model._build.py
+Copyright (C) 2023 Samsung Electronics Co. LTD
+
+This software is a property of Samsung Electronics.
+No part of this software, either material or conceptual may be copied or distributed, transmitted,
+transcribed, stored in a retrieval system or translated into any human or computer language in any form by any means,
+electronic, mechanical, manual or otherwise, or disclosed
+to third parties without the express written permission of Samsung Electronics.
 """
 
 import torch
@@ -14,11 +19,8 @@ from ocpmodels.datasets import LmdbDataset
 from nequip.utils.config import Config
 from nequip.data import AtomicDataDict, AtomicData
 from nequip.data.transforms import TypeMapper
-
-# pre-defined modules in NequIP
 from nequip.model import SimpleIrrepsConfig, ForceOutput, PartialForceOutput
 
-# modified modules to enable to be compatible with LMDB datasets
 from src.models.nequip.energy_model import EnergyModel
 from src.models.nequip.rescale import RescaleEnergyEtc, PerSpeciesRescale
 from src.datasets.nequip.statistics import (
@@ -26,7 +28,7 @@ from src.datasets.nequip.statistics import (
     compute_global_shift_and_scale,
     compute_per_species_shift_and_scale
 )
-from src.common.utils import bm_logging # benchmark logging
+from src.common.utils import bm_logging
 
 
 def set_model_config_based_on_data_statistics(model_config, type_mapper, dataset_name, data_normalization=True, initialize=True):
@@ -269,7 +271,7 @@ class NequIPWrap(BaseModel):
 
     @conditional_grad(torch.enable_grad())
     def forward(self, data):
-        # data is already moved to device by OCPDataParallel (ocpmodels/common/data_parallel.py)
+        # data is already moved to device by OCPDataParallel (ocp/ocpmodels/common/data_parallel.py)
         input_data = AtomicData.to_AtomicDataDict(data)
 
         # model forward

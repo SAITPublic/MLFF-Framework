@@ -1,5 +1,11 @@
 """
-written by byunggook.na
+Copyright (C) 2023 Samsung Electronics Co. LTD
+
+This software is a property of Samsung Electronics.
+No part of this software, either material or conceptual may be copied or distributed, transmitted,
+transcribed, stored in a retrieval system or translated into any human or computer language in any form by any means,
+electronic, mechanical, manual or otherwise, or disclosed
+to third parties without the express written permission of Samsung Electronics.
 """
 
 import torch
@@ -11,14 +17,14 @@ from nequip.data.transforms import TypeMapper
 
 from src.trainers.forces_trainer import ForcesTrainer
 from src.common.collaters.parallel_collater_nequip import ParallelCollaterNequIP
-from src.common.utils import bm_logging # benchmark logging
+from src.common.utils import bm_logging
 
 
 @registry.register_trainer("forces_nequip")
 class NequIPForcesTrainer(ForcesTrainer):
     """
-    Trainer class for the Structure to Energy & Force (S2EF) task, 
-    and this class is especially used to train an NequIP model or an Allegro model.
+    Trainer class for the S2EF (Structure to Energy & Force) task, 
+    and this class is especially used to train an NequIP or an Allegro model.
     """
     def __init__(self, config):
         super().__init__(config)

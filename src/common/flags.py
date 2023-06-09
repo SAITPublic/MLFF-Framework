@@ -1,5 +1,17 @@
+"""
+Copyright (C) 2023 Samsung Electronics Co. LTD
+
+This software is a property of Samsung Electronics.
+No part of this software, either material or conceptual may be copied or distributed, transmitted,
+transcribed, stored in a retrieval system or translated into any human or computer language in any form by any means,
+electronic, mechanical, manual or otherwise, or disclosed
+to third parties without the express written permission of Samsung Electronics.
+"""
+
 import argparse
+
 from ocpmodels.common.flags import Flags
+
 
 class BenchmarkFlags(Flags):
     def __init__(self):
@@ -12,10 +24,10 @@ class BenchmarkFlags(Flags):
         self._add_run_md_args()
         self._add_evaluate_args()
 
-        # we modify argument options
+        # we modify argument options defined in Flags of OCP
         for action in self.parser._actions:
             if action.dest == "mode":
-                action.choices = ["train", "fit-scale", "validate", "run-md", "evaluate"]
+                action.choices = ["fit-scale", "train", "validate", "run-md", "evaluate"]
             if action.dest == "config_yml":
                 action.required = False
 
@@ -39,7 +51,7 @@ class BenchmarkFlags(Flags):
             "--show-eval-progressbar", 
             default=False, 
             action="store_true", 
-            help="Show a tqdm progressbar of calculating metrics (through validate())",
+            help="Show a tqdm progressbar of calculating metrics (mainly used in the 'validate' mode)",
         )
 
     def _add_fit_scale_args(self):
@@ -48,7 +60,7 @@ class BenchmarkFlags(Flags):
             "--scale-path", 
             default="./",
             type=str, 
-            help="Path where `model_scale.json` is saved. If None, the checkpoint including scaling factors will be generated."
+            help="Directory path where `model_scale.json` is saved. If None, the checkpoint including scaling factors will be generated."
         )
         # scale file name
         self.parser.add_argument(
@@ -111,25 +123,25 @@ class BenchmarkFlags(Flags):
             "--evaluation-config-yml",
             default=None,
             type=str,
-            help="Path to a config file listing evaluation configurations",
+            help="Path to a config file listing evaluation configurations used for simulation indicators",
         )
         self.parser.add_argument(
             "--reference-trajectory",
             default=None,
             type=str,
-            help="Path to a reference trajectory (.extxyz)",
+            help="Path to a reference trajectory (.extxyz) used in the 'energy_force' metric",
         )
         self.parser.add_argument(
             "--save-ef",
             default=False,
             action="store_true", 
-            help="Save a trajectory where energy and forces are predicted by a given MLFF model",
+            help="Save a trajectory where energy and forces are predicted by a given MLFF model, given '--reference-trajectory'",
         )
         self.parser.add_argument(
             "--measure-time",
             default=False,
             action="store_true", 
-            help="Measure the average inference time per snapshot and per atom",
+            help="Measure the average inference time per snapshot and per atom used in the 'energy_force' metric",
         )
         
 

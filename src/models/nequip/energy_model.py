@@ -1,3 +1,13 @@
+"""
+Copyright (C) 2023 Samsung Electronics Co. LTD
+
+This software is a property of Samsung Electronics.
+No part of this software, either material or conceptual may be copied or distributed, transmitted,
+transcribed, stored in a retrieval system or translated into any human or computer language in any form by any means,
+electronic, mechanical, manual or otherwise, or disclosed
+to third parties without the express written permission of Samsung Electronics.
+"""
+
 from nequip.data import AtomicDataDict
 from nequip.nn import (
     SequentialGraphNetwork,
@@ -11,9 +21,11 @@ from nequip.nn.embedding import (
     SphericalHarmonicEdgeAttrs,
 )
 
-# reference : nequip.model._eng.py
-# remove dataset-related arguments from the argument list
-# avg_num_neighbors is added to the config before constructing EnergyModel
+
+# reference : EnergyModel() in nequip/nequip/model/_eng.py
+# We modified the function to enable to be compatible with LMDB datasets
+# : remove dataset-related arguments
+# : avg_num_neighbors is added to the config before constructing EnergyModel
 def EnergyModel(config):
     # input layers
     layers = {
@@ -33,7 +45,7 @@ def EnergyModel(config):
     # output layers (readout)
     layers.update(
         {
-            # TODO: the next linear throws out all L > 0, don't create them in the last layer of convnet
+            # TODO by NequIP authors: the next linear throws out all L > 0, don't create them in the last layer of convnet
             # -- output block --
             "conv_to_output_hidden": AtomwiseLinear,
             "output_hidden_to_scalar": (
