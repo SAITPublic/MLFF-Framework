@@ -39,13 +39,6 @@ class BenchmarkFlags(Flags):
             type=int, 
             help="Save checkpoints at every given epoch",
         )
-        # select molecule types in rMD17
-        self.parser.add_argument(
-            "--molecule", 
-            default=None, 
-            type=str, 
-            help="For rMD17, molecule should be specified.",
-        )
         # show progress bar (for evaluation)
         self.parser.add_argument(
             "--show-eval-progressbar", 
@@ -85,9 +78,6 @@ class BenchmarkFlags(Flags):
         )
 
     def _add_validate_args(self):
-        # checkpoint path which will be evaluated for metrics related to energy and force
-        # -> this argument is already included (ocp/ocpmodels/common/flags.py)
-
         # dataset path
         self.parser.add_argument(
             "--validate-data",
@@ -95,8 +85,7 @@ class BenchmarkFlags(Flags):
             type=str,
             help="Data path to be evaluated in terms of energy and force metrics",
         )
-
-        # batch size
+        # batch size for validation
         self.parser.add_argument(
             "--validate-batch-size",
             default=None,
@@ -105,6 +94,7 @@ class BenchmarkFlags(Flags):
         )
         
     def _add_run_md_args(self):
+        # MD simulation configuration file
         self.parser.add_argument(
             "--md-config-yml",
             default=None,
@@ -113,30 +103,35 @@ class BenchmarkFlags(Flags):
         )
         
     def _add_evaluate_args(self):
+        # evaluation metrics including simulation indicators introduced in the paper
         self.parser.add_argument(
             "--evaluation-metric",
             default=None,
             type=str,
             help="Evaluation metrics: energy_force (ef), distribution_functions (df), equation_of_state (eos), potential_energy_well (pe_well)",
         )
+        # evalution configuration file that includes structure information and simulation conditions
         self.parser.add_argument(
             "--evaluation-config-yml",
             default=None,
             type=str,
             help="Path to a config file listing evaluation configurations used for simulation indicators",
         )
+        # reference trajectory to measure the model performance using energy and force errors
         self.parser.add_argument(
             "--reference-trajectory",
             default=None,
             type=str,
             help="Path to a reference trajectory (.extxyz) used in the 'energy_force' metric",
         )
+        # save the predicted energy and forces
         self.parser.add_argument(
             "--save-ef",
             default=False,
             action="store_true", 
             help="Save a trajectory where energy and forces are predicted by a given MLFF model, given '--reference-trajectory'",
         )
+        # print time profile
         self.parser.add_argument(
             "--measure-time",
             default=False,

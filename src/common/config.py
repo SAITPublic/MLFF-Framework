@@ -21,13 +21,6 @@ def add_benchmark_config(config, args):
     # to save checkpoints at every given epoch
     config["save_ckpt_every_epoch"] = args.save_ckpt_every_epoch
 
-    # to load a molecule dataset of rMD17
-    if args.molecule is not None:
-        if args.molecule in config["dataset"].keys():
-            config["dataset"] = config["dataset"][args.molecule]
-        else:
-            raise ValueError(f"The path of {args.molecule} dataset is not specified in your configuration file")
-
     return config
 
 
