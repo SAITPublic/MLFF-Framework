@@ -14,7 +14,6 @@ import inspect
 from ocpmodels.common.registry import registry
 from ocpmodels.common.utils import conditional_grad
 from ocpmodels.models.base import BaseModel
-from ocpmodels.datasets import LmdbDataset 
 
 from nequip.utils.config import Config
 from nequip.data import AtomicDataDict, AtomicData
@@ -27,7 +26,7 @@ from src.models.nequip.nequip import (
     set_model_config_based_on_data_statistics, 
     initiate_model_by_builders
 )
-from src.datasets.nequip.statistics import (
+from src.models.nequip.utils import (
     compute_avg_num_neighbors, 
     compute_global_shift_and_scale,
     compute_per_species_shift_and_scale

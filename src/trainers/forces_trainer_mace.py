@@ -22,7 +22,7 @@ from mace.tools import get_atomic_number_table_from_zs
 from src.common.utils import bm_logging
 from src.common.collaters.parallel_collater_mace import ParallelCollaterMACE
 from src.trainers.forces_trainer import ForcesTrainer
-from src.datasets.mace.statistics import (
+from src.models.mace.utils import (
     compute_average_E0s, 
     compute_avg_num_neighbors,
     compute_mean_std_atomic_inter_energy,
@@ -44,8 +44,6 @@ class MACEForcesTrainer(ForcesTrainer):
 
         # TODO: SWA
         # In MACE code, there is SWA option (stochastic weight averaging).
-        # But handling loss for SWA is expected to be burdensome for now (2023. 3. 28),
-        # and so its priority is low.
     
     def _parse_config(self, config):
         trainer_config = super()._parse_config(config)

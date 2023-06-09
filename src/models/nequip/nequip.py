@@ -21,14 +21,14 @@ from nequip.data import AtomicDataDict, AtomicData
 from nequip.data.transforms import TypeMapper
 from nequip.model import SimpleIrrepsConfig, ForceOutput, PartialForceOutput
 
+from src.common.utils import bm_logging
 from src.models.nequip.energy_model import EnergyModel
 from src.models.nequip.rescale import RescaleEnergyEtc, PerSpeciesRescale
-from src.datasets.nequip.statistics import (
+from src.models.nequip.utils import (
     compute_avg_num_neighbors, 
     compute_global_shift_and_scale,
     compute_per_species_shift_and_scale
 )
-from src.common.utils import bm_logging
 
 
 def set_model_config_based_on_data_statistics(model_config, type_mapper, dataset_name, data_normalization=True, initialize=True):
