@@ -301,36 +301,25 @@ class ForcesTrainer(BaseTrainer):
     def _compute_loss(self, out, batch_list):
         loss = []
 
-        # set a mask to filter out fixed atoms
-        if self.config["task"].get("train_on_free_atoms", False):
-            fixed = torch.cat(
-                [batch.fixed.to(self.device) for batch in batch_list], dim=0
-            )
-            free_mask = fixed == 0
-            
         # Energy loss
-        energy_mult = self.config["optim"].get("energy_coefficient", 1)
-
         energy_target = torch.cat(
             [batch.y.to(self.device) for batch in batch_list], dim=0
         )
         if self.normalizer.get("normalize_labels", False):
             if self.normalizer.get("per_atom", False):
-                energy_target = self.normalizers["target"].norm(energy_target,batch_list[0].natoms)
+                # normalization for per-atom energy
+                N = torch.cat(
+                    [batch.natoms.to(self.device) for batch in batch_list], dim=0
+                )
+                energy_target = self.normalizers["target"].norm(energy_target, N)
             else:
+                # normalization for total energy
                 energy_target = self.normalizers["target"].norm(energy_target)
 
         if "per_atom" in self.config["optim"].get("loss_energy", "energy_per_atom_mse"):
             natoms = torch.cat(
                 [batch.natoms.to(self.device) for batch in batch_list], dim=0
             )
-            if self.config["task"].get("train_on_free_atoms", False):
-                s_idx = 0
-                natoms_free = []
-                for n_at in natoms:
-                    natoms_free.append(torch.sum(free_mask[s_idx : s_idx + n_at]).item())
-                    s_idx += n_at
-                natoms = torch.LongTensor(natoms_free).to(self.device)
             energy_loss = self.loss_fn["energy"](
                 input=out["energy"], 
                 target=energy_target, 
@@ -342,11 +331,11 @@ class ForcesTrainer(BaseTrainer):
                 input=out["energy"], 
                 target=energy_target,
             )
+        energy_mult = self.config["optim"].get("energy_coefficient", 1)
         loss.append(energy_mult * energy_loss)
 
         # Force loss
-        force_mult = self.config["optim"].get("force_coefficient", 30)
-
+        force_mult = self.config["optim"].get("force_coefficient", 30)        
         force_target = torch.cat(
             [batch.force.to(self.device) for batch in batch_list], dim=0
         )
@@ -354,6 +343,12 @@ class ForcesTrainer(BaseTrainer):
             force_target = self.normalizers["grad_target"].norm(force_target)        
 
         if self.config["task"].get("train_on_free_atoms", False):
+            # set a mask to filter out fixed atoms (for OC20)
+            fixed = torch.cat(
+                [batch.fixed.to(self.device) for batch in batch_list], dim=0
+            )
+            free_mask = fixed == 0
+
             if (self.config["optim"].get("loss_force", "mse").startswith("atomwise")):
                 force_mult = self.config["optim"].get("force_coefficient", 1)
                 natoms = torch.cat(
@@ -376,7 +371,6 @@ class ForcesTrainer(BaseTrainer):
                 input=out["forces"], 
                 target=force_target,
             )
-        # When force per dim loss is used, DDPLoss deals with "force loss / 3"
         loss.append(force_mult * force_loss)
 
         # Sanity check to make sure the compute graph is correct.
@@ -419,10 +413,10 @@ class ForcesTrainer(BaseTrainer):
         # To calculate metrics, model output values are in real units
         if self.normalizer.get("normalize_labels", False):
             if self.normalizer.get("per_atom", False):
-                N=torch.cat(
-                [batch.natoms.to(self.device) for batch in batch_list], dim=0
+                N = torch.cat(
+                    [batch.natoms.to(self.device) for batch in batch_list], dim=0
                 )
-                out["energy"] = self.normalizers["target"].denorm(out["energy"],N)
+                out["energy"] = self.normalizers["target"].denorm(out["energy"], N)
             else:
                 out["energy"] = self.normalizers["target"].denorm(out["energy"])
             out["forces"] = self.normalizers["grad_target"].denorm(out["forces"])
