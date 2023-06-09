@@ -20,9 +20,9 @@ from collections import defaultdict
 
 from ase import io
 
-from src.common.utils import calc_error_metric
 from src.common.registry import md_evaluate_registry
 from src.md_evaluate.base_evaluator import BaseEvaluator
+from src.md_evaluate.utils import calc_error_metric
 
 
 @md_evaluate_registry.register_md_evaluate("pe_well")
