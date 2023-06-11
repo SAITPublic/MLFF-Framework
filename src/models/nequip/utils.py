@@ -289,8 +289,6 @@ def statistics(dataset, transform, fields, modes, stride, unbiased=True, kwargs=
         num_edges = edge_selector.sum()
         del edge_index
 
-        #ff_transformed = [] 
-
         if transform is None:
             data_transformed = data.to_dict()
         else:

@@ -41,8 +41,8 @@ class AllegroWrap(BaseModel):
         num_atoms, # not used
         bond_feat_dim, # not used
         num_targets,
-        cutoff=5.0, # r_max
-        max_neighbors=None, # not used?
+        cutoff=6.0, # r_max
+        max_neighbors=None,
         use_pbc=True,
         regress_forces=True,
         otf_graph=False,
@@ -62,7 +62,7 @@ class AllegroWrap(BaseModel):
         ],
         num_layers=3,
         l_max=1,
-        parity="o3_full", ## different from NequIP
+        parity="o3_full", 
         BesselBasis_trainable=True,
         PolynomialCutoff_p=6,
         env_embed_multiplicity=32, # num features

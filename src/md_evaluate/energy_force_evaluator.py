@@ -21,7 +21,7 @@ import ase
 import ase.io
 from ase.calculators.singlepoint import SinglePointCalculator
 
-from src.common.utils import bm_logging # benchmark logging
+from src.common.utils import bm_logging
 from src.common.registry import md_evaluate_registry
 from src.modules.metric_evaluator import MetricEvaluator
 from src.md_evaluate.base_evaluator import BaseEvaluator

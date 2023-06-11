@@ -94,7 +94,7 @@ class ForcesTrainer(BaseTrainer):
                 # Compute mean and std of training set labels.
                 # : force is already tensor (which can have different shapes)
                 forces_train = torch.concat([data.force for data in self.train_loader.dataset])
-                scale = torch.std(forces_train), # 3-dim vetors -> scala value
+                scale = torch.std(forces_train)
             self.normalizers["grad_target"] = Normalizer(mean=0.0, std=scale, device=self.device)
 
             # energy normalizer
