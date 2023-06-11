@@ -111,7 +111,6 @@ class NequIPForcesTrainer(ForcesTrainer):
                     "energy": _out[AtomicDataDict.TOTAL_ENERGY_KEY],
                     "forces": _out[AtomicDataDict.FORCE_KEY],
                 }
-                # print("-> eval mode loss energy GT:", batch_list[0].y.tolist(), "Pred:", out["energy"].tolist())
                 return super()._compute_loss(out=normalized_out, batch_list=normalized_batch_list)
 
     def _compute_metrics(self, out, batch_list, evaluator, metrics={}):

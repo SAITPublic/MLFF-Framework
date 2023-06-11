@@ -154,12 +154,11 @@ class PEWEvaluator(BaseEvaluator):
                         atoms.set_positions([(0, 0, 0), (dist, 0, 0)])
                         pe = atoms.get_potential_energy()
                     except:
-                        print(calc_failure_msg_template.format(
-                            structure_name, dist))
+                        print(calc_failure_msg_template.format(structure_name, dist))
                         print(traceback.format_exc())
                         pe = np.nan
 
-                    print("dist: {}, PE: {}".format(dist, pe))
+                    print(f"dist: {dist}, PE: {pe}")
                     data["dist"].append(dist)
                     data["PE"].append(pe)
 
@@ -175,12 +174,11 @@ class PEWEvaluator(BaseEvaluator):
                     try:
                         pe = atoms.get_potential_energy()
                     except:
-                        print(calc_failure_msg_template.format(
-                            structure_name, scale_suffix))
+                        print(calc_failure_msg_template.format(structure_name, scale_suffix))
                         print(traceback.format_exc())
                         pe = np.nan
 
-                    print("dist: {}, PE: {}".format(scale_suffix, pe))
+                    print(f"dist: {scale_suffix}, PE: {pe}")
                     data["dist"].append(scale_suffix)
                     data["PE"].append(pe)
 
