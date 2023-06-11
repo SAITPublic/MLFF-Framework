@@ -51,7 +51,6 @@ class BenchmarkCalculator(Calculator):
         if self.model_name in ["nequip", "allegro"]:
             ckpt_config["model_attributes"]["initialize"] = False
         elif self.model_name in ["bpnn"]:
-            ## TODO : remove this codes after cleaning checkpoints
             ckpt_config["model_attributes"]["pca_path"] = None 
             ckpt_config["model_attributes"]["dataset_path"] = None
 
