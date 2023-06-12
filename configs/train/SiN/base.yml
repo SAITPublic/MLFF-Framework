@@ -1,11 +1,11 @@
 dataset:
   # atom cloud
-  - src: /home/workspace/MLFF/dataset/SiN/atom_cloud/train.lmdb
+  - src: datasets/SiN/atom_cloud/train.lmdb
     normalize_labels: True
     per_atom: True
-    normalize_labels_json: /home/workspace/MLFF/dataset/SiN/atom_cloud/normalize_stats.json
-  - src: /home/workspace/MLFF/dataset/SiN/atom_cloud/valid_shuffled.lmdb
-  - src: /home/workspace/MLFF/dataset/SiN/atom_cloud/test_shuffled.lmdb
+    normalize_labels_json: datasets/SiN/atom_cloud/normalize_stats.json
+  - src: datasets/SiN/atom_cloud/valid_shuffled.lmdb
+  - src: datasets/SiN/atom_cloud/test_shuffled.lmdb
 
 logger: files
 
