@@ -36,7 +36,7 @@ class EoSEvaluator(BaseEvaluator):
         eos_fit_ref["e0_error_percentage"] = np.nan
 
         eos_fit_mlff["B_error_percentage"] = \
-            (eos_fit_mlff["B (GPa)"] - eos_fit_ref["B (GPa)"]) / ref["B (GPa)"] * 100.0
+            (eos_fit_mlff["B (GPa)"] - eos_fit_ref["B (GPa)"]) / eos_fit_ref["B (GPa)"] * 100.0
         eos_fit_mlff["v0_error_percentage"] = \
             (eos_fit_mlff["v0"] - eos_fit_ref["v0"]) / eos_fit_ref["v0"] * 100.0
         eos_fit_mlff["e0_error_percentage"] = \
@@ -135,8 +135,7 @@ class EoSEvaluator(BaseEvaluator):
         EoSEvaluator.save_eos_fit_res(save_path_eos, eos_fit_mlff)
         df_mlff["e-e0"] = df_mlff["PE"] - eos_fit_mlff["e0"]
 
-        ref_v_e_path = Path(self.config["reference_result"]["dir"]) / \
-            self.config["reference_result"]["volume_energy_fname"]
+        ref_v_e_path = Path(self.config["reference_result"]["dir"]) / self.config["reference_result"]["volume_energy_fname"]
         df_ref, eos_fit_ref = self.load_reference_results(
             ref_v_e_path,
             scale_factors,
@@ -144,15 +143,10 @@ class EoSEvaluator(BaseEvaluator):
         )
 
         if self.config["reference_result"]["save_eos_fit"]:
-            save_path_eos_ref = save_path_eos = Path(
-                self.config["reference_result"]["dir"]) / eos_res_name
+            save_path_eos_ref = Path(self.config["reference_result"]["dir"]) / eos_res_name
             EoSEvaluator.save_eos_fit_res(save_path_eos_ref, eos_fit_ref)
 
         self.calculate_eos_error(eos_fit_ref, eos_fit_mlff, save_res=True)
 
-        fig_out_dir = Path(
-            self.config["res_out_dir"]) / self.config["res_fig_name"]
-        self.plot_eos(df_ref,
-                      df_mlff,
-                      fig_out_dir,
-                      save_res=True)
+        fig_out_dir = Path(self.config["res_out_dir"]) / self.config["res_fig_name"]
+        self.plot_eos(df_ref, df_mlff, fig_out_dir, save_res=True)

@@ -9,6 +9,7 @@ to third parties without the express written permission of Samsung Electronics.
 """
 
 import json
+import pandas as pd
 import matplotlib.pyplot as plt
 
 from pathlib import Path
@@ -99,16 +100,25 @@ class DFEvaluator(BaseEvaluator):
     def evaluate(self):
         Path(self.config["res_out_dir"]).mkdir(parents=True, exist_ok=True)
 
-        trajs_atoms_ai = DFEvaluator.get_traj_atoms(
-            self.config["ai_md_traj"]["path"],
-            index=self.config["ai_md_traj"].get("index", ":"),
-            format=self.config["ai_md_traj"].get("format"),
-            n_extend=self.config["ai_md_traj"].get("n_extend")
-        )
-        out_identifier_ai = f"AIMD_{self.config['ai_md_traj']['out_identifier']}"
+        if "ai_md_traj" in self.config.keys() and "ai_md_dfs_results" in self.config.keys():
+            raise RuntimeError("Only one file for reference is required by 'ai_md_traj' or 'ai_md_dfs_results")
+        
+        if "ai_md_traj" in self.config.keys():
+            trajs_atoms_ai = DFEvaluator.get_traj_atoms(
+                self.config["ai_md_traj"]["path"],
+                index=self.config["ai_md_traj"].get("index", ":"),
+                format=self.config["ai_md_traj"].get("format"),
+                n_extend=self.config["ai_md_traj"].get("n_extend")
+            )
+            out_identifier_ai = f"AIMD_{self.config['ai_md_traj']['out_identifier']}"
 
-        rdf_ref, pair_list_ref = self.calculate_rdf_fox(trajs_atoms_ai, out_identifier_ai)
-        adf_ref, triplet_list_ref = self.calculate_adf_fox(trajs_atoms_ai, out_identifier_ai)
+            rdf_ref, pair_list_ref = self.calculate_rdf_fox(trajs_atoms_ai, out_identifier_ai)
+            adf_ref, triplet_list_ref = self.calculate_adf_fox(trajs_atoms_ai, out_identifier_ai)
+        else:
+            rdf_ref = pd.read_csv(self.config['ai_md_dfs_results']['rdf_path'])
+            pair_list_ref = rdf_ref.columns.values.tolist()
+            adf_ref = pd.read_csv(self.config['ai_md_dfs_results']['adf_path'])
+            triplet_list_ref = adf_ref.columns.values.tolist()
 
         rdf_dict_mlff = {}
         adf_dict_mlff = {}

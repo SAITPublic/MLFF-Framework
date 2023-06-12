@@ -126,16 +126,13 @@ class Simulator(BaseEvaluator):
 
         self.logger.info(
             "Starting MD simulations for {} atoms".format(n_atoms))
-        self.logger.info(f"Thermostat coeffs. are \
-                            nh_relax_timesteps: {self.config.get('nh_relax_timesteps')}, \
-                            nh_thermostat_q: {self.config.get('nh_thermostat_q')}")
+        self.logger.info(f"Thermostat coeffs. are  nh_relax_timesteps: {self.config.get('nh_relax_timesteps')},  nh_thermostat_q: {self.config.get('nh_thermostat_q')}")
 
         out_dir = self.get_output_dir()
         simulator = self._get_simulator(atoms, out_dir)
 
         start_time = time.time()
-        n_steps = int(self.config["simulation_time_ps"]
-                      * 1000 / self.config["timestep_fs"])
+        n_steps = int(self.config["simulation_time_ps"] * 1000 / self.config["timestep_fs"])
         for i_step in tqdm(range(n_steps)):
             simulator.run(1)
         elapsed = time.time() - start_time

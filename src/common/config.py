@@ -117,7 +117,7 @@ def build_evaluate_config(args):
     else:
         assert "evaluation_metric" in config, "'evaluation_metric' in the config file or '--evaluation-metric' should be given."
         
-    if config["evaluation_metric"] in ["ef", "energy_force", "eos", "equation_of_state", "pe_well", "potential_energy_well"]:
+    if config["evaluation_metric"] in ["ef", "energy_force", "eos", "equation_of_state", "pe_curves", "potential_energy_curves"]:
         assert args.checkpoint is not None, f"--checkpoint should be given for {config['evaluation_metric']}."
         config["checkpoint"] = args.checkpoint
     return config

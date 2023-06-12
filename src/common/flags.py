@@ -108,7 +108,7 @@ class BenchmarkFlags(Flags):
             "--evaluation-metric",
             default=None,
             type=str,
-            help="Evaluation metrics: energy_force (ef), distribution_functions (df), equation_of_state (eos), potential_energy_well (pe_well)",
+            help="Evaluation metrics: energy_force (ef), distribution_functions (df), equation_of_state (eos), potential_energy_curves (pe_curves)",
         )
         # evalution configuration file that includes structure information and simulation conditions
         self.parser.add_argument(
