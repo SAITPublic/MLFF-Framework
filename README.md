@@ -6,7 +6,9 @@ The explanation about how to operate these functionals is described as below.
 
 For using more arguments of these functionals, it would be helpful to see `scripts/` and `NeurIPS23_DnB/`.
 
-## Install
+## Preparation
+
+### Install
 
 ```
 git clone --recurse-submodules https://github.sec.samsung.net/ESC-MLFF/SAIT-MLFF-Framework.git
@@ -18,9 +20,34 @@ Your base working directory is `SAIT-MLFF-Framework/`.
 
 You do not need to install packages required by SAIT-MLFF-Framework, such as OCP, NequIP, and etc., using `pip`.
 
-## Fit-scale
+### Download Datasets
 
-For GemNet-T, GemNet-dT, GemNet-GP, GemNet-OC, and PaiNN, the corresponding scale file is __required__.  
+* SiN [link]()
+* HfO [link]()
+
+```
+mkidr datasets
+wget link datasets/SiN
+wget link datasets/HfO
+```
+
+### Download Structures for Evaluation
+
+* SiN [link]()
+* HfO [link]()
+
+```
+mkidr 
+wget link eval_structures/SiN
+wget link eval_structures/HfO
+```
+
+
+## Train MLFF Models
+
+### Fit-scale
+
+For GemNet-T and GemNet-dT, the corresponding scale file is __required__.  
 For the other models, skip this step.  
 
 The following command generates the scale file.
@@ -34,7 +61,7 @@ You should specify `CONFIG`, `SCALEDIR`, and `SCALEFILE`.
 
 After the generated scale file is specified in the model training configuration file, you can train the models.
 
-## Train
+### Train
 
 ```
 python main.py --mode train --config-yml $CONFIG \
@@ -43,7 +70,9 @@ python main.py --mode train --config-yml $CONFIG \
 ```
 You should specify `CONFIG`, `RUNDIR`, and `RUNID`.
 
-## Train : Resume from a checkpoint
+The details are included in [link](scripts/train/).
+
+### Train : Resume from a checkpoint
 ```
 python main.py --mode train --config-yml $CONFIG \
     --run-dir $RUNDIR \
@@ -52,7 +81,7 @@ python main.py --mode train --config-yml $CONFIG \
 You should specify `CONFIG`, `RUNDIR`, and `CKPT_PATH`.
 Checkpoints and logging files will be appended to the same path which was used to train the checkpoint.
 
-## Validate
+### Validate
 
 ```
 python main.py --mode validate --config-yml $CONFIG \
@@ -63,12 +92,14 @@ You should specify `CONFIG`, `CHECKPOINT`, and `VALDATA`.
 
 `CONFIG` which was used for `train` mode can be found in the checkpoint directory.
 
-For now (2023. 03. 24), the available dataset format is only LMDB (`.lmdb`), as in __OCP github__.
+For now, the available dataset format is only LMDB (`.lmdb`), as in [OCP](https://github.com/Open-Catalyst-Project/ocp).
 
 If you have a data whose format is `.xyz` or `.extxyz`, please see the section below, where describe an evaluation mode with the energy and force prediction.
 
 
-## Run MD simulation
+## Evaluation using Simulation Indicators
+
+### Run MD simulation
 
 ```
 python main.py --mode run-md \
@@ -82,7 +113,7 @@ In `MD_CONFIG`, MD simulation conditions such as temperature should be described
 
 `INIT_STRUCTURE` has `.xyz` format which can be accessed by ASE library.
 
-## Evaluate 
+### Evaluate 
 
 ```
 python main.py --mode evaluate \
@@ -106,16 +137,8 @@ The two types (the abbreviation and its full name) are available.
 
 
 ## Acknowledge and Reference Code
-SchNet paper  
-DimeNet and DimeNet++ paper  
-GemNet paper  
-GemNet-OC paper  
-NequIP paper  
-Allegro paper  
-MACE paper  
-
-OCP github  
-NequIP github  
-Allegro github  
-MACE github  
-SIMPLE-NN github  
+OCP [github](https://github.com/Open-Catalyst-Project/ocp)   
+NequIP [github](https://github.com/mir-group/nequip)   
+Allegro [github](https://github.com/mir-group/allegro)  
+MACE [github](https://github.com/ACEsuit/mace)  
+SIMPLE-NN [github](https://github.com/MDIL-SNU/SIMPLE-NN_v2)   

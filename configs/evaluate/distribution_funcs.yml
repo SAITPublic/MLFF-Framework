@@ -1,0 +1,74 @@
+evaluation_metric: distribution_functions
+
+# ai_md_traj:
+#   path: datasets/{DATA}_eval/dfs/{STRUCTURE}/OUTCAR
+#   format: vasp-out
+#   index: 1000:1999:20  # optional
+#   n_extend: 2
+#   out_identifier: 3ps_to_6ps_every_0.06ps
+
+ai_md_dfs_results:
+  rdf_path: datasets/{DATA}_eval/dfs/{STRUCTURE}/RDF_AIMD_3ps_to_6ps_every_0.06ps.csv
+  adf_path: datasets/{DATA}_eval/dfs/{STRUCTURE}/ADF_AIMD_3ps_to_6ps_every_0.06ps.csv
+
+mlff_md_traj:
+  BPNN:
+    path: eval_results/{DATA}/mlff_trajectories/BPNN/{STRUCTURE}/md_sim_2023/atoms.traj
+    format: traj
+    index: 50:100   # optional, if not provided, consider all ranges (":")
+    n_extend: 2
+    out_identifier: 3ps_to_6ps_every_0.06ps
+  SchNet:  
+    path: eval_results/{DATA}/mlff_trajectories/SchNet/{STRUCTURE}/md_sim_2023/atoms.traj
+    format: traj
+    index: 50:100   # optional, if not provided, consider all ranges (":")
+    n_extend: 2
+    out_identifier: 3ps_to_6ps_every_0.06ps
+  DimeNet++:  
+    path: eval_results/{DATA}/mlff_trajectories/DimeNet++/{STRUCTURE}/md_sim_2023/atoms.traj
+    format: traj
+    index: 50:100   # optional, if not provided, consider all ranges (":")
+    n_extend: 2
+    out_identifier: 3ps_to_6ps_every_0.06ps
+  GemNet-T:  
+    path: eval_results/{DATA}/mlff_trajectories/GemNet-T/{STRUCTURE}/md_sim_2023/atoms.traj
+    format: traj
+    index: 50:100   # optional, if not provided, consider all ranges (":")
+    n_extend: 2
+    out_identifier: 3ps_to_6ps_every_0.06ps
+  GemNet-dT:  
+    path: eval_results/{DATA}/mlff_trajectories/GemNet-dT/{STRUCTURE}/md_sim_n_super_[2, 2, 2]_2023/atoms.traj
+    format: traj
+    index: 50:100   # optional, if not provided, consider all ranges (":")
+    n_extend: 2
+    out_identifier: 3ps_to_6ps_every_0.06ps
+  NequIP:  
+    path: eval_results/{DATA}/mlff_trajectories/NequIP/{STRUCTURE}/md_sim_2023/atoms.traj
+    format: traj
+    index: 50:100   # optional, if not provided, consider all ranges (":")
+    n_extend: 2
+    out_identifier: 3ps_to_6ps_every_0.06ps
+  Allegro:
+    path: eval_results/{DATA}/mlff_trajectories/Allegro/{STRUCTURE}/md_sim_2023/atoms.traj
+    format: traj
+    index: 50:100   # optional, if not provided, consider all ranges (":")
+    n_extend: 2
+    out_identifier: 3ps_to_6ps_every_0.06ps
+  MACE:  
+    path: eval_results/{DATA}/mlff_trajectories/MACE/{STRUCTURE}/md_sim_2023/atoms.traj
+    format: traj
+    index: 50:100   # optional, if not provided, consider all ranges (":")
+    n_extend: 2
+    out_identifier: 3ps_to_6ps_every_0.06ps
+  SCN:  
+    path: eval_results/{DATA}/mlff_trajectories/SCN/{STRUCTURE}/md_sim_2023/atoms.traj
+    format: traj
+    index: 50:100   # optional, if not provided, consider all ranges (":")
+    n_extend: 2
+    out_identifier: 3ps_to_6ps_every_0.06ps
+
+res_out_dir: eval_results/{DATA}/dfs/{STRUCTURE}/
+
+r_max_rdf: 6.0
+dr_rdf: 0.05
+r_max_adf: 5.0

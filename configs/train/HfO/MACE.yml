@@ -1,0 +1,57 @@
+includes:
+- configs/train/HfO/base_rmax6_maxneighbor50.yml
+
+trainer: forces_mace
+
+model:
+  name: mace
+  # neural network
+  hidden_irreps: "32x0e + 32x1o + 32x2e"
+  MLP_irreps: "16x0e"
+  num_interactions: 2
+  max_ell: 3 
+  correlation: 3 
+  num_radial_basis: 8
+  num_cutoff_basis: 5
+  gate: silu
+  
+  # force
+  regress_forces: True
+
+  # graph
+  cutoff: 6.0 
+  max_neighbors: 50 
+  otf_graph: False 
+  use_pbc: True
+
+  # data-related arg
+  E0s: average
+  scaling: rms_forces_scaling 
+  shifting: True 
+  chemical_symbols:
+    - O
+    - Hf
+
+optim:
+  batch_size: 16
+  eval_batch_size: 16
+  num_workers: 2
+  max_epochs: 200
+
+  optimizer: Adam
+  optimizer_params: {"amsgrad": True}
+  weight_decay: 5.e-7
+  scheduler: LinearLR
+  lr_initial: 0.01
+  ema_decay: 0.99
+
+  energy_coefficient: 1
+  force_coefficient: 1
+
+  # MSE-based loss
+  loss_energy: energy_per_atom_mse
+  loss_force: force_per_dim_mse
+
+  # MAE-based loss
+  #loss_energy: energy_per_atom_mae
+  #loss_force: l2mae

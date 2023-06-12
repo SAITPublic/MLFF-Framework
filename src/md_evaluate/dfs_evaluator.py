@@ -115,9 +115,9 @@ class DFEvaluator(BaseEvaluator):
             rdf_ref, pair_list_ref = self.calculate_rdf_fox(trajs_atoms_ai, out_identifier_ai)
             adf_ref, triplet_list_ref = self.calculate_adf_fox(trajs_atoms_ai, out_identifier_ai)
         else:
-            rdf_ref = pd.read_csv(self.config['ai_md_dfs_results']['rdf_path'])
+            rdf_ref = pd.read_csv(self.config['ai_md_dfs_results']['rdf_path'], index_col=0)
             pair_list_ref = rdf_ref.columns.values.tolist()
-            adf_ref = pd.read_csv(self.config['ai_md_dfs_results']['adf_path'])
+            adf_ref = pd.read_csv(self.config['ai_md_dfs_results']['adf_path'], index_col=0)
             triplet_list_ref = adf_ref.columns.values.tolist()
 
         rdf_dict_mlff = {}

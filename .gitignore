@@ -117,7 +117,9 @@ Local
 codebases_old/
 *debug*
 *SAIT_research*
-run.sh
+train_results/
+eval_results/
+*tmp.yml
 
 # artifact
 .nfs*

@@ -1,0 +1,42 @@
+includes:
+- configs/train/HfO/base.yml
+
+trainer: forces
+
+model:
+  name: schnet
+  # neural network
+  hidden_channels: 1024
+  num_filters: 256
+  num_interactions: 5
+  num_gaussians: 200
+ 
+  # force
+  regress_forces: True 
+
+  # graph
+  cutoff: 6.0 
+  # max_neighbors: 50 # this is explictly defined in SchNet class
+  otf_graph: True
+  use_pbc: True
+
+optim:
+  batch_size: 16
+  eval_batch_size: 16
+  num_workers: 2
+  max_epochs: 200
+
+  optimizer: Adam
+  scheduler: LinearLR
+  lr_initial: 1.e-4
+
+  energy_coefficient: 1
+  force_coefficient: 1
+
+  # MSE-based loss
+  loss_energy: energy_per_atom_mse
+  loss_force: force_per_dim_mse
+
+  # MAE-based loss
+  #loss_energy: energy_per_atom_mae
+  #loss_force: l2mae

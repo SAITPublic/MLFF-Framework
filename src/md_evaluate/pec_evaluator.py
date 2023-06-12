@@ -135,8 +135,7 @@ class PECEvaluator(BaseEvaluator):
                          range_dict["interval"]).round(n_valid_decimal)  # round to truncate spurious tailing numbers
 
     def evaluate(self):
-        calc_failure_msg_template = "PE calculation for unit structure '{}', \
-            distance (or angle) {} was failed. Run will continue."
+        calc_failure_msg_template = "PE calculation for unit structure '{}', distance (or angle) {} was failed. Run will continue."
 
         for unit_structure_dict in self.config["unit_structures"]:
             structure_name = unit_structure_dict["name"]
@@ -158,7 +157,7 @@ class PECEvaluator(BaseEvaluator):
                         print(traceback.format_exc())
                         pe = np.nan
 
-                    print(f"dist: {dist}, PE: {pe}")
+                    # print(f"dist: {dist}, PE: {pe}")
                     data["dist"].append(dist)
                     data["PE"].append(pe)
 
@@ -178,7 +177,7 @@ class PECEvaluator(BaseEvaluator):
                         print(traceback.format_exc())
                         pe = np.nan
 
-                    print(f"dist: {scale_suffix}, PE: {pe}")
+                    # print(f"dist: {scale_suffix}, PE: {pe}")
                     data["dist"].append(scale_suffix)
                     data["PE"].append(pe)
 
