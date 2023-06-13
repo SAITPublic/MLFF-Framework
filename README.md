@@ -49,7 +49,7 @@ Users do not need to explicitly install MLFF packages required by SAIT-MLFF-Fram
 * If some training conditions need to be handled, a tailored trainer class should be implemented (see `src/common/trainers/`)
 
 
-### Download Datasets (데이터 압축 포맷, 링크 필요)
+### Download Datasets
 
 Our semiconductor datasets (SiN and HfO) are available at [this link](https://figshare.com/ndownloader/articles/23500608).
 
