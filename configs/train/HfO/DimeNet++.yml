@@ -27,8 +27,8 @@ model:
   use_pbc: True 
 
 optim:
-  batch_size: 3
-  eval_batch_size: 3
+  batch_size: 8
+  eval_batch_size: 8
   num_workers: 2
   max_epochs: 200 
 

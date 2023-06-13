@@ -39,7 +39,7 @@ optim:
   max_epochs: 200
 
   optimizer: Adam
-  optimizer_params: {"amsgrad": True}
+  optimizer_params: {"amsgrad": False}
   weight_decay: 5.e-7
   scheduler: LinearLR
   lr_initial: 0.01
