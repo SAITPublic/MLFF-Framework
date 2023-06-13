@@ -10,3 +10,6 @@
 [submodule "codebases/allegro"]
 	path = codebases/allegro
 	url = https://github.com/mir-group/allegro.git
+[submodule "codebases/auto-FOX"]
+	path = codebases/auto-FOX
+	url = https://github.com/nlesc-nano/auto-FOX.git
