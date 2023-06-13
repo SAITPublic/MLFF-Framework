@@ -1,14 +1,14 @@
 # SAIT-MLFF-Framework
 
-We provide four functionals named `train`, `fit-scale`, `validate`, and `evaluate`.
+We provide four functionals named `fit-scale`, `train`, `validate`, `run-md`, and `evaluate`.
 
 The explanation about how to operate these functionals is described as below.
 
-For using more arguments of these functionals, it would be helpful to see `scripts/` and `NeurIPS23_DnB/`.
+For using more arguments of these functionals, it would be helpful to see `scripts/` and `configs/`.
 
 ## Preparation
 
-### Install
+### Install (수정 필요 -> AutoFox)
 
 ```
 git clone --recurse-submodules https://github.sec.samsung.net/ESC-MLFF/SAIT-MLFF-Framework.git
@@ -16,125 +16,75 @@ git clone --recurse-submodules https://github.sec.samsung.net/ESC-MLFF/SAIT-MLFF
 cd SAIT-MLFF-Framework
 ```
 
-Your base working directory is `SAIT-MLFF-Framework/`.
+From now on, the base working directory is the inside of `SAIT-MLFF-Framework/`.
 
-You do not need to install packages required by SAIT-MLFF-Framework, such as OCP, NequIP, and etc., using `pip`.
+Users do not need to explicitly install MLFF packages required by SAIT-MLFF-Framework, such as OCP, NequIP, and etc., using `pip`.  
+They exist in `codebases/` by git-cloning.
 
-### Download Datasets
+*Note* : Any other MLFF package can be compatible with our framework if some requirements are satified as follows.
+* The wrapper for models supported by the package should be implemented (see `src/common/models`).
+* If the package is located at `codebases/`, `sys.path` should include its path (see `main.py`).
+* If data format used by models is different from that of [OCP](https://github.com/Open-Catalyst-Project/ocp), data that is loaded from `.lmdb` (prepared by our script) should be converted into the data format of the package (see `src/common/collaters/`).
+* If some training conditions need to be handled, a tailored trainer class should be implemented (see `src/common/trainers/`)
+
+
+### Download Datasets (데이터 압축 포맷, 링크 필요)
 
 * SiN [link]()
 * HfO [link]()
 
 ```
 mkidr datasets
-wget link datasets/SiN
-wget link datasets/HfO
+wget [link] data.zip
+unzip data.zip
+mv data/SiN datasets/SiN
+mv data/HfO datasets/HfO
+mv data/SiN_raw datasets/SiN_raw
+mv data/HfO_raw datasets/HfO_raw
+rm -rf data/
 ```
 
-### Download Structures for Evaluation
+### Data Preprocesing 
 
-* SiN [link]()
-* HfO [link]()
-
-```
-mkidr 
-wget link eval_structures/SiN
-wget link eval_structures/HfO
-```
-
+The preprocessing, which converts the .xyz into .lmdb, is explained in [this](scripts/preprocess_data/).
 
 ## Train MLFF Models
 
 ### Fit-scale
 
-For GemNet-T and GemNet-dT, the corresponding scale file is __required__.  
+For each GemNet-T and GemNet-dT, the corresponding scale file is __required__.  
 For the other models, skip this step.  
 
-The following command generates the scale file.
+The details are explained in [this](scripts/fit_model_scale_factors/).
 
-```
-python main.py --mode fit-scale --config-yml $CONFIG \
-    --scale-path $SCALEDIR \
-    --scale-file $SCALEFILE
-```
-You should specify `CONFIG`, `SCALEDIR`, and `SCALEFILE`.
+After the generated scale file is specified in the model training configuration file, users can train the models.  
+The scale files used in our benchmark are provided in [SiN scale files](configs/train/SiN/auxiliary/) and [HfO scale files](configs/train/HfO/auxiliary/).
 
-After the generated scale file is specified in the model training configuration file, you can train the models.
 
 ### Train
 
-```
-python main.py --mode train --config-yml $CONFIG \
-    --run-dir $RUNDIR \
-    --identifier $RUNID
-```
-You should specify `CONFIG`, `RUNDIR`, and `RUNID`.
-
-The details are included in [link](scripts/train/).
-
-### Train : Resume from a checkpoint
-```
-python main.py --mode train --config-yml $CONFIG \
-    --run-dir $RUNDIR \
-    --checkpoint $CKPT_PATH
-```
-You should specify `CONFIG`, `RUNDIR`, and `CKPT_PATH`.
-Checkpoints and logging files will be appended to the same path which was used to train the checkpoint.
+The details are explained in [this](scripts/train/).
 
 ### Validate
 
-```
-python main.py --mode validate --config-yml $CONFIG \
-    --checkpoint $CHECKPOINT \
-    --validate-data $VALDATA
-```
-You should specify `CONFIG`, `CHECKPOINT`, and `VALDATA`.
+The details are explained in [this](scripts/validate/).
 
-`CONFIG` which was used for `train` mode can be found in the checkpoint directory.
+For now, the available dataset format is only LMDB (`.lmdb`), as in [OCP](https://github.com/Open-Catalyst-Project/ocp).  
+If users have a data whose format is `.xyz` or `.extxyz` and want to check errors of energy and forces without the data preprocessing, please refer the evaluation mode for energy and force prediction below.
 
-For now, the available dataset format is only LMDB (`.lmdb`), as in [OCP](https://github.com/Open-Catalyst-Project/ocp).
+## Evaluation
 
-If you have a data whose format is `.xyz` or `.extxyz`, please see the section below, where describe an evaluation mode with the energy and force prediction.
+### Evaluate using Errors of Energy and Force
 
-
-## Evaluation using Simulation Indicators
+The details are explained in [this](scripts/evaluate/README.md#link_energy_force_error).
 
 ### Run MD simulation
 
-```
-python main.py --mode run-md \
-    --md-config-yml $MD_CONFIG \
-    --checkpoint $CHECKPOINT \
-    --initial-structure $INIT_STRUCTURE
-```
-You should specify `MD_CONFIG`, `CHECKPOINT`, and `INIT_STRUCTURE`.
+The details are explained in [this](scripts/simulate/).
 
-In `MD_CONFIG`, MD simulation conditions such as temperature should be described.
+### Evaluate using Simulation Indicators
 
-`INIT_STRUCTURE` has `.xyz` format which can be accessed by ASE library.
-
-### Evaluate 
-
-```
-python main.py --mode evaluate \
-    --evaluation-metric $METRIC \
-    --checkpoint $CHECKPOINT \
-    --reference-trajectory $VASP_TRAJ \
-    --generated-trajectory $MLFF_TRAJ
-```
-You should specify `METRIC`, `CHECKPOINT`, `VASP_TRAJ`, and `MLFF_TRAJ`.
-
-`METRIC` can be chosen from the list below.  
-The two types (the abbreviation and its full name) are available.
-* `ef` (or `energy-force`)
-* `rdf` (or `radial-distribution-function`)
-* `adf` (or `angular-distribution-function`)
-* `eos` (or `energy-of-state`)
-* `pew` (or `potential-energy-well`)
-
-`VASP_TRAJ` and `MLFF_TRAJ` have `.xyz` format which can be accessed by ASE library.  
-`MLFF_TRAJ` is not used in `energy-force` evaluation.
-
+The details are explained in [this](scripts/evaluate/).
 
 ## Acknowledge and Reference Code
 OCP [github](https://github.com/Open-Catalyst-Project/ocp)   

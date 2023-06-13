@@ -37,7 +37,7 @@ mlff_md_traj:
     n_extend: 2
     out_identifier: 3ps_to_6ps_every_0.06ps
   GemNet-dT:  
-    path: eval_results/{DATA}/mlff_trajectories/GemNet-dT/{STRUCTURE}/md_sim_n_super_[2, 2, 2]_2023/atoms.traj
+    path: eval_results/{DATA}/mlff_trajectories/GemNet-dT/{STRUCTURE}/md_sim_2023/atoms.traj
     format: traj
     index: 50:100   # optional, if not provided, consider all ranges (":")
     n_extend: 2
