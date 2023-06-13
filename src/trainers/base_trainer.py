@@ -305,7 +305,7 @@ class BaseTrainer(ABC):
             self.val_sampler = self.get_sampler(
                 dataset=self.val_dataset,
                 batch_size=eval_local_batch_size,
-                shuffle=False,
+                shuffle=True,
             )
             self.val_loader = self.get_dataloader(
                 dataset=self.val_dataset,
@@ -321,7 +321,7 @@ class BaseTrainer(ABC):
             self.test_sampler = self.get_sampler(
                 dataset=self.test_dataset,
                 batch_size=eval_local_batch_size,
-                shuffle=False,
+                shuffle=True,
             )
             self.test_loader = self.get_dataloader(
                 dataset=self.test_dataset,
