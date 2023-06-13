@@ -4,8 +4,8 @@ dataset:
     normalize_labels: True
     per_atom: True
     normalize_labels_json: datasets/SiN/atom_cloud/normalize_stats.json
-  - src: datasets/SiN/atom_cloud/valid_shuffled.lmdb
-  - src: datasets/SiN/atom_cloud/test_shuffled.lmdb
+  - src: datasets/SiN/atom_cloud/valid.lmdb
+  - src: datasets/SiN/atom_cloud/test.lmdb
 
 logger: files
 

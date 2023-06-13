@@ -1,0 +1,24 @@
+diff --git a/ocpmodels/models/scn/scn.py b/ocpmodels/models/scn/scn.py
+index 770b8fc..76d9e7d 100644
+--- a/ocpmodels/models/scn/scn.py
++++ b/ocpmodels/models/scn/scn.py
+@@ -102,13 +102,13 @@ class SphericalChannelNetwork(BaseModel):
+     ):
+         super().__init__()
+ 
+-        if "e3nn" not in sys.modules:
+-            logging.error(
+-                "You need to install e3nn v0.2.6 to use the SCN model"
+-            )
+-            raise ImportError
++        # if "e3nn" not in sys.modules:
++        #     logging.error(
++        #         "You need to install e3nn v0.2.6 to use the SCN model"
++        #     )
++        #     raise ImportError
+ 
+-        assert e3nn.__version__ == "0.2.6"
++        # assert e3nn.__version__ == "0.2.6"
+ 
+         self.regress_forces = regress_forces
+         self.use_pbc = use_pbc

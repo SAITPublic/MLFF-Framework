@@ -1,0 +1,127 @@
+diff --git a/FOX/classes/multi_mol.py b/FOX/classes/multi_mol.py
+index e594f72..a4e6c5e 100644
+--- a/FOX/classes/multi_mol.py
++++ b/FOX/classes/multi_mol.py
+@@ -1805,7 +1805,7 @@ class MultiMolecule(_MultiMolecule):
+         """
+         # Identify the maximum to-be considered radius
+         r_max_ = 0 if float(r_max) == np.inf else float(r_max)
+-        n = int((1 + r_max_ / 4)**3)
++        n = int((1 + 2* r_max_ / 2)**3)    ##int((1 + r_max_ / 4)**3)
+ 
+         # Identify atom and molecule subsets
+         m_subset = self._get_mol_subset(mol_subset)
+diff --git a/FOX/functions/adf.py b/FOX/functions/adf.py
+index 32c71bc..8b609e2 100644
+--- a/FOX/functions/adf.py
++++ b/FOX/functions/adf.py
+@@ -81,17 +81,17 @@ def _adf_inner_cdktree(
+             vec = ((coords13 - coords2) / dist[..., None])
+             ang = np.arccos(np.einsum('jkl,jml->jkm', vec, vec))
+             dist = np.maximum(dist[..., None], dist[..., None, :])
+-    ang[np.isnan(ang)] = 0.0
++    ang[np.isnan(ang)] = np.nan
+ 
+-    # Radian (float) to degrees (int)
+-    ang_int: NDArray[i8] = np.degrees(ang).astype(np.int64)
++    # Radian (float) to degrees   
++    ang_deg: NDArray[i8] = np.degrees(ang)
+ 
+     # Construct and return the ADF
+     ret = []
+     for i, j, k in idx_list:
+         ijk: NDArray[np.bool_] = j[:, None, None] & i[idx][..., None] & k[idx][..., None, :]
+         weights = weight(dist[ijk]) if weight is not None else None
+-        ret.append(get_adf(ang_int[ijk], weights=weights))
++        ret.append(get_adf(ang_deg[ijk], weights=weights))
+     return ret
+ 
+ 
+@@ -110,9 +110,9 @@ def _adf_inner_cdktree_periodic(
+     if n < idx1.shape[1]:
+         idx1 = idx1[:, :n]
+     dist = np.take_along_axis(dist, idx1, axis=1)
++    if any(dist[:, n-1] < r_max):
++        raise "Increase n!!"
+     mask = dist > r_max
+-    idx1[mask] = 0
+-    dist[mask] = 0.0
+ 
+     # Return the subsets
+     idx0 = np.empty_like(idx1)
+@@ -120,6 +120,8 @@ def _adf_inner_cdktree_periodic(
+     i = idx0.ravel()
+     j = idx1.ravel()
+     vec_ret = vec[i, j].reshape(*dist.shape, 3)
++    vec_ret[mask] = np.nan
++    vec_ret[dist==0.0] = np.nan
+     return dist, vec_ret, idx1
+ 
+ 
+@@ -146,17 +148,17 @@ def _adf_inner(
+             dist, vec = _adf_inner_periodic(m, lattice, periodicity)
+         ang: NDArray[f8] = np.arccos(np.einsum('jkl,jml->jkm', vec, vec))
+         dist = np.maximum(dist[..., :, None], dist[..., None, :])
+-    ang[np.isnan(ang)] = 0.0
++    ang[np.isnan(ang)] = np.nan
+ 
+-    # Radian (float) to degrees (int)
+-    ang_int: NDArray[i8] = np.degrees(ang).astype(np.int64)
++    # Radian (float) to degrees
++    ang_deg: NDArray[i8] = np.degrees(ang)
+ 
+     # Construct and return the ADF
+     ret = []
+     for i, j, k in idx_list:
+         ijk: NDArray[np.bool_] = j[:, None, None] & i[..., None] & k[..., None, :]
+         weights = weight(dist[ijk]) if weight is not None else None
+-        ret.append(get_adf(ang_int[ijk], weights=weights))
++        ret.append(get_adf(ang_deg[ijk], weights=weights))
+     return ret
+ 
+ 
+@@ -223,18 +225,21 @@ def get_adf(
+         degrees.
+ 
+     """
+-    # Calculate and normalize the density
+-    denominator = len(ang) / 180
+-    at_count: NDArray[i8] = np.bincount(ang, minlength=181)[1:181]
++    mask = np.logical_and(~np.isnan(ang), ang>1e-5) 
++    ang_trimmed = ang[mask]
++    ang_int = ang_trimmed.astype(np.int64)
++    
++    # Calculate and normalize the density  
++    denominator = len(ang_int) / 180
++    at_count: NDArray[i8] = np.bincount(ang_int, minlength=180)
++    
+     dens: NDArray[f8] = at_count / denominator
+ 
+     if weights is None:
+         return dens
+-
++    
+     # Weight (and re-normalize) the density based on the distance matrix **dist**
+-    area: f8 = dens.sum()
+-    with np.errstate(divide='ignore', invalid='ignore'):
+-        dens *= np.bincount(ang, weights=weights, minlength=181)[1:181] / at_count
+-        dens *= area / np.nansum(dens)
+-    dens[np.isnan(dens)] = 0.0
+-    return dens
++    weights_trimmed = weights[mask]
++    bin_edges = [1.0*i for i in range(181)]
++    hist, _ = np.histogram(ang_trimmed, bins=bin_edges, density=True, weights=weights_trimmed)
++    return hist * 180.0
+diff --git a/FOX/functions/rdf.py b/FOX/functions/rdf.py
+index f472077..ace74dd 100644
+--- a/FOX/functions/rdf.py
++++ b/FOX/functions/rdf.py
+@@ -108,7 +108,7 @@ def get_rdf(
+     if dens_mean.ndim == 0:
+         denom = dist_shape[1] * int_step * dens_mean
+     else:
+-        denom = dist_shape[1] * int_step * dens_mean[..., None]
++        denom = dist_shape[1] * int_step * dens_mean[0, None]   ##
+     dens /= denom
+     dens[:, 0] = 0.0
+     return dens.sum(axis=0)

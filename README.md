@@ -8,18 +8,39 @@ For using more arguments of these functionals, it would be helpful to see `scrip
 
 ## Preparation
 
-### Install (수정 필요 -> AutoFox)
+After uncompressing `codes.zip` and following the instructions below, users can install the framework and perform MLFF benchmarks.
+
+### Install
 
 ```
-git clone --recurse-submodules https://github.sec.samsung.net/ESC-MLFF/SAIT-MLFF-Framework.git
-
 cd SAIT-MLFF-Framework
 ```
 
 From now on, the base working directory is the inside of `SAIT-MLFF-Framework/`.
 
+By the following instructions, the packages related to MLFF models and MD simulation are downloaded (git clone).
+
+```
+git submodule init
+git submodule update
+```
+
+We modify [OCP](https://github.com/Open-Catalyst-Project/ocp) and [auto-FOX](https://github.com/nlesc-nano/auto-FOX), which are located in `codebases/`, with minor modifications.  
+To enable users apply the modifications, we provide [two patch files](codebases/patches/).  
+The following instructions perform applying the patch to each submodule.
+
+```
+# auto-FOX
+cd codebases/auto-FOX
+git apply ../patches/auto-FOX-custom.patch
+pip install .
+
+# OCP
+cd ../ocp
+git apply ../patches/ocp-scn-custom.patch
+```
+
 Users do not need to explicitly install MLFF packages required by SAIT-MLFF-Framework, such as OCP, NequIP, and etc., using `pip`.  
-They exist in `codebases/` by git-cloning.
 
 *Note* : Any other MLFF package can be compatible with our framework if some requirements are satified as follows.
 * The wrapper for models supported by the package should be implemented (see `src/common/models`).
@@ -30,18 +51,19 @@ They exist in `codebases/` by git-cloning.
 
 ### Download Datasets (데이터 압축 포맷, 링크 필요)
 
-* SiN [link]()
-* HfO [link]()
+Our semiconductor datasets (SiN and HfO) are available at [this link](https://figshare.com/ndownloader/articles/23500608).
 
 ```
-mkidr datasets
-wget [link] data.zip
-unzip data.zip
-mv data/SiN datasets/SiN
-mv data/HfO datasets/HfO
-mv data/SiN_raw datasets/SiN_raw
-mv data/HfO_raw datasets/HfO_raw
-rm -rf data/
+# move the dataset directory
+cd datasets
+
+# download
+wget https://figshare.com/ndownloader/articles/23500608
+unzip 23500608.zip
+
+# there are four .tar files, among which two files are uncompressed for the benchmark
+tar xf SiN.tar
+tar xf HfO.tar
 ```
 
 ### Data Preprocesing 

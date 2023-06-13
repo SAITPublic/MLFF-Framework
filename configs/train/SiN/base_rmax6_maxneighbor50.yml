@@ -4,8 +4,8 @@ dataset:
     normalize_labels: True
     per_atom: True
     normalize_labels_json: datasets/SiN/atom_graph_rmax6.0_maxneighbor50/normalize_stats.json
-  - src: datasets/SiN/atom_graph_rmax6.0_maxneighbor50/valid_shuffled.lmdb
-  - src: datasets/SiN/atom_graph_rmax6.0_maxneighbor50/test_shuffled.lmdb
+  - src: datasets/SiN/atom_graph_rmax6.0_maxneighbor50/valid.lmdb
+  - src: datasets/SiN/atom_graph_rmax6.0_maxneighbor50/test.lmdb
 
 logger: files
 

@@ -3,12 +3,12 @@
 DATA=$1
 
 BENCHMARK_HOME=$(realpath ../../)
-DATADIR=datasets/${DATA}
-OUTDIR=datasets/${DATA}
+DATADIR=${BENCHMARK_HOME}/datasets/${DATA}
+OUTDIR=${BENCHMARK_HOME}/datasets/${DATA}
 
 # If you want to prepare .lmdb which saves just atom cloud (containing just coordinates), set "cloud".
 # Or if you want to have graph (containing coordinates as well as edges), set "graph"
-outdata_type=$1
+outdata_type=$2
 
 if [ $outdata_type == "cloud" ]; then
 
@@ -30,8 +30,8 @@ python preprocess.py \
 
 elif [ $outdata_type == "graph" ]; then
 
-rmax=$2
-maxneigh=$3
+rmax=$3
+maxneigh=$4
 
 # Train/Valid/Test sets
 python preprocess.py \
