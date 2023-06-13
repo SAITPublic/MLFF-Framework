@@ -116,7 +116,7 @@ rm ${CONFIG_TEMP}
 ```
 
 
-## [Evaluate Errors of Energy and Forces](#link_energy_force_error)
+## [Evaluate Errors of Energy and Forces](#evaluate-errors-of-energy-and-forceslink_energy_force_error)
 
 Even though errors of energy and forces are not categorized as simulation indicators, we offer this functional to predict energy and forces given an atomic data file with `.xyz` and calculate the errors in term of MAE and RMSE.
 

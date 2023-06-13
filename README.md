@@ -76,7 +76,7 @@ If users have a data whose format is `.xyz` or `.extxyz` and want to check error
 
 ### Evaluate using Errors of Energy and Force
 
-The details are explained in [this](scripts/evaluate/README.md#link_energy_force_error).
+The details are explained in [this](scripts/evaluate/README.md#evaluate-errors-of-energy-and-forces).
 
 ### Run MD simulation
 
