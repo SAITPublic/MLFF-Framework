@@ -20,9 +20,6 @@ class TrainTask(BaseTask):
         try:
             self.trainer.train()
 
-            # save the model as a class with trained parameters
-            # self.trainer.save_model_as_class()
-
         except RuntimeError as e:
             e_str = str(e)
             if (
