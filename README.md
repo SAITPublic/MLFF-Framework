@@ -52,14 +52,7 @@ The preprocessing, which converts the .xyz into .lmdb, is explained in [this](sc
 
 ### Fit-scale
 
-For each GemNet-T and GemNet-dT, the corresponding scale file is __required__.  
-For the other models, skip this step.  
-
 The details are explained in [this](scripts/fit_model_scale_factors/).
-
-After the generated scale file is specified in the model training configuration file, users can train the models.  
-The scale files used in our benchmark are provided in [SiN scale files](configs/train/SiN/auxiliary/) and [HfO scale files](configs/train/HfO/auxiliary/).
-
 
 ### Train
 

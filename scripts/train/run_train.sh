@@ -24,8 +24,8 @@ DATA=$3
 BENCHMARK_HOME=$(realpath ../../)
 cd $BENCHMARK_HOME
 
-CONFIG=${BENCHMARK_HOME}/configs/train/${DATA}/${MODEL}.yml
-RUNDIR=${BENCHMARK_HOME}/train_results/${DATA}/${MODEL}
+CONFIG=configs/train/${DATA}/${MODEL}.yml
+RUNDIR=train_results/${DATA}/${MODEL}
 RUNID=train
 
 CUDA_VISIBLE_DEVICES=$GPU python main.py \

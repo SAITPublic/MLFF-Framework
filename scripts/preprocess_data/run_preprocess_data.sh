@@ -3,8 +3,8 @@
 DATA=$1
 
 BENCHMARK_HOME=$(realpath ../../)
-DATADIR=${BENCHMARK_HOME}/datasets/${DATA}
-OUTDIR=${BENCHMARK_HOME}/datasets/${DATA}
+DATADIR=datasets/${DATA}
+OUTDIR=datasets/${DATA}
 
 # If you want to prepare .lmdb which saves just atom cloud (containing just coordinates), set "cloud".
 # Or if you want to have graph (containing coordinates as well as edges), set "graph"

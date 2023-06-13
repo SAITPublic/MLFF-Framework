@@ -120,6 +120,10 @@ codebases_old/
 train_results/
 eval_results/
 *tmp.yml
+datasets/SiN/
+datasets/HfO/
+datasets/SiN_raw/
+datasets/HfO_raw/
 
 # artifact
 .nfs*
