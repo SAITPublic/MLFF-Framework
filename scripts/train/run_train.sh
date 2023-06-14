@@ -34,6 +34,6 @@ CUDA_VISIBLE_DEVICES=$GPU python main.py \
     --run-dir $RUNDIR \
     --identifier $RUNID \
     --print-every 100 \
-    --save-ckpt-every-epoch 1 \
+    --save-ckpt-every-epoch 20 \
 
 

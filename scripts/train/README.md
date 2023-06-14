@@ -48,7 +48,7 @@ CUDA_VISIBLE_DEVICES=$GPU python main.py \
     --mode train \
     --config-yml $CONFIG \
     --run-dir $RUNDIR \
-    --checkpoint $CKPT_PATH
+    --checkpoint $CKPT_PATH \
 ```
 Users should specify `CONFIG`, `RUNDIR`, and `CKPT_PATH`.
 Checkpoints and logging files will be appended to the same path which was used to train the checkpoint.
