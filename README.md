@@ -52,24 +52,18 @@ Users do not need to explicitly install MLFF packages required by SAIT-MLFF-Fram
 ### Download Datasets
 
 Our semiconductor datasets (SiN and HfO) can be downloaded from the following links.
-* [SiN (raw)](https://drive.google.com/file/d/1umhok3RbYyjjnpeKkxEGJUN2oY3OxSBN/view?usp=drive_link)
-* [SiN](https://drive.google.com/file/d/1l9nsie40Bpm8CNW4sx94yAuvmMkUfM3b/view?usp=drive_link)
-* [HfO (raw)](https://drive.google.com/file/d/1tSkjfp4N8cvHqpFYYlu2EqK8u2HRIro7/view?usp=drive_link)
-* [HfO](https://drive.google.com/file/d/1-DVMGyXjvNYaBtaAkWu8uQVgvz8pEgMZ/view?usp=drive_link)
+* [SiN (raw)](https://drive.google.com/file/d/1umhok3RbYyjjnpeKkxEGJUN2oY3OxSBN/view?usp=sharing)
+* [SiN](https://drive.google.com/file/d/1l9nsie40Bpm8CNW4sx94yAuvmMkUfM3b/view?usp=sharing)
+* [HfO (raw)](https://drive.google.com/file/d/1tSkjfp4N8cvHqpFYYlu2EqK8u2HRIro7/view?usp=sharing)
+* [HfO](https://drive.google.com/file/d/1-DVMGyXjvNYaBtaAkWu8uQVgvz8pEgMZ/view?usp=sharing)
 
 ```
-# move the dataset directory
+# extract tar files at the datasets directory
 cd datasets
-
-# download datasets used for the benchmark (sampled from raw datasets)
-wget https://drive.google.com/file/d/1l9nsie40Bpm8CNW4sx94yAuvmMkUfM3b/view?usp=drive_link
-wget https://drive.google.com/file/d/1-DVMGyXjvNYaBtaAkWu8uQVgvz8pEgMZ/view?usp=drive_link
-
-# there are two .tar files
 tar xf SiN.tar
 tar xf HfO.tar
 
-# (optional)
+# optional
 rm SiN.tar
 rm HfO.tar
 ```
