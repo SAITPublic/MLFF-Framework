@@ -43,7 +43,7 @@ python preprocess.py \
     --test-data-output-name test \
     --out-path ${OUTDIR} \
     --r-max $rmax \
-    --max-neighbors $maaxneigh \
+    --max-neighbors $maxneigh \
 
 # OOD
 python preprocess.py \
@@ -51,6 +51,6 @@ python preprocess.py \
     --data-output-name ood \
     --out-path ${OUTDIR}/ood \
     --r-max $rmax \
-    --max-neighbors $maaxneigh \
+    --max-neighbors $maxneigh \
 
 fi
