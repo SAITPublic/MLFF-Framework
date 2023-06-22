@@ -163,6 +163,9 @@ def new_trainer_context(*, config: Dict[str, Any], args: Namespace):
         setup_benchmark_logging(config)
         setup_benchmark_imports(config)
 
+        if config["mode"] == "validate":
+            config["model"].update(torch.load(config["checkpoint"], map_location="cpu")["config"]["model_attributes"])
+
         # construct a trainer instance
         trainer_class = registry.get_trainer_class(config.get("trainer", "forces"))
         assert trainer_class is not None, "Trainer class is not found"

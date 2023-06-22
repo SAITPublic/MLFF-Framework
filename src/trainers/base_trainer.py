@@ -274,6 +274,10 @@ class BaseTrainer(ABC):
     def _set_datasets_and_generate_loaders_samplers(self):
         self.parallel_collater = self.initiate_collater()
 
+        if self.mode == "validate":
+            # in validate mode, skip this
+            return
+
         dataset_class = registry.get_dataset_class(self.config["task"]["dataset"])
         assert "batch_size" in self.config["optim"], "Specify batch_size"
         train_local_batch_size = self.config["optim"]["batch_size"]

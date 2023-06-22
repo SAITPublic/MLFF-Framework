@@ -45,6 +45,9 @@ class NequIPForcesTrainer(ForcesTrainer):
 
         # NequIP, Allegro does not need normalizer (they use own normaliation strategy)
         trainer_config["dataset"]["normalize_labels"] = False
+
+        if self.mode == "validate":
+            trainer_config["model_attributes"]["initialize"] = False
         return trainer_config
     
     def initiate_collater(self):
