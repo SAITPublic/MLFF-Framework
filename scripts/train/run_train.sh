@@ -18,6 +18,7 @@ MODEL=$2
 DATA_ARRAY=(
     "SiN"
     "HfO"
+    "HfSiO"
 )
 DATA=$3
 
@@ -34,6 +35,6 @@ CUDA_VISIBLE_DEVICES=$GPU python main.py \
     --run-dir $RUNDIR \
     --identifier $RUNID \
     --print-every 100 \
-    --save-ckpt-every-epoch 20 \
+    --save-ckpt-every-epoch 10 \
 
 

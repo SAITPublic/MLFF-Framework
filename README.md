@@ -106,27 +106,6 @@ The details are explained in [this](scripts/simulate/).
 
 The details are explained in [this](scripts/evaluate/).
 
-## Deployment for LAMMPS (NequIP, Allegro)
-
-If users utilize a trained model in LAMMPS as a pair, the checkpoint should be deployed according to the guidelines described in NequIP and Allegro github.
-
-To this end, we provide a deploying code, named `deploy_model_for_LAMMPS.py`, that convert a checkpoint trained by our code into the object compatible with LAMMPS.
-
-The following is usage of this code.
-
-```
-# for NequIP
-python deploy_model_for_LAMMPS.py NequIP $CKPT_OF_NEQUIP
-
-# for Allegro
-python deploy_model_for_LAMMPS.py Allegro $CKPT_OF_ALLEGRO
-```
-
-If a CKPT is `checkpoint.pt`, then `checkpoint_deploy.pt` will be generated at the same directory.
-
-**Note**: When using the code, please check the training environment and datasets.  In the code, `metadata` (lines 63~74) may be changed accordingly.
-
-
 ## Acknowledge and Reference Code
 OCP [github](https://github.com/Open-Catalyst-Project/ocp)   
 NequIP [github](https://github.com/mir-group/nequip)   
