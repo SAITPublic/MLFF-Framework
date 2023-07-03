@@ -1,3 +1,13 @@
+"""
+Copyright (C) 2023 Samsung Electronics Co. LTD
+
+This software is a property of Samsung Electronics.
+No part of this software, either material or conceptual may be copied or distributed, transmitted,
+transcribed, stored in a retrieval system or translated into any human or computer language in any form by any means,
+electronic, mechanical, manual or otherwise, or disclosed
+to third parties without the express written permission of Samsung Electronics.
+"""
+
 import inspect
 import math
 import torch
@@ -5,17 +15,6 @@ from bisect import bisect
 
 from ocpmodels.common import distutils
 
-"""
-Available LR scheduler
-
-0) ConstantLR
-1) LinearLR
-2) ReduceLROnPlateau
-3) CosineAnnealingWarmRestarts
-4) ExponentialLR
-5) LambdaLR (or not specified in a configuration yaml file)
-
-"""
 
 def convert_epoch_to_step(epoch, config):
     bs = float(config["batch_size"]) * distutils.get_world_size()
@@ -101,20 +100,12 @@ class LinearWarmupLinearDecayLRMultiplier(LinearWarmupLRMultiplier):
         return lambda x: self.warmup_then_linear_decay(x)
 
 
+# reference : LRScheduler class in ocp/ocpmodels/modules/scheduler.py
+# We add some schedulers.
+# 1) different lambda functions to deal with various warmup-based decaying strategies
+# 2) linear decaying strategy
+# 3) constant learning rate
 class LRScheduler:
-    """
-    Copied from ocp/ocpmodels/modules/scheduler.py
-    Modifications:
-    1) add different lambda functions to deal with various warmup-based decaying strategies
-    """
-    # scheduler_types = [
-    #     "LinearLR", # SAIT
-    #     "ReduceLROnPlateau", # OCP, NequIP, MACE
-    #     "CosineAnnealingWarmRestarts", # NequIP
-    #     "ExponentialLR", # MACE
-    #     "LambdaLR", # OCP (for warmup)
-    # ]
-
     def __init__(self, optimizer, config):
         self.optimizer = optimizer
         self.config = config.copy()
@@ -136,11 +127,6 @@ class LRScheduler:
             assert ("lr_lambda" in self.config)
             self.scheduler_type = "LambdaLR"
             lr_lambda = self.config["lr_lambda"]
-
-            # lr decaying strategy
-            # 1) constant
-            # 2) step
-            # 3) linear
             if lr_lambda == "constant":
                 lr_multiplier = LinearWarmupLRMultiplier(self.config)
             elif lr_lambda == "step":

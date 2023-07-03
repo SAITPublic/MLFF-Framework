@@ -1,5 +1,11 @@
 """
-written by byunggook.na (SAIT)
+Copyright (C) 2023 Samsung Electronics Co. LTD
+
+This software is a property of Samsung Electronics.
+No part of this software, either material or conceptual may be copied or distributed, transmitted,
+transcribed, stored in a retrieval system or translated into any human or computer language in any form by any means,
+electronic, mechanical, manual or otherwise, or disclosed
+to third parties without the express written permission of Samsung Electronics.
 """
 
 import torch
@@ -8,28 +14,23 @@ import inspect
 from ocpmodels.common.registry import registry
 from ocpmodels.common.utils import conditional_grad
 from ocpmodels.models.base import BaseModel
-from ocpmodels.datasets import LmdbDataset 
 
 from nequip.utils.config import Config
 from nequip.data import AtomicDataDict, AtomicData
 from nequip.data.transforms import TypeMapper
-
-# pre-defined modules in NequIP
 from nequip.model import ForceOutput, PartialForceOutput
 
-# modified modules to enable to be compatible with LMDB datasets
-from src.common.utils import bm_logging # benchmark logging
+from src.common.utils import bm_logging
 from src.models.nequip.rescale import RescaleEnergyEtc, PerSpeciesRescale
 from src.models.nequip.nequip import (
     set_model_config_based_on_data_statistics, 
     initiate_model_by_builders
 )
-from src.datasets.nequip.statistics import (
+from src.models.nequip.utils import (
     compute_avg_num_neighbors, 
     compute_global_shift_and_scale,
     compute_per_species_shift_and_scale
 )
-
 from src.models.allegro.allegro_energy_model import AllegroEnergyModel as Allegro
 
 
@@ -40,8 +41,8 @@ class AllegroWrap(BaseModel):
         num_atoms, # not used
         bond_feat_dim, # not used
         num_targets,
-        cutoff=5.0, # r_max
-        max_neighbors=None, # not used?
+        cutoff=6.0, # r_max
+        max_neighbors=None,
         use_pbc=True,
         regress_forces=True,
         otf_graph=False,
@@ -61,7 +62,7 @@ class AllegroWrap(BaseModel):
         ],
         num_layers=3,
         l_max=1,
-        parity="o3_full", ## different from NequIP
+        parity="o3_full", 
         BesselBasis_trainable=True,
         PolynomialCutoff_p=6,
         env_embed_multiplicity=32, # num features
@@ -170,6 +171,8 @@ class AllegroWrap(BaseModel):
             initialize=initialize,
         )
 
+        self.avg_num_neighbors = model_config["avg_num_neighbors"]
+
         # constrcut the NequIP model
         builders = [eval(module) for module in model_config["model_builders"]]
         self.allegro_model = initiate_model_by_builders(
@@ -207,7 +210,7 @@ class AllegroWrap(BaseModel):
 
     @conditional_grad(torch.enable_grad())
     def forward(self, data):
-        # data is already moved to device by OCPDataParallel (ocpmodels/common/data_parallel.py)
+        # data is already moved to device by OCPDataParallel (ocp/ocpmodels/common/data_parallel.py)
         input_data = AtomicData.to_AtomicDataDict(data)
 
         # model forward

@@ -1,24 +1,21 @@
+"""
+Copyright (C) 2023 Samsung Electronics Co. LTD
+
+This software is a property of Samsung Electronics.
+No part of this software, either material or conceptual may be copied or distributed, transmitted,
+transcribed, stored in a retrieval system or translated into any human or computer language in any form by any means,
+electronic, mechanical, manual or otherwise, or disclosed
+to third parties without the express written permission of Samsung Electronics.
+"""
+
 import torch
 
 from nequip.utils.torch_geometric.batch import Batch as BatchNequIP
 from nequip.data import AtomicData, AtomicDataDict
 
-from src.common.utils import bm_logging # benchmark logging
+from src.common.utils import bm_logging
 from src.common.collaters.parallel_collater import ParallelCollater
 
-# by robert.cho...
-# key_mappers={
-#     "pos":AtomicDataDict.POSITIONS_KEY,
-#     "cell":AtomicDataDict.CELL_KEY, 
-#     "atomic_numbers":AtomicDataDict.ATOMIC_NUMBERS_KEY,
-#     "edge_index":AtomicDataDict.EDGE_INDEX_KEY,
-#     "force":AtomicDataDict.FORCE_KEY,
-#     "y":AtomicDataDict.TOTAL_ENERGY_KEY, 
-#     "edge_cell_shift":AtomicDataDict.EDGE_CELL_SHIFT_KEY,
-#     "fixed":"fixed",
-# }
-# def data_transform_oc(data: torch_geometric.data.Data ) ->  AtomicData:
-#     return AtomicData(**{key_mappers[k]: data.__getattr__(k) for k in key_mappers})
 
 def convert_ocp_Data_into_nequip_AtomicData(ocp_data, transform):
     kwargs = {}
@@ -41,7 +38,7 @@ def convert_ocp_Data_into_nequip_AtomicData(ocp_data, transform):
     kwargs["edge_index"] = ocp_data.edge_index[[1, 0]] 
     
     # forces
-    if hasattr(ocp_data, 'force'):
+    if hasattr(ocp_data, 'force') and ocp_data.y is not None:
         kwargs["forces"] = ocp_data.force
 
     # total_energy and free_energy (which are identical for now)
@@ -49,14 +46,8 @@ def convert_ocp_Data_into_nequip_AtomicData(ocp_data, transform):
         kwargs["total_energy"] = torch.tensor(ocp_data.y)
         kwargs["free_energy"] = torch.tensor(ocp_data.y)
 
-    # pbc (deprecated)
-    # : this is not used in NequIP model forward
-    #kwargs["pbc"]
-
     # pos
     kwargs["pos"] = ocp_data.pos
-
-    # r_max (deprecated)
 
     # initiate AtomicData
     data = AtomicData(**kwargs)
@@ -67,7 +58,7 @@ def convert_ocp_Data_into_nequip_AtomicData(ocp_data, transform):
 
     # Additional information used in an OCP-based trainer
     # fixed atoms
-    if hasattr(ocp_data, "fixed"):
+    if hasattr(ocp_data, 'fixed') and ocp_data.fixed is not None:
         data.fixed = ocp_data.fixed
 
     return data

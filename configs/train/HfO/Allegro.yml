@@ -1,0 +1,71 @@
+includes:
+- configs/train/HfO/base_rmax6_maxneighbor50.yml
+
+trainer: forces_nequip
+
+model:
+  name: allegro
+  # neural network
+  model_builders:
+    - Allegro
+    - PerSpeciesRescale
+    - ForceOutput
+    - RescaleEnergyEtc
+  num_layers: 3
+  l_max: 2
+  parity: o3_full
+  avg_num_neighbors: auto
+  BesselBasis_trainable: True
+  PolynomialCutoff_p: 6
+  env_embed_multiplicity: 32
+  env_embed_mlp_latent_dimensions: []
+  #env_embed_mlp_nonlinearity: None # if None, comment out
+  env_embed_mlp_initialization: uniform
+  embed_initial_edge: True
+  two_body_latent_mlp_latent_dimensions: [64, 128, 256, 512]
+  two_body_latent_mlp_nonlinearity: silu
+  two_body_latent_mlp_initialization: uniform
+  latent_mlp_latent_dimensions: [512]
+  latent_mlp_nonlinearity: silu
+  latent_mlp_initialization: uniform
+  latent_resnet: True
+  edge_eng_mlp_latent_dimensions: [128]
+  #edge_eng_mlp_nonlinearity: None # if None, comment out
+  edge_eng_mlp_initialization: uniform
+
+  # force
+  regress_forces: True
+
+  # graph
+  cutoff: 6.0 
+  max_neighbors: 50 
+  otf_graph: False 
+  use_pbc: True
+
+  # data-related arg
+  chemical_symbols:
+    - O
+    - Hf
+
+optim:
+  batch_size: 16
+  eval_batch_size: 16
+  num_workers: 2
+  max_epochs: 200
+
+  optimizer: Adam
+  optimizer_params: {"amsgrad": False}
+  scheduler: LinearLR
+  lr_initial: 0.005
+  ema_decay: 0.99
+
+  energy_coefficient: 1
+  force_coefficient: 1
+
+  # MSE-based loss
+  loss_energy: energy_per_atom_mse
+  loss_force: force_per_dim_mse
+
+  # MAE-based loss
+  #loss_energy: energy_per_atom_mae
+  #loss_force: l2mae

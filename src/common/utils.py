@@ -1,3 +1,13 @@
+"""
+Copyright (C) 2023 Samsung Electronics Co. LTD
+
+This software is a property of Samsung Electronics.
+No part of this software, either material or conceptual may be copied or distributed, transmitted,
+transcribed, stored in a retrieval system or translated into any human or computer language in any form by any means,
+electronic, mechanical, manual or otherwise, or disclosed
+to third parties without the express written permission of Samsung Electronics.
+"""
+
 import os
 import logging
 import copy
@@ -5,13 +15,14 @@ import datetime
 import time
 import importlib
 import yaml
+import numpy as np
+import torch
+
 from argparse import Namespace
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 from pathlib import Path
-import numpy as np
-import torch
 from math import log10, floor, isnan
 
 from ocpmodels.common import distutils, gp_utils
@@ -41,34 +52,32 @@ def setup_benchmark_logging(config):
     root = logging.getLogger()
     bm_logging = logging.getLogger("BenchmarkLogging")
     if distutils.is_master():
-        # if not config.get("is_debug", False) and config["mode"] == "train":
-        if True:
-            # The initial logging setup is performed by setup_logging() of ocpmodels.common.utils at main.py.
-            # We'll follow the logging format.
-            log_formatter = root.handlers[0].formatter
+        # The initial logging setup is performed by setup_logging() of ocpmodels.common.utils at main.py.
+        # We'll follow the logging format.
+        log_formatter = root.handlers[0].formatter
 
-            # setup for benchmark logging
-            # inherit root logging and remove it
-            for handler in root.handlers:
-                bm_logging.addHandler(handler)
-                root.removeHandler(handler)
-            
-            if config.get("logger", None) == "files" and config["mode"] == "train":
-                # send INFO to a file
-                logger_name = config["logger"] if isinstance(config["logger"], str) else config["logger"]["name"]
-                logdir = os.path.join(config["run_dir"], "logs", logger_name, config["timestamp_id"])
-                os.makedirs(logdir, exist_ok=True)
-                log_path = os.path.join(logdir, "experiment.log")
-                file_handler = logging.FileHandler(log_path)
-                file_handler.setFormatter(log_formatter)
-                bm_logging.addHandler(file_handler)
+        # setup for benchmark logging
+        # inherit root logging and remove it
+        for handler in root.handlers:
+            bm_logging.addHandler(handler)
+            root.removeHandler(handler)
+        
+        if config.get("logger", None) == "files" and config["mode"] == "train":
+            # send INFO to a file
+            logger_name = config["logger"] if isinstance(config["logger"], str) else config["logger"]["name"]
+            logdir = os.path.join(config["run_dir"], "logs", logger_name, config["timestamp_id"])
+            os.makedirs(logdir, exist_ok=True)
+            log_path = os.path.join(logdir, "experiment.log")
+            file_handler = logging.FileHandler(log_path)
+            file_handler.setFormatter(log_formatter)
+            bm_logging.addHandler(file_handler)
     else:
         # disable logging by other ranks
         for handler in root.handlers:
             root.removeHandler(handler)
 
 
-# Copied from ocp.ocpmodels.utils
+# reference : setup_imports() in ocp/ocpmodels/common/utils.py
 def setup_benchmark_imports(config=None):
     # First, check if imports are already setup
     has_already_setup = registry.get("imports_benchmark_setup", no_warning=True)
@@ -99,7 +108,7 @@ def setup_benchmark_imports(config=None):
         # SAIT-MLFF-Framework
         # : re-define classes of trainers and tasks
         importlib.import_module("src.common.logger")
-        for key in ["trainers", "datasets", "models", "tasks", "md_evaluate"]:
+        for key in ["trainers", "models", "tasks", "md_evaluate"]:
             for path in (benchmark_root / "src" / key).rglob("*.py"):
                 module_name = ".".join(
                     path.absolute()
@@ -113,14 +122,9 @@ def setup_benchmark_imports(config=None):
         md_evaluate_registry.register("imports_benchmark_setup", True)
 
 
+# reference : new_trainer_context() in ocp/ocpmodels/common/utils.py
 @contextmanager
 def new_trainer_context(*, config: Dict[str, Any], args: Namespace):
-    """
-    Copied from ocp/ocpmodels/common/utils.py
-    Modifications:
-    1) specify timestamp_id
-    2) use benchmark_distutils.setup() instead of distutils.setup()
-    """
     @dataclass
     class _TrainingContext:
         config: Dict[str, Any]
@@ -158,6 +162,9 @@ def new_trainer_context(*, config: Dict[str, Any], args: Namespace):
         # setup benchmark logging with a file handler
         setup_benchmark_logging(config)
         setup_benchmark_imports(config)
+
+        if config["mode"] == "validate":
+            config["model"].update(torch.load(config["checkpoint"], map_location="cpu")["config"]["model_attributes"])
 
         # construct a trainer instance
         trainer_class = registry.get_trainer_class(config.get("trainer", "forces"))
@@ -216,18 +223,4 @@ def new_evaluator_context(*, config: Dict[str, Any], args: Namespace):
     finally:
         total_time = time.time()-start_time
         bm_logging.info(f"Total time taken: {total_time:.1f} sec ({total_time/3600:.1f} h)")
-        
-
-def calc_error_metric(f_predict, f_target, metric_name):
-    metric_name_lower = metric_name.lower()
-    if metric_name_lower == "mae":
-        return np.mean(np.absolute(f_predict - f_target))
-    elif metric_name_lower == "rmse":
-        return np.sqrt(np.mean((f_predict - f_target)**2))
-    else:
-        raise Exception(
-            "Provided metric name '{}' is not supported!".format(metric_name))
-
-
-def truncate_float(x, n_significant):
-    return round(x, (n_significant-1) - int(floor(log10(abs(x)))))
+    

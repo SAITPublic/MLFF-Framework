@@ -1,0 +1,59 @@
+#######################################################
+# In this benchmark, the assertion code for checking 
+# e3nn version in SCN class needs to be commented out.
+#######################################################
+
+includes:
+- configs/train/SiN/base.yml
+
+trainer: forces
+
+model:
+  name: scn
+  # neural network
+  num_interactions: 4 
+  hidden_channels: 64 
+  sphere_channels: 64
+  sphere_channels_reduce: 64
+  num_sphere_samples: 64
+  num_basis_functions: 6
+  distance_function: "gaussian"
+  lmax: 6
+  mmax: 1
+  use_grid: True
+  num_bands: 2
+  num_taps: -1
+  basis_width_scalar: 2.0
+
+  # force
+  regress_forces: True
+
+  # graph
+  cutoff: 6.0 
+  max_num_neighbors: 50 
+  otf_graph: True 
+  use_pbc: True 
+
+optim:
+  batch_size: 6
+  eval_batch_size: 6
+  num_workers: 2
+  max_epochs: 200 
+  optimizer: AdamW
+  optimizer_params: {"amsgrad": True}
+  #clip_grad_norm: 100
+  ema_decay: 0.999
+
+  scheduler: LinearLR
+  lr_initial: 4.e-4
+
+  energy_coefficient: 1
+  force_coefficient: 1
+
+  # MSE-based loss
+  loss_energy: energy_per_atom_mse
+  loss_force: force_per_dim_mse
+
+  # MAE-based loss
+  #loss_energy: energy_per_atom_mae
+  #loss_force: l2mae

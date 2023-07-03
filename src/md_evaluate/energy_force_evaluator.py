@@ -1,6 +1,13 @@
 """
-Written by byunggook.na
+Copyright (C) 2023 Samsung Electronics Co. LTD
+
+This software is a property of Samsung Electronics.
+No part of this software, either material or conceptual may be copied or distributed, transmitted,
+transcribed, stored in a retrieval system or translated into any human or computer language in any form by any means,
+electronic, mechanical, manual or otherwise, or disclosed
+to third parties without the express written permission of Samsung Electronics.
 """
+
 import torch
 import numpy as np
 import math
@@ -14,7 +21,7 @@ import ase
 import ase.io
 from ase.calculators.singlepoint import SinglePointCalculator
 
-from src.common.utils import bm_logging # benchmark logging
+from src.common.utils import bm_logging
 from src.common.registry import md_evaluate_registry
 from src.modules.metric_evaluator import MetricEvaluator
 from src.md_evaluate.base_evaluator import BaseEvaluator
@@ -89,14 +96,22 @@ class EnergyForceEvaluator(BaseEvaluator):
                 time_per_sample_model_inference.append(self.calculator.time_model_inference)
 
         table = PrettyTable()
-        table.field_names = ["dataset"] + [metric_name for metric_name in self.metric_evaluator.metric_fn]
+        field_names = ["dataset"]
+        for metric_name in self.metric_evaluator.metric_fn:
+            if "mse" in metric_name:
+                # mse -> rmse for printing
+                field_names.append(metric_name.replace("mse", "rmse"))
+            else:
+                field_names.append(metric_name)
+        table.field_names = field_names
         table_row_metrics = [self.ref_traj_path.name]
         for metric_name in self.metric_evaluator.metric_fn:
-            if self.display_meV and "mae" in metric_name:
-                table_row_metrics.append(f"{metrics[metric_name]['metric'] * 1000:.1f}")
-            elif self.display_meV and "mse" in metric_name:
-                # mse is displayed by rmse
-                table_row_metrics.append(f"{math.sqrt(metrics[metric_name]['metric']) * 1000:.1f}")
+            if self.display_meV:
+                if "mae" in metric_name:
+                    table_row_metrics.append(f"{metrics[metric_name]['metric'] * 1000:.1f}")
+                elif "mse" in metric_name:
+                    # mse is displayed by rmse after accumulation values through mse
+                    table_row_metrics.append(f"{math.sqrt(metrics[metric_name]['metric']) * 1000:.1f}")
             else:
                 table_row_metrics.append(f"{metrics[metric_name]['metric']:.1f}")
         table.add_row(table_row_metrics)

@@ -1,3 +1,13 @@
+"""
+Copyright (C) 2023 Samsung Electronics Co. LTD
+
+This software is a property of Samsung Electronics.
+No part of this software, either material or conceptual may be copied or distributed, transmitted,
+transcribed, stored in a retrieval system or translated into any human or computer language in any form by any means,
+electronic, mechanical, manual or otherwise, or disclosed
+to third parties without the express written permission of Samsung Electronics.
+"""
+
 import os
 
 from ocpmodels.common.utils import load_config
@@ -10,13 +20,6 @@ def add_benchmark_config(config, args):
 
     # to save checkpoints at every given epoch
     config["save_ckpt_every_epoch"] = args.save_ckpt_every_epoch
-
-    # to load a molecule dataset of rMD17
-    if args.molecule is not None:
-        if args.molecule in config["dataset"].keys():
-            config["dataset"] = config["dataset"][args.molecule]
-        else:
-            raise ValueError(f"The path of {args.molecule} dataset is not specified in your configuration file")
 
     return config
 
@@ -93,7 +96,7 @@ def build_run_md_config(args):
 def build_evaluate_config(args):
     if (args.evaluation_metric in ["ef", "energy_force"]
         and args.evaluation_config_yml is None):
-        assert args.reference_trajectory is not None, "--reference-trajectory should be given."
+        assert args.reference_trajectory is not None, "--reference-trajectory should be given when not using --evaluation-config-yml."
         config = {
             "reference_trajectory": args.reference_trajectory,
             "save_ef": args.save_ef,
@@ -102,17 +105,19 @@ def build_evaluate_config(args):
     else:
         config = load_config_with_warn(
             args.evaluation_config_yml,
-            "'evaluation-config-yml' should be given to set up an evalutation by a materials metric!!"
+            "--evaluation-config-yml should be given to enable an evaluation based on simulation indicators"
         )
+        
     config["mode"] = args.mode
     if args.evaluation_metric is not None:
         if "evaluation_metric" in config:
-            assert config["evaluation_metric"] == args.evaluation_metric, "Please check the evaluation_metric in the config file and '--evaluation-metric'"
+            assert config["evaluation_metric"] == args.evaluation_metric, "Please check the 'evaluation_metric' in the config file and '--evaluation-metric'"
         else:
             config["evaluation_metric"] = args.evaluation_metric
     else:
         assert "evaluation_metric" in config, "'evaluation_metric' in the config file or '--evaluation-metric' should be given."
-    if config["evaluation_metric"] in ["ef", "energy_force", "eos", "equation_of_state", "pe_well", "potential_energy_well"]:
+        
+    if config["evaluation_metric"] in ["ef", "energy_force", "eos", "equation_of_state", "pe_curves", "potential_energy_curves"]:
         assert args.checkpoint is not None, f"--checkpoint should be given for {config['evaluation_metric']}."
         config["checkpoint"] = args.checkpoint
     return config

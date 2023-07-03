@@ -1,0 +1,69 @@
+includes:
+- configs/train/HfO/base.yml
+
+trainer: forces
+
+model:
+  name: gemnet_t
+  # neural network
+  num_spherical: 7 
+  num_radial: 6
+  num_blocks: 4
+  emb_size_atom: 128
+  emb_size_edge: 128
+  emb_size_trip: 64 
+  emb_size_rbf: 16
+  emb_size_cbf: 16
+  emb_size_bil_trip: 64 
+  num_before_skip: 1 
+  num_after_skip: 1 
+  num_concat: 1 
+  num_atom: 2
+  rbf:
+    name: spherical_bessel 
+  envelope:
+    name: polynomial
+    exponent: 5 
+  cbf:
+    name: spherical_harmonics 
+  extensive: True 
+  output_init: HeOrthogonal 
+  activation: silu 
+
+  # A scale file can be generated using 'fit-scale' mode
+  # When running 'fit-scale' mode, the scale file needs to be commented out.
+  scale_file: configs/train/HfO/auxiliary/GemNet-T_scale_factors.json
+
+  # force
+  regress_forces: True
+  direct_forces: False
+
+  # graph
+  cutoff: 6.0
+  max_neighbors: 50 
+  otf_graph: True
+  use_pbc: True 
+
+optim:
+  batch_size: 8 
+  eval_batch_size: 8
+  num_workers: 2 
+  max_epochs: 200 
+
+  optimizer: AdamW 
+  optimizer_params: {"amsgrad": True} 
+  ema_decay: 0.999 
+  clip_grad_norm: 10 
+  scheduler: LinearLR
+  lr_initial: 5.e-4 
+
+  energy_coefficient: 1
+  force_coefficient: 1
+
+  # MSE-based loss
+  loss_energy: energy_per_atom_mse
+  loss_force: force_per_dim_mse
+
+  # MAE-based loss
+  #loss_energy: energy_per_atom_mae
+  #loss_force: l2mae

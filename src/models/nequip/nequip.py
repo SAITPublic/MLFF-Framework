@@ -1,6 +1,11 @@
 """
-written by byunggook.na (SAIT)
-reference : nequip.model._build.py
+Copyright (C) 2023 Samsung Electronics Co. LTD
+
+This software is a property of Samsung Electronics.
+No part of this software, either material or conceptual may be copied or distributed, transmitted,
+transcribed, stored in a retrieval system or translated into any human or computer language in any form by any means,
+electronic, mechanical, manual or otherwise, or disclosed
+to third parties without the express written permission of Samsung Electronics.
 """
 
 import torch
@@ -14,25 +19,25 @@ from ocpmodels.datasets import LmdbDataset
 from nequip.utils.config import Config
 from nequip.data import AtomicDataDict, AtomicData
 from nequip.data.transforms import TypeMapper
-
-# pre-defined modules in NequIP
 from nequip.model import SimpleIrrepsConfig, ForceOutput, PartialForceOutput
 
-# modified modules to enable to be compatible with LMDB datasets
+from src.common.utils import bm_logging
 from src.models.nequip.energy_model import EnergyModel
 from src.models.nequip.rescale import RescaleEnergyEtc, PerSpeciesRescale
-from src.datasets.nequip.statistics import (
+from src.models.nequip.utils import (
     compute_avg_num_neighbors, 
     compute_global_shift_and_scale,
     compute_per_species_shift_and_scale
 )
-from src.common.utils import bm_logging # benchmark logging
 
 
 def set_model_config_based_on_data_statistics(model_config, type_mapper, dataset_name, data_normalization=True, initialize=True):
     # add statistics results to config
-    assert dataset_name is not None
-    dataset = LmdbDataset(dataset_name)
+    if initialize:
+        assert dataset_name is not None
+        dataset = LmdbDataset(dataset_name)
+    else:
+        dataset = None
 
     # 1) avg_num_neighbors (required by EnergyModel)
     avg_num_neighbors = compute_avg_num_neighbors(
@@ -78,7 +83,8 @@ def set_model_config_based_on_data_statistics(model_config, type_mapper, dataset
         model_config["global_rescale_shift"] = global_shift
         model_config["global_rescale_scale"] = global_scale
 
-    dataset.close_db()
+    if dataset is not None:
+        dataset.close_db()
     return model_config
 
 
@@ -110,8 +116,8 @@ class NequIPWrap(BaseModel):
         num_atoms, # not used
         bond_feat_dim, # not used
         num_targets,
-        cutoff=5.0,
-        max_neighbors=None, # not used?
+        cutoff=6.0,
+        max_neighbors=None, 
         use_pbc=True,
         regress_forces=True,
         otf_graph=False,
@@ -226,6 +232,8 @@ class NequIPWrap(BaseModel):
             initialize=initialize,
         )
 
+        self.avg_num_neighbors = model_config["avg_num_neighbors"]
+
         # constrcut the NequIP model
         builders = [eval(module) for module in model_config["model_builders"]]
         self.nequip_model = initiate_model_by_builders(
@@ -263,7 +271,7 @@ class NequIPWrap(BaseModel):
 
     @conditional_grad(torch.enable_grad())
     def forward(self, data):
-        # data is already moved to device by OCPDataParallel (ocpmodels/common/data_parallel.py)
+        # data is already moved to device by OCPDataParallel (ocp/ocpmodels/common/data_parallel.py)
         input_data = AtomicData.to_AtomicDataDict(data)
 
         # model forward

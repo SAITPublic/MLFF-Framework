@@ -1,0 +1,15 @@
+evaluation_metric: pe_curves
+
+unit_structures:
+- name: {STRUCTURE}
+  path: datasets/{DATA}_eval/pec/{STRUCTURE}/POSCAR
+  format: vasp
+  {PEC_PARAM}:
+    start: {START}
+    end: {END}
+    interval: {INTERVAL}
+  reference_scale_energy_relation_path: datasets/{DATA}_eval/pec/{STRUCTURE}/{ENERGY_RELATION}
+
+energy_save_name: length_penergy_relation
+error_save_name: pe_error_metrics
+res_out_dir: eval_results/{DATA}/pec/{STRUCTURE}/

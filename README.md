@@ -1,121 +1,114 @@
 # SAIT-MLFF-Framework
 
-We provide four functionals named `train`, `fit-scale`, `validate`, and `evaluate`.
+We provide four functionals named `fit-scale`, `train`, `validate`, `run-md`, and `evaluate`.
 
 The explanation about how to operate these functionals is described as below.
 
-For using more arguments of these functionals, it would be helpful to see `scripts/` and `NeurIPS23_DnB/`.
+For using more arguments of these functionals, it would be helpful to see `scripts/` and `configs/`.
 
-## Install
+## Preparation
+
+<!-- After uncompressing `codes.zip` and following the instructions below, users can install the framework and perform MLFF benchmarks. -->
+
+After following the instructions below, users can install the framework and perform MLFF benchmarks.
+
+### Install
 
 ```
-git clone --recurse-submodules https://github.sec.samsung.net/ESC-MLFF/SAIT-MLFF-Framework.git
-
+git clone https://github.sec.samsung.net/ESC-MLFF/SAIT-MLFF-Framework.git
 cd SAIT-MLFF-Framework
 ```
 
-Your base working directory is `SAIT-MLFF-Framework/`.
+From now on, the base working directory is the inside of `SAIT-MLFF-Framework/`.
 
-You do not need to install packages required by SAIT-MLFF-Framework, such as OCP, NequIP, and etc., using `pip`.
-
-## Fit-scale
-
-For GemNet-T, GemNet-dT, GemNet-GP, GemNet-OC, and PaiNN, the corresponding scale file is __required__.  
-For the other models, skip this step.  
-
-The following command generates the scale file.
+By the following instructions, the packages related to MLFF models and MD simulation are downloaded (git clone).
 
 ```
-python main.py --mode fit-scale --config-yml $CONFIG \
-    --scale-path $SCALEDIR \
-    --scale-file $SCALEFILE
+git submodule init
+git submodule update
 ```
-You should specify `CONFIG`, `SCALEDIR`, and `SCALEFILE`.
 
-After the generated scale file is specified in the model training configuration file, you can train the models.
-
-## Train
+We modify [OCP](https://github.com/Open-Catalyst-Project/ocp) and [auto-FOX](https://github.com/nlesc-nano/auto-FOX), which are located in `codebases/`, with minor modifications.  
+To enable users apply the modifications, we provide [two patch files](codebases/patches/).  
+The following instructions perform applying the patch to each submodule.
 
 ```
-python main.py --mode train --config-yml $CONFIG \
-    --run-dir $RUNDIR \
-    --identifier $RUNID
+# auto-FOX
+cd codebases/auto-FOX
+git apply ../patches/auto-FOX-custom.patch
+pip install .
+
+# OCP
+cd ../ocp
+git apply ../patches/ocp-scn-custom.patch
 ```
-You should specify `CONFIG`, `RUNDIR`, and `RUNID`.
 
-## Train : Resume from a checkpoint
-```
-python main.py --mode train --config-yml $CONFIG \
-    --run-dir $RUNDIR \
-    --checkpoint $CKPT_PATH
-```
-You should specify `CONFIG`, `RUNDIR`, and `CKPT_PATH`.
-Checkpoints and logging files will be appended to the same path which was used to train the checkpoint.
+Users do not need to explicitly install MLFF packages required by SAIT-MLFF-Framework, such as OCP, NequIP, and etc., using `pip`.  
 
-## Validate
-
-```
-python main.py --mode validate --config-yml $CONFIG \
-    --checkpoint $CHECKPOINT \
-    --validate-data $VALDATA
-```
-You should specify `CONFIG`, `CHECKPOINT`, and `VALDATA`.
-
-`CONFIG` which was used for `train` mode can be found in the checkpoint directory.
-
-For now (2023. 03. 24), the available dataset format is only LMDB (`.lmdb`), as in __OCP github__.
-
-If you have a data whose format is `.xyz` or `.extxyz`, please see the section below, where describe an evaluation mode with the energy and force prediction.
+*Note* : Any other MLFF package can be compatible with our framework if some requirements are satified as follows.
+* The wrapper for models supported by the package should be implemented (see `src/common/models`).
+* If the package is located at `codebases/`, `sys.path` should include its path (see `main.py`).
+* If data format used by models is different from that of [OCP](https://github.com/Open-Catalyst-Project/ocp), data that is loaded from `.lmdb` (prepared by our script) should be converted into the data format of the package (see `src/common/collaters/`).
+* If some training conditions need to be handled, a tailored trainer class should be implemented (see `src/common/trainers/`)
 
 
-## Run MD simulation
+### Download Datasets
+
+Our semiconductor datasets (SiN and HfO) can be downloaded from the following links.
+* [SiN (raw)](https://drive.google.com/file/d/1umhok3RbYyjjnpeKkxEGJUN2oY3OxSBN/view?usp=sharing)
+* [SiN](https://drive.google.com/file/d/1l9nsie40Bpm8CNW4sx94yAuvmMkUfM3b/view?usp=sharing)
+* [HfO (raw)](https://drive.google.com/file/d/1tSkjfp4N8cvHqpFYYlu2EqK8u2HRIro7/view?usp=sharing)
+* [HfO](https://drive.google.com/file/d/1-DVMGyXjvNYaBtaAkWu8uQVgvz8pEgMZ/view?usp=sharing)
 
 ```
-python main.py --mode run-md \
-    --md-config-yml $MD_CONFIG \
-    --checkpoint $CHECKPOINT \
-    --initial-structure $INIT_STRUCTURE
+# extract tar files at the datasets directory
+cd datasets
+tar xf SiN.tar
+tar xf HfO.tar
+
+# optional
+rm SiN.tar
+rm HfO.tar
 ```
-You should specify `MD_CONFIG`, `CHECKPOINT`, and `INIT_STRUCTURE`.
 
-In `MD_CONFIG`, MD simulation conditions such as temperature should be described.
+### Data Preprocesing 
 
-`INIT_STRUCTURE` has `.xyz` format which can be accessed by ASE library.
+The preprocessing, which converts the .xyz into .lmdb, is explained in [this](scripts/preprocess_data/).
 
-## Evaluate 
+## Train MLFF Models
 
-```
-python main.py --mode evaluate \
-    --evaluation-metric $METRIC \
-    --checkpoint $CHECKPOINT \
-    --reference-trajectory $VASP_TRAJ \
-    --generated-trajectory $MLFF_TRAJ
-```
-You should specify `METRIC`, `CHECKPOINT`, `VASP_TRAJ`, and `MLFF_TRAJ`.
+### Fit-scale
 
-`METRIC` can be chosen from the list below.  
-The two types (the abbreviation and its full name) are available.
-* `ef` (or `energy-force`)
-* `rdf` (or `radial-distribution-function`)
-* `adf` (or `angular-distribution-function`)
-* `eos` (or `energy-of-state`)
-* `pew` (or `potential-energy-well`)
+The details are explained in [this](scripts/fit_model_scale_factors/).
 
-`VASP_TRAJ` and `MLFF_TRAJ` have `.xyz` format which can be accessed by ASE library.  
-`MLFF_TRAJ` is not used in `energy-force` evaluation.
+### Train
 
+The details are explained in [this](scripts/train/).
+
+### Validate
+
+The details are explained in [this](scripts/validate/).
+
+For now, the available dataset format is only LMDB (`.lmdb`), as in [OCP](https://github.com/Open-Catalyst-Project/ocp).  
+If users have a data whose format is `.xyz` or `.extxyz` and want to check errors of energy and forces without the data preprocessing, please refer the evaluation mode for energy and force prediction below.
+
+## Evaluation
+
+### Evaluate using Errors of Energy and Force
+
+The details are explained in [this](scripts/evaluate/README.md#evaluate-errors-of-energy-and-forces).
+
+### Run MD simulation
+
+The details are explained in [this](scripts/simulate/).
+
+### Evaluate using Simulation Indicators
+
+The details are explained in [this](scripts/evaluate/).
 
 ## Acknowledge and Reference Code
-SchNet paper  
-DimeNet and DimeNet++ paper  
-GemNet paper  
-GemNet-OC paper  
-NequIP paper  
-Allegro paper  
-MACE paper  
-
-OCP github  
-NequIP github  
-Allegro github  
-MACE github  
-SIMPLE-NN github  
+OCP [github](https://github.com/Open-Catalyst-Project/ocp)   
+NequIP [github](https://github.com/mir-group/nequip)   
+Allegro [github](https://github.com/mir-group/allegro)  
+MACE [github](https://github.com/ACEsuit/mace)  
+SIMPLE-NN [github](https://github.com/MDIL-SNU/SIMPLE-NN_v2)   

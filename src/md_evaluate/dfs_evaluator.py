@@ -1,7 +1,15 @@
 """
-Written by byunggook.na and heesun88.lee
+Copyright (C) 2023 Samsung Electronics Co. LTD
+
+This software is a property of Samsung Electronics.
+No part of this software, either material or conceptual may be copied or distributed, transmitted,
+transcribed, stored in a retrieval system or translated into any human or computer language in any form by any means,
+electronic, mechanical, manual or otherwise, or disclosed
+to third parties without the express written permission of Samsung Electronics.
 """
+
 import json
+import pandas as pd
 import matplotlib.pyplot as plt
 
 from pathlib import Path
@@ -11,9 +19,10 @@ from ase import io
 from ase.build.supercells import make_supercell
 from FOX import MultiMolecule
 
-from src.common.utils import calc_error_metric
 from src.common.registry import md_evaluate_registry
 from src.md_evaluate.base_evaluator import BaseEvaluator
+from src.md_evaluate.utils import calc_error_metric
+
 
 @md_evaluate_registry.register_md_evaluate("df")
 @md_evaluate_registry.register_md_evaluate("distribution_functions")
@@ -22,11 +31,10 @@ class DFEvaluator(BaseEvaluator):
     def calculate_rdf_fox(self, traj_atoms, out_identifier):
         mols = MultiMolecule.from_ase(traj_atoms)
         # assume periodic in all axis as RDF is meaningful only in periodic system...
-        rdf = mols.init_rdf(
-            periodic="xyz", dr=self.config["dr_rdf"], r_max=self.config["r_max_rdf"])
+        rdf = mols.init_rdf(periodic="xyz", dr=self.config["dr_rdf"], r_max=self.config["r_max_rdf"])
         pair_list = rdf.columns.values.tolist()
 
-        filename_rdf = "RDF_{}.csv".format(out_identifier)
+        filename_rdf = f"RDF_{out_identifier}.csv"
         rdf.to_csv(Path(self.config["res_out_dir"]) / filename_rdf)
 
         return rdf, pair_list
@@ -34,11 +42,10 @@ class DFEvaluator(BaseEvaluator):
     def calculate_adf_fox(self, traj_atoms, out_identifier):
         mols = MultiMolecule.from_ase(traj_atoms)
         # assume periodic in all axis as ADF is meaningful only in periodic system...
-        adf = mols.init_adf(
-            periodic="xyz", r_max=self.config["r_max_adf"])  # , weight=None
+        adf = mols.init_adf(periodic="xyz", r_max=self.config["r_max_adf"])
         triplet_list = adf.columns.values.tolist()
 
-        filename_adf = "ADF_{}.csv".format(out_identifier)
+        filename_adf = f"ADF_{out_identifier}.csv"
         adf.to_csv(Path(self.config["res_out_dir"]) / filename_adf)
 
         return adf, triplet_list
@@ -56,10 +63,7 @@ class DFEvaluator(BaseEvaluator):
             ax.set_ylabel('Distrubution Func.')
             ax.set_title(combination)
             ax.legend(label_list)
-            plt.savefig(Path(self.config["res_out_dir"]) /
-                        '{}_{}.png'.format(fig_name, combination))
-            # plt.show()
-            # # plt.close('all')
+            plt.savefig(Path(self.config["res_out_dir"]) / f'{fig_name}_{combination}.png')
     
     def output_error_metrics(self, distribution_ref, distribution_dict_mlff, combination_list, file_name):
         distribution_error_dict = defaultdict(dict)
@@ -74,8 +78,7 @@ class DFEvaluator(BaseEvaluator):
                 sum(distribution_error_dict[mlff_uid].values()) \
                     / len(distribution_error_dict[mlff_uid])
 
-        out_file_path = Path(
-            self.config["res_out_dir"]) / "{}.dat".format(file_name)
+        out_file_path = Path(self.config["res_out_dir"]) / f"{file_name}.dat"
         with open(out_file_path, 'w') as f:
             json.dump(distribution_error_dict, f, indent=4)
 
@@ -97,19 +100,25 @@ class DFEvaluator(BaseEvaluator):
     def evaluate(self):
         Path(self.config["res_out_dir"]).mkdir(parents=True, exist_ok=True)
 
-        trajs_atoms_ai = DFEvaluator.get_traj_atoms(
-            self.config["ai_md_traj"]["path"],
-            index=self.config["ai_md_traj"].get("index", ":"),
-            format=self.config["ai_md_traj"].get("format"),
-            n_extend=self.config["ai_md_traj"].get("n_extend"))
-        out_identifier_ai = "AIMD_".format(
-            self.config["ai_md_traj"]["out_identifier"]
-        )
+        if "ai_md_traj" in self.config.keys() and "ai_md_dfs_results" in self.config.keys():
+            raise RuntimeError("Only one file for reference is required by 'ai_md_traj' or 'ai_md_dfs_results")
+        
+        if "ai_md_traj" in self.config.keys():
+            trajs_atoms_ai = DFEvaluator.get_traj_atoms(
+                self.config["ai_md_traj"]["path"],
+                index=self.config["ai_md_traj"].get("index", ":"),
+                format=self.config["ai_md_traj"].get("format"),
+                n_extend=self.config["ai_md_traj"].get("n_extend")
+            )
+            out_identifier_ai = f"AIMD_{self.config['ai_md_traj']['out_identifier']}"
 
-        rdf_ref, pair_list_ref = self.calculate_rdf_fox(
-            trajs_atoms_ai, out_identifier_ai)
-        adf_ref, triplet_list_ref = self.calculate_adf_fox(
-            trajs_atoms_ai, out_identifier_ai)
+            rdf_ref, pair_list_ref = self.calculate_rdf_fox(trajs_atoms_ai, out_identifier_ai)
+            adf_ref, triplet_list_ref = self.calculate_adf_fox(trajs_atoms_ai, out_identifier_ai)
+        else:
+            rdf_ref = pd.read_csv(self.config['ai_md_dfs_results']['rdf_path'], index_col=0)
+            pair_list_ref = rdf_ref.columns.values.tolist()
+            adf_ref = pd.read_csv(self.config['ai_md_dfs_results']['adf_path'], index_col=0)
+            triplet_list_ref = adf_ref.columns.values.tolist()
 
         rdf_dict_mlff = {}
         adf_dict_mlff = {}
@@ -123,24 +132,20 @@ class DFEvaluator(BaseEvaluator):
                         n_extend=mlff_traj_dict.get("n_extend")
                     )
             except:
-                self.logger.info("trajectory for {} is missing. Skipping calculation for this trajectory".format(mlff_uid))
+                self.logger.info(f"trajectory for {mlff_uid} is missing. Skipping calculation for this trajectory")
                 continue
             
-            out_identifier_mlff = "{}_{}".format(mlff_uid,
-                                                 mlff_traj_dict["out_identifier"])
+            out_identifier_mlff = f"{mlff_uid}_{mlff_traj_dict['out_identifier']}"
 
-            self.logger.info(
-                "Start calculating distrubution functions for model '{}'".format(mlff_uid))
+            self.logger.info(f"Start calculating distrubution functions for model '{mlff_uid}'")
             try:
-                rdf_dict_mlff[mlff_uid], pair_list_mlff = \
-                    self.calculate_rdf_fox(traj_atoms_mlff, out_identifier_mlff)
+                rdf_dict_mlff[mlff_uid], pair_list_mlff = self.calculate_rdf_fox(traj_atoms_mlff, out_identifier_mlff)
                 assert pair_list_ref == pair_list_mlff, \
                     "Atom types in 'mlff_md_traj' should be the same as those in 'ai_md_traj'"
 
-                adf_dict_mlff[mlff_uid], _ = self.calculate_adf_fox(
-                    traj_atoms_mlff, out_identifier_mlff)
+                adf_dict_mlff[mlff_uid], _ = self.calculate_adf_fox(traj_atoms_mlff, out_identifier_mlff)
             except:
-                self.logger.info("Failed to calculate rdf, adf for {}.".format(mlff_uid))
+                self.logger.info(f"Failed to calculate rdf, adf for {mlff_uid}.")
                 continue
 
         self.generate_comparison_figure(rdf_ref, rdf_dict_mlff, pair_list_ref,

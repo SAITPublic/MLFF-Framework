@@ -1,6 +1,13 @@
 """
-Written by byunggook.na and heesun88.lee
+Copyright (C) 2023 Samsung Electronics Co. LTD
+
+This software is a property of Samsung Electronics.
+No part of this software, either material or conceptual may be copied or distributed, transmitted,
+transcribed, stored in a retrieval system or translated into any human or computer language in any form by any means,
+electronic, mechanical, manual or otherwise, or disclosed
+to third parties without the express written permission of Samsung Electronics.
 """
+
 import os
 import json
 import yaml
@@ -26,8 +33,6 @@ class Simulator(BaseEvaluator):
 
     def __init__(self, config):
         super().__init__(config)
-
-        # verify_md_config()   ## can be implemented later
         Simulator.seed_everywhere(self.config.get("seed"))
 
     @staticmethod
@@ -63,12 +68,10 @@ class Simulator(BaseEvaluator):
             raise Exception(
                 "Please use a supported thermostat, either 'NoseHoover' or 'Langevin'!!")
 
-        traj_obj = io.trajectory.Trajectory(
-            save_dir / 'atoms.traj', mode='w', atoms=atoms)
+        traj_obj = io.trajectory.Trajectory(save_dir / 'atoms.traj', mode='w', atoms=atoms)
         simulator.attach(traj_obj.write, interval=self.config["save_freq"])
 
-        logger_obj = md.MDLogger(simulator, atoms,
-                                 save_dir / 'thermo.log', mode='w')
+        logger_obj = md.MDLogger(simulator, atoms, save_dir / 'thermo.log', mode='w')
         simulator.attach(logger_obj, interval=1)
 
         return simulator
@@ -117,23 +120,19 @@ class Simulator(BaseEvaluator):
         n_atoms = atoms.get_global_number_of_atoms()
         atoms.calc = self.calculator
 
-        # ref: https://www2.mpip-mainz.mpg.de/~andrienk/journal_club/thermostats.pdf
+        # reference : https://www2.mpip-mainz.mpg.de/~andrienk/journal_club/thermostats.pdf
         self.config["nh_thermostat_q"] = 3.0 * n_atoms * units.kB * self.config["temperature_K"] \
             * (self.config["nh_relax_timesteps"] * self.config["timestep_fs"] * units.fs)**2
 
         self.logger.info(
             "Starting MD simulations for {} atoms".format(n_atoms))
-        self.logger.info("Thermostat coeffs. are nh_relax_timesteps: {}, nh_thermostat_q: {}".format(
-            self.config.get("nh_relax_timesteps"), self.config.get(
-                "nh_thermostat_q")
-        ))
+        self.logger.info(f"Thermostat coeffs. are  nh_relax_timesteps: {self.config.get('nh_relax_timesteps')},  nh_thermostat_q: {self.config.get('nh_thermostat_q')}")
 
         out_dir = self.get_output_dir()
         simulator = self._get_simulator(atoms, out_dir)
 
         start_time = time.time()
-        n_steps = int(self.config["simulation_time_ps"]
-                      * 1000 / self.config["timestep_fs"])
+        n_steps = int(self.config["simulation_time_ps"] * 1000 / self.config["timestep_fs"])
         for i_step in tqdm(range(n_steps)):
             simulator.run(1)
         elapsed = time.time() - start_time

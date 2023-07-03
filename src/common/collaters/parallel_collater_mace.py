@@ -1,3 +1,13 @@
+"""
+Copyright (C) 2023 Samsung Electronics Co. LTD
+
+This software is a property of Samsung Electronics.
+No part of this software, either material or conceptual may be copied or distributed, transmitted,
+transcribed, stored in a retrieval system or translated into any human or computer language in any form by any means,
+electronic, mechanical, manual or otherwise, or disclosed
+to third parties without the express written permission of Samsung Electronics.
+"""
+
 import torch
 from torch_geometric.data import Batch
 
@@ -5,7 +15,7 @@ from mace.data import AtomicData
 from mace.tools import atomic_numbers_to_indices, to_one_hot
 from mace.tools.torch_geometric.batch import Batch as BatchMACE
 
-from src.common.utils import bm_logging # benchmark logging
+from src.common.utils import bm_logging
 from src.common.collaters.parallel_collater import ParallelCollater
 
 
@@ -43,10 +53,11 @@ def convert_ocp_Data_into_mace_AtomicData(ocp_data, z_table):
     kwargs["shifts"] = torch.mm(kwargs["unit_shifts"], kwargs["cell"])  # [n_edges, 3]
     
     # forces
-    kwargs["forces"] = ocp_data.force if hasattr(ocp_data, 'force') else None
+    kwargs["forces"] = ocp_data.force if hasattr(ocp_data, 'force') and ocp_data.y is not None else None
 
     # total_energy and free_energy (which are identical for now)
     kwargs["energy"] = torch.tensor(ocp_data.y) if hasattr(ocp_data, 'y') and ocp_data.y is not None else None
+    # kwargs["free_energy"] = torch.tensor(ocp_data.y)
 
     # the arguments below are not used in this benchmark
     kwargs['weight'] = None
@@ -67,7 +78,7 @@ def convert_ocp_Data_into_mace_AtomicData(ocp_data, z_table):
 
     # Additional information used in an OCP-based trainer
     # fixed atoms
-    if hasattr(ocp_data, "fixed"):
+    if hasattr(ocp_data, 'fixed') and ocp_data.fixed is not None:
         data.fixed = ocp_data.fixed
 
     return data

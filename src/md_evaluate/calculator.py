@@ -1,3 +1,14 @@
+"""
+Copyright (C) 2023 Samsung Electronics Co. LTD
+
+This software is a property of Samsung Electronics.
+No part of this software, either material or conceptual may be copied or distributed, transmitted,
+transcribed, stored in a retrieval system or translated into any human or computer language in any form by any means,
+electronic, mechanical, manual or otherwise, or disclosed
+to third parties without the express written permission of Samsung Electronics.
+"""
+
+import time
 from collections import OrderedDict
 
 import torch
@@ -19,11 +30,10 @@ from mace.tools.torch_geometric.batch import Batch as BatchMACE
 
 from src.common.collaters.parallel_collater_nequip import convert_ocp_Data_into_nequip_AtomicData
 from src.common.collaters.parallel_collater_mace import convert_ocp_Data_into_mace_AtomicData
-from src.common.utils import bm_logging # benchmark logging
-from src.modules.normalizer import NormalizerPerAtom # per_atom_normalizer
+from src.common.utils import bm_logging
+from src.modules.normalizer import NormalizerPerAtom, log_and_check_normalizers
 from src.preprocessing.atoms_to_graphs import AtomsToGraphsWithTolerance
 
-import time
 
 class BenchmarkCalculator(Calculator):
     
@@ -36,18 +46,23 @@ class BenchmarkCalculator(Calculator):
         assert ckpt is not None
         ckpt_config = ckpt["config"]
         self.model_name = ckpt_config["model_name"]
+
+        # adjust the model-specific attributes for evaluation mode
         if self.model_name in ["nequip", "allegro"]:
             ckpt_config["model_attributes"]["initialize"] = False
+        elif self.model_name in ["bpnn"]:
+            ckpt_config["model_attributes"]["pca_path"] = None 
+            ckpt_config["model_attributes"]["dataset_path"] = None
 
         # construct a model in the ckpt
         model_class = registry.get_model_class(self.model_name)
         self.model = model_class(
             num_atoms = None, # not used
             bond_feat_dim = None, # not used
-            num_targets = 1, # always 1
+            num_targets = 1, # always 1 (for energy)
             **ckpt_config["model_attributes"],
         )
-        bm_logging.info(f"Set a calculator based on {self.model_name} class")
+        bm_logging.info(f"Set a calculator based on {self.model_name} class (direct force prediction: {ckpt_config['model_attributes'].get('direct_forces', False)})")
 
         # load the trained parameters of the model (and move it to GPU)
         model_state_dict = OrderedDict()
@@ -57,12 +72,16 @@ class BenchmarkCalculator(Calculator):
                 k = k[7:]
             model_state_dict[k] = val
         load_state_dict(module=self.model, state_dict=model_state_dict, strict=True)
+
+        # load auxiliary tensors for some models
+        if self.model_name in ["bpnn"]:
+            self.model.pca = ckpt["pca"]
+
+        # move the model in GPU
         self.model = self.model.to(self.device)
 
         # evaluation mode
         self.model.eval() 
-        # because the input snapshots are new, we should use on-the-fly graph generation
-        # self.model.otf_graph = ckpt_config["model_attributes"]["otf_graph"]        
 
         # set normalizers (if it exists)
         self.normalizers = {}
@@ -75,9 +94,7 @@ class BenchmarkCalculator(Calculator):
             self.normalizers["target"].load_state_dict(ckpt["normalizers"]["target"])
             self.normalizers["grad_target"] = Normalizer(mean=0.0, std=1.0, device=self.device)
             self.normalizers["grad_target"].load_state_dict(ckpt["normalizers"]["grad_target"])
-            bm_logging.info(f"Loaded normalizers")
-            bm_logging.info(f" - energy ({type(self.normalizers['target'])}): shift ({self.normalizers['target'].mean}) scale ({self.normalizers['target'].std})")
-            bm_logging.info(f" - forces ({type(self.normalizers['grad_target'])}): shift ({self.normalizers['grad_target'].mean}) scale ({self.normalizers['grad_target'].std})")
+            log_and_check_normalizers(self.normalizers["target"], self.normalizers["grad_target"], loaded=True)
         
         # extract arguments required to convert atom data into graph ocp data
         self.cutoff = self.model.cutoff
@@ -89,8 +106,8 @@ class BenchmarkCalculator(Calculator):
         self.atoms_to_pyg_data = AtomsToGraphsWithTolerance(
             max_neigh=self.max_neighbors,
             radius=self.cutoff,
-            r_energy=True, #True,
-            r_forces=True, #True,
+            r_energy=False,
+            r_forces=False,
             r_fixed=True,
             r_distances=False,
             r_pbc=self.model.use_pbc,
@@ -107,38 +124,22 @@ class BenchmarkCalculator(Calculator):
             self.convert_atoms_to_batch = self.convert_atoms_to_ocp_batch
 
     def convert_atoms_to_ocp_batch(self, atoms):
-        # convert atoms into pytorch_geometric data
-        # : otf = True, which means the atoms are converted into graph in model forward() on-the-fly
+        # convert ase.Atoms into pytorch_geometric data
         data = self.atoms_to_pyg_data.convert(atoms)
         batch = Batch.from_data_list([data]) # batch size = 1
+        if not self.model.otf_graph:
+            batch.neighbors = torch.tensor([data.edge_index.shape[1]])
         return batch
 
     def convert_atoms_to_nequip_batch(self, atoms):
-        # convert atoms into AtomicData of NequIP
-        # : When constructing AtomicData, the atoms are converted into graph
-        # data = AtomicData.from_ase(atoms=atoms, r_max=self.cutoff)
-        # # remove labels
-        # for k in AtomicDataDict.ALL_ENERGY_KEYS:
-        #     if k in data:
-        #         del data[k]
-        # data = self.model.type_mapper(data)
-        # data.pbc = self.pbc
-        # batch = BatchNequIP.from_data_list([data]) # batch size = 1
-        # batch = batch.to(self.device)
-        # return batch
+        # convert ase.Atoms into AtomicData of NequIP
         data = self.atoms_to_pyg_data.convert(atoms)
         data = convert_ocp_Data_into_nequip_AtomicData(data, self.model.type_mapper)
         batch = BatchNequIP.from_data_list([data]) # batch size = 1
         return batch
 
     def convert_atoms_to_mace_batch(self, atoms):
-        # convert atoms into AtomicData of MACE
-        # : When constructing mace_data.AtomicData, the atoms are converted into graph
-        # config = mace_data.config_from_atoms(atoms)
-        # data = mace_data.AtomicData.from_config(config, z_table=self.model.z_table, cutoff=self.cutoff)
-        # data.pbc = self.pbc
-        # batch = BatchMACE.from_data_list([data]) # batch size = 1
-        # return batch
+        # convert ase.Atoms into AtomicData of MACE
         data = self.atoms_to_pyg_data.convert(atoms)
         data = convert_ocp_Data_into_mace_AtomicData(data, self.model.z_table)
         batch = BatchMACE.from_data_list([data]) # batch size = 1
@@ -168,7 +169,7 @@ class BenchmarkCalculator(Calculator):
         # set atoms attribute
         Calculator.calculate(self, atoms=atoms, properties=properties, system_changes=system_changes)
 
-        # convert atoms (ASE) into a data batch format compaitible with MLFF models
+        # convert ase.Atoms into a data batch format compaitible with MLFF models
         t1 = time.time()
         batch = self.convert_atoms_to_batch(atoms)
         batch = batch.to(self.device)
@@ -177,7 +178,7 @@ class BenchmarkCalculator(Calculator):
         t2 = time.time()
         energy, forces = self.model(batch)
 
-        # de-normalization (if it is used)
+        # de-normalization (if it was used during training the model)
         energy, forces = self.denormalization(energy, forces)
         t3 = time.time()
         

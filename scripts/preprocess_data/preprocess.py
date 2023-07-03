@@ -1,9 +1,11 @@
 """
-Written by byunggook.na (SAIT)
+Copyright (C) 2023 Samsung Electronics Co. LTD
 
-Creates LMDB files with extracted graph features from provided *.extxyz files for the S2EF task.
-
-reference: ocp/scripts/preprocess_ef.py
+This software is a property of Samsung Electronics.
+No part of this software, either material or conceptual may be copied or distributed, transmitted,
+transcribed, stored in a retrieval system or translated into any human or computer language in any form by any means,
+electronic, mechanical, manual or otherwise, or disclosed
+to third parties without the express written permission of Samsung Electronics.
 """
 
 import os
@@ -69,7 +71,7 @@ def prepare_key_xyz_lmdb_list(args):
         )
         return [(f_name, args.data, out_lmdb_path)]
         
-
+# reference: ocp/scripts/preprocess_ef.py
 def write_extxyz_to_lmdb(args):
     # prepare input xyz and output lmdb pairs
     key_xyz_lmdb_list = prepare_key_xyz_lmdb_list(args)

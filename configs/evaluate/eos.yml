@@ -1,0 +1,18 @@
+evaluation_metric: eos
+
+eos_type: birchmurnaghan
+
+ref_structure:
+  path: datasets/{DATA}_eval/eos/{STRUCTURE}/POSCAR
+  format: vasp
+scale_factors: 
+  start: 0.97
+  end: 1.05
+  interval: 0.005
+reference_result:
+  dir: datasets/{DATA}_eval/eos/{STRUCTURE}
+  volume_energy_fname: energy_volume.dat
+  save_eos_fit: True
+
+res_out_dir: eval_results/{DATA}/eos/{STRUCTURE}/{MODEL_NAME}
+res_fig_name: compare_eos_birchmurnaghan.png

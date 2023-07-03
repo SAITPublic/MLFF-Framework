@@ -1,13 +1,29 @@
 """
-Copied from ocp.ocpmodels.trainers.base_trainer.py
-Modifications:
-1) use a benchmark logger (named bm_logging) instead of the root logger (named logging)
-2) enable to deal with various loss type
-   -> if you add a new loss, please see src.modules.loss
-3) use learning rate schedulers of this benchmark
-4) remove features that includes to save results and make the corresponding directory
-5) remove features related to hpo
-6) use a benchmark evaluator that provides more options than OCP provides
+Copyright (C) 2023 Samsung Electronics Co. LTD
+
+This software is a property of Samsung Electronics.
+No part of this software, either material or conceptual may be copied or distributed, transmitted,
+transcribed, stored in a retrieval system or translated into any human or computer language in any form by any means,
+electronic, mechanical, manual or otherwise, or disclosed
+to third parties without the express written permission of Samsung Electronics.
+"""
+
+"""
+Reference : ocp/ocpmodels/trainers/base_trainer.py
+
+The following items are modified and they can be claimed as properties of Samsung Electronics. 
+
+(1) Support more MLFF models (BPNN, NequIP, Allegro, and MACE)
+(2) Support simulation indicators for the benchmark evaluation on simulations (RDF, ADF, EoS, PEW)
+(3) Support more loss functions and metrics (loss.py and metric_evaluator.py in src/modules/)
+(4) Support more learning rate schedulers (scheduler.py in src/modules/)
+(5) Support normalization of per-atom energy (NormalizerPerAtom in src/modules/normalizer.py)
+(6) Some different featurs are as follows:
+    (a) Print training results using PrettyTable
+    (b) Use a benchmark logger (named bm_logging) instead of the root logger (named logging in OCP)
+    (c) Remove features that includes to save prediction results and make the corresponding directory named 'results'
+    (d) Remove features related to HPO
+    (e) Set the identifier of an experiment using the starting time
 """
 
 """
@@ -42,18 +58,16 @@ from ocpmodels.common.data_parallel import BalancedBatchSampler, OCPDataParallel
 from ocpmodels.common.registry import registry
 from ocpmodels.common.utils import load_state_dict, save_checkpoint
 from ocpmodels.modules.exponential_moving_average import ExponentialMovingAverage
-from ocpmodels.modules.normalizer import Normalizer
 from ocpmodels.modules.scaling.compat import load_scales_compat
 from ocpmodels.modules.scaling.util import ensure_fitted
 
-# for modifications
-from src.common.utils import bm_logging # benchmark logging
-from src.common.utils import get_device
+from src.common.utils import bm_logging, get_device
 from src.common.logger import parse_logs
 from src.modules.loss import initiate_loss
 from src.modules.scheduler import LRScheduler
 from src.modules.metric_evaluator import MetricEvaluator
 from src.common.collaters.parallel_collater import ParallelCollater
+from src.modules.normalizer import log_and_check_normalizers
 
 
 @registry.register_trainer("base")
@@ -125,7 +139,6 @@ class BaseTrainer(ABC):
         timestamp_id = config["timestamp_id"]
         trainer_config = {
             "task": config["task"],
-            # "trainer": config["trainer"],
             "model_name": config["model"].pop("name"),
             "model_attributes": config["model"],
             "optim": config["optim"],
@@ -242,37 +255,6 @@ class BaseTrainer(ABC):
             otf_graph=self.config["model_attributes"].get("otf_graph", False),
         )
 
-    def check_self_edge_in_same_cell(self, dataset):
-        if self.config["model_attributes"].get("otf_graph", False):
-            return True
-
-        def _check(data):
-            mask_self_edge = (data.edge_index[0] == data.edge_index[1])
-            mask_self_edge_in_same_cell = mask_self_edge & torch.all(data.cell_offsets == 0, dim=1)
-            assert (mask_self_edge_in_same_cell).sum() == 0
-
-        if self.config["gpus"] <= 1:
-            for data in dataset:
-                _check(data)
-        else:
-            return True
-            # check using multiple ranks
-            # num_devices = min(self.config["gpus"], len(data_list))
-            # count = torch.tensor([data.num_nodes for data in data_list])
-            # cumsum = count.cumsum(0)
-            # cumsum = torch.cat([cumsum.new_zeros(1), cumsum], dim=0)
-            # device_id = num_devices * cumsum.to(torch.float) / cumsum[-1].item()
-            # device_id = (device_id[:-1] + device_id[1:]) / 2.0
-            # device_id = device_id.to(torch.long)
-            # split = device_id.bincount().cumsum(0)
-            # split = torch.cat([split.new_zeros(1), split], dim=0)
-            # split = torch.unique(split, sorted=True)
-            # split = split.tolist()
-            
-            # rank = distutils.get_rank()
-            # for data in dataset[split[rank] : split[rank+1]]:
-            #     _check(data)
-
     def _do_data_related_settings(self):
         """ After setting dataset and loader, this function is called."""
         if self.config["model_name"] == "bpnn":
@@ -292,6 +274,10 @@ class BaseTrainer(ABC):
     def _set_datasets_and_generate_loaders_samplers(self):
         self.parallel_collater = self.initiate_collater()
 
+        if self.mode == "validate":
+            # in validate mode, skip this
+            return
+
         dataset_class = registry.get_dataset_class(self.config["task"]["dataset"])
         assert "batch_size" in self.config["optim"], "Specify batch_size"
         train_local_batch_size = self.config["optim"]["batch_size"]
@@ -304,7 +290,6 @@ class BaseTrainer(ABC):
         if self.config.get("dataset", None) and self.flag_loading_dataset:
             bm_logging.info(f"Loading train dataset (type: {self.config['task']['dataset']}): {self.config['dataset']['src']}")
             self.train_dataset = dataset_class(self.config["dataset"])
-            self.check_self_edge_in_same_cell(self.train_dataset)
             self.train_sampler = self.get_sampler(
                 dataset=self.train_dataset,
                 batch_size=train_local_batch_size,
@@ -321,11 +306,10 @@ class BaseTrainer(ABC):
         if self.config.get("val_dataset", None) and self.flag_loading_dataset:
             bm_logging.info(f"Loading validation dataset (type: {self.config['task']['dataset']}): {self.config['val_dataset']['src']}")
             self.val_dataset = dataset_class(self.config["val_dataset"])
-            self.check_self_edge_in_same_cell(self.val_dataset)
             self.val_sampler = self.get_sampler(
                 dataset=self.val_dataset,
                 batch_size=eval_local_batch_size,
-                shuffle=False,
+                shuffle=True,
             )
             self.val_loader = self.get_dataloader(
                 dataset=self.val_dataset,
@@ -338,11 +322,10 @@ class BaseTrainer(ABC):
         if self.config.get("test_dataset", None) and self.flag_loading_dataset:
             bm_logging.info(f"Loading test dataset (type: {self.config['task']['dataset']}): {self.config['test_dataset']['src']}")
             self.test_dataset = dataset_class(self.config["test_dataset"])
-            self.check_self_edge_in_same_cell(self.test_dataset)
             self.test_sampler = self.get_sampler(
                 dataset=self.test_dataset,
                 batch_size=eval_local_batch_size,
-                shuffle=False,
+                shuffle=True,
             )
             self.test_loader = self.get_dataloader(
                 dataset=self.test_dataset,
@@ -365,15 +348,6 @@ class BaseTrainer(ABC):
     def _set_model(self):
         # Build model
         bm_logging.info(f"Loading model: {self.config['model_name']}")
-
-        # TODO : check and remove if it is useless
-        # num_atoms = None
-        # if (self.train_loader 
-        #     and hasattr(self.train_loader.dataset[0], "x") 
-        #     and self.train_loader.dataset[0].x is not None
-        # ):
-        #     num_atoms = loader.dataset[0].x.shape[-1]
-        
         model_class = registry.get_model_class(self.config["model_name"])
         self.model = model_class(
             num_atoms = None, # useless
@@ -559,12 +533,51 @@ class BaseTrainer(ABC):
                     self.normalizers[key].load_state_dict(checkpoint["normalizers"][key])
                 else:
                     bm_logging.warning(f"{key} in checkpoint cannot be used")
-            bm_logging.info(f"Load normalizers from the checkpoint")
-            bm_logging.info(f" - energy ({type(self.normalizers['target'])}): shift ({self.normalizers['target'].mean}) scale ({self.normalizers['target'].std})")
-            bm_logging.info(f" - forces ({type(self.normalizers['grad_target'])}): shift ({self.normalizers['grad_target'].mean}) scale ({self.normalizers['grad_target'].std})")
+            log_and_check_normalizers(self.normalizers["target"], self.normalizers["grad_target"], loaded=True)
 
         if self.scaler and checkpoint["amp"]:
             self.scaler.load_state_dict(checkpoint["amp"])
+
+    def make_checkpoint_dict(self, metrics, training_state):
+        if self.config["model_name"] == "bpnn":
+            if "dataset_path" in self.config["model_attributes"]:
+                del self.config["model_attributes"]["dataset_path"]
+                del self.config["model_attributes"]["pca_path"]
+
+        normalizers = {key: value.state_dict() for key, value in self.normalizers.items()}
+        amp_scaler = self.scaler.state_dict() if self.scaler else None
+
+        if training_state:
+            ckpt_dict = {
+                "epoch": self.epoch,
+                "step": self.step,
+                "state_dict": self.model.state_dict(),
+                "optimizer": self.optimizer.state_dict(),
+                "scheduler": self.scheduler.scheduler.state_dict(),
+                "normalizers": normalizers,
+                "config": self.config,
+                "val_metrics": metrics,
+                "ema": self.ema.state_dict() if self.ema else None,
+                "amp": amp_scaler,
+                "best_val_metric": self.best_val_metric,
+                "primary_metric": self.config["task"].get(
+                    "primary_metric",
+                    self.evaluator.task_primary_metric[self.task_name],
+                ),
+            }
+        else:
+            ckpt_dict = {
+                "state_dict": self.model.state_dict(),
+                "normalizers": normalizers,
+                "config": self.config,
+                "val_metrics": metrics,
+                "amp": amp_scaler,
+            }
+        
+        if self.config["model_name"] == "bpnn":
+            ckpt_dict["pca"] = self._unwrapped_model.pca
+
+        return ckpt_dict
 
     def save(
         self,
@@ -573,49 +586,21 @@ class BaseTrainer(ABC):
         training_state=True,
     ):
         if not self.is_debug and distutils.is_master():
-            normalizers = {key: value.state_dict() for key, value in self.normalizers.items()}
-            amp_scaler = self.scaler.state_dict() if self.scaler else None
-            if training_state:
-                return save_checkpoint(
-                    {
-                        "epoch": self.epoch,
-                        "step": self.step,
-                        "state_dict": self.model.state_dict(),
-                        "optimizer": self.optimizer.state_dict(),
-                        "scheduler": self.scheduler.scheduler.state_dict(),
-                        "normalizers": normalizers,
-                        "config": self.config,
-                        "val_metrics": metrics,
-                        "ema": self.ema.state_dict() if self.ema else None,
-                        "amp": amp_scaler,
-                        "best_val_metric": self.best_val_metric,
-                        "primary_metric": self.config["task"].get(
-                            "primary_metric",
-                            self.evaluator.task_primary_metric[self.task_name],
-                        ),
-                    },
-                    checkpoint_dir=self.config["cmd"]["checkpoint_dir"],
-                    checkpoint_file=checkpoint_file,
-                )
-            else:
-                if self.ema:
-                    self.ema.store()
-                    self.ema.copy_to()
-                ckpt_path = save_checkpoint(
-                    {
-                        "state_dict": self.model.state_dict(),
-                        "normalizers": normalizers,
-                        "config": self.config,
-                        "val_metrics": metrics,
-                        "amp": amp_scaler,
-                    },
-                    checkpoint_dir=self.config["cmd"]["checkpoint_dir"],
-                    checkpoint_file=checkpoint_file,
-                )
-                if self.ema:
-                    self.ema.restore()
-                return ckpt_path
-        return None
+            if (not training_state) and self.ema:
+                self.ema.store()
+                self.ema.copy_to()
+
+            ckpt_path = save_checkpoint(
+                self.make_checkpoint_dict(metrics, training_state),
+                checkpoint_dir=self.config["cmd"]["checkpoint_dir"],
+                checkpoint_file=checkpoint_file,
+            )
+
+            if (not training_state) and self.ema:
+                self.ema.restore()
+            return ckpt_path
+        else:
+            return None
 
     @abstractmethod
     def train(self):

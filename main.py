@@ -1,7 +1,29 @@
 """
-Copied from ocp.main.py
-Modifications:
-1) deal with additional benchmark arguments
+Copyright (C) 2023 Samsung Electronics Co. LTD
+
+This software is a property of Samsung Electronics.
+No part of this software, either material or conceptual may be copied or distributed, transmitted,
+transcribed, stored in a retrieval system or translated into any human or computer language in any form by any means,
+electronic, mechanical, manual or otherwise, or disclosed
+to third parties without the express written permission of Samsung Electronics.
+"""
+
+"""
+Reference : ocp/ocpmodels/main.py
+
+The following items are modified and they can be claimed as properties of Samsung Electronics. 
+
+(1) Support more MLFF models (BPNN, NequIP, Allegro, and MACE)
+(2) Support simulation indicators for the benchmark evaluation on simulations (RDF, ADF, EoS, PEW)
+(3) Support more loss functions and metrics (loss.py and metric_evaluator.py in src/modules/)
+(4) Support more learning rate schedulers (scheduler.py in src/modules/)
+(5) Support normalization of per-atom energy (NormalizerPerAtom in src/modules/normalizer.py)
+(6) Some different featurs are as follows:
+    (a) Print training results using PrettyTable
+    (b) Use a benchmark logger (named bm_logging) instead of the root logger (named logging in OCP)
+    (c) Remove features that includes to save prediction results and make the corresponding directory named 'results'
+    (d) Remove features related to HPO
+    (e) Set the identifier of an experiment using the starting time
 """
 
 """
@@ -90,7 +112,9 @@ if __name__ == "__main__":
     elif args.mode == "evaluate":
         config = build_evaluate_config(args)
 
-    if args.submit:  # Run on cluster
+    if args.submit:  
+        # Run on cluster (using the implemented job submission)
+        # Note that we did not / do not use this way for job submission.
         slurm_add_params = config.get(
             "slurm", None
         )  # additional slurm arguments
@@ -124,5 +148,6 @@ if __name__ == "__main__":
         log_file = save_experiment_log(args, jobs, configs)
         logging.info(f"Experiment log saved to: {log_file}")
 
-    else:  # Run locally
+    else:  
+        # Run locally or cluster (using job schedulers on Samsung Supercom instead of using args.submit)
         Runner()(config)

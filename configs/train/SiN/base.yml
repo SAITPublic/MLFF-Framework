@@ -1,0 +1,23 @@
+dataset:
+  # atom cloud
+  - src: datasets/SiN/atom_cloud/train.lmdb
+    normalize_labels: True
+    per_atom: True
+    normalize_labels_json: datasets/SiN/atom_cloud/normalize_stats.json
+  - src: datasets/SiN/atom_cloud/valid.lmdb
+  - src: datasets/SiN/atom_cloud/test.lmdb
+
+logger: files
+
+task:
+  dataset: lmdb
+  description: "Regressing to energies and forces for DFT trajectories of SiN"
+  metrics: 
+    - energy_per_atom_mae
+    - energy_per_atom_mse
+    - forces_mae
+    - forces_mse
+  primary_metric: forces_mse
+  train_on_free_atoms: False
+  eval_on_free_atoms: False
+

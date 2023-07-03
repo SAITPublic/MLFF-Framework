@@ -1,6 +1,13 @@
 """
-Written by byunggook.na and heesun88.lee
+Copyright (C) 2023 Samsung Electronics Co. LTD
+
+This software is a property of Samsung Electronics.
+No part of this software, either material or conceptual may be copied or distributed, transmitted,
+transcribed, stored in a retrieval system or translated into any human or computer language in any form by any means,
+electronic, mechanical, manual or otherwise, or disclosed
+to third parties without the express written permission of Samsung Electronics.
 """
+
 import os
 import copy
 import json
@@ -29,15 +36,16 @@ class EoSEvaluator(BaseEvaluator):
         eos_fit_ref["e0_error_percentage"] = np.nan
 
         eos_fit_mlff["B_error_percentage"] = \
-            (eos_fit_mlff["B (GPa)"] - eos_fit_ref["B (GPa)"]) / \
-            eos_fit_ref["B (GPa)"]*100.0
+            (eos_fit_mlff["B (GPa)"] - eos_fit_ref["B (GPa)"]) / eos_fit_ref["B (GPa)"] * 100.0
         eos_fit_mlff["v0_error_percentage"] = \
-            (eos_fit_mlff["v0"] - eos_fit_ref["v0"])/eos_fit_ref["v0"]*100.0
+            (eos_fit_mlff["v0"] - eos_fit_ref["v0"]) / eos_fit_ref["v0"] * 100.0
         eos_fit_mlff["e0_error_percentage"] = \
-            (eos_fit_mlff["e0"] - eos_fit_ref["e0"])/eos_fit_ref["e0"]*100.0
+            (eos_fit_mlff["e0"] - eos_fit_ref["e0"]) / eos_fit_ref["e0"] * 100.0
 
-        fit_res_dict_all = {"reference": eos_fit_ref}
-        fit_res_dict_all.update({"model": eos_fit_mlff})
+        fit_res_dict_all = {
+            "reference": eos_fit_ref,
+            "model": eos_fit_mlff,
+        }
 
         res_df = pd.DataFrame.from_dict(fit_res_dict_all)
         if save_res:
@@ -56,11 +64,9 @@ class EoSEvaluator(BaseEvaluator):
         ax.set_xlabel('volume (ang.^3)')
         ax.set_ylabel('E-E0 (eV)')
         ax.legend(label_list)
-        # plt.show()
         if save_res:
             plt.savefig(fig_out_path)
             self.logger.debug("Figure to compare EoS was saved in {}".format(fig_out_path))
-        # plt.close('all')
 
     @staticmethod
     def save_eos_fit_res(out_path, eos_fit_dict):
@@ -77,11 +83,9 @@ class EoSEvaluator(BaseEvaluator):
                 data["PE"].append(float(content[i].split()[2]))
 
         df = pd.DataFrame(data)
-        range_mask = (df["scale_factor"] >= scale_factors[0]) & \
-            (df["scale_factor"] <= scale_factors[-1])
+        range_mask = (df["scale_factor"] >= scale_factors[0]) & (df["scale_factor"] <= scale_factors[-1])
         df = df[range_mask]
-        self.logger.debug("Number of data points to consider for eos (reference): {}".format(
-            df.shape[0]))
+        self.logger.debug(f"Number of data points to consider for eos (reference): {df.shape[0]}")
 
         eos_fit_dict = self.calculate_eos_fit(df, eos_type)
         df["e-e0"] = df["PE"] - eos_fit_dict["e0"]
@@ -121,20 +125,17 @@ class EoSEvaluator(BaseEvaluator):
         df_mlff = pd.DataFrame(data, columns=["scale_factor", 'volume', "PE"])
         df_mlff.set_index("scale_factor", inplace=True)
 
-        eos_fit_mlff = EoSEvaluator.calculate_eos_fit(
-            df_mlff, self.config["eos_type"])
+        eos_fit_mlff = EoSEvaluator.calculate_eos_fit(df_mlff, self.config["eos_type"])
 
         os.makedirs(Path(self.config["res_out_dir"]), exist_ok=True)
-        df_mlff.to_csv(
-            Path(self.config["res_out_dir"]) / "volume_energy_relation.csv")
+        df_mlff.to_csv(Path(self.config["res_out_dir"]) / "volume_energy_relation.csv")
 
         eos_res_name = "eos_res_{}.txt".format(self.config["eos_type"])
         save_path_eos = Path(self.config["res_out_dir"]) / eos_res_name
         EoSEvaluator.save_eos_fit_res(save_path_eos, eos_fit_mlff)
         df_mlff["e-e0"] = df_mlff["PE"] - eos_fit_mlff["e0"]
 
-        ref_v_e_path = Path(self.config["reference_result"]["dir"]) / \
-            self.config["reference_result"]["volume_energy_fname"]
+        ref_v_e_path = Path(self.config["reference_result"]["dir"]) / self.config["reference_result"]["volume_energy_fname"]
         df_ref, eos_fit_ref = self.load_reference_results(
             ref_v_e_path,
             scale_factors,
@@ -142,15 +143,10 @@ class EoSEvaluator(BaseEvaluator):
         )
 
         if self.config["reference_result"]["save_eos_fit"]:
-            save_path_eos_ref = save_path_eos = Path(
-                self.config["reference_result"]["dir"]) / eos_res_name
+            save_path_eos_ref = Path(self.config["reference_result"]["dir"]) / eos_res_name
             EoSEvaluator.save_eos_fit_res(save_path_eos_ref, eos_fit_ref)
 
         self.calculate_eos_error(eos_fit_ref, eos_fit_mlff, save_res=True)
 
-        fig_out_dir = Path(
-            self.config["res_out_dir"]) / self.config["res_fig_name"]
-        self.plot_eos(df_ref,
-                      df_mlff,
-                      fig_out_dir,
-                      save_res=True)
+        fig_out_dir = Path(self.config["res_out_dir"]) / self.config["res_fig_name"]
+        self.plot_eos(df_ref, df_mlff, fig_out_dir, save_res=True)

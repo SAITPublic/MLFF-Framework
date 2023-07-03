@@ -1,3 +1,13 @@
+"""
+Copyright (C) 2023 Samsung Electronics Co. LTD
+
+This software is a property of Samsung Electronics.
+No part of this software, either material or conceptual may be copied or distributed, transmitted,
+transcribed, stored in a retrieval system or translated into any human or computer language in any form by any means,
+electronic, mechanical, manual or otherwise, or disclosed
+to third parties without the express written permission of Samsung Electronics.
+"""
+
 import torch
 
 from ocpmodels.common import distutils
@@ -27,39 +37,6 @@ from ocpmodels.modules.evaluator import (
     magnitude_error,
 )
 
-"""
-Available metrics:
-
-Force:
-    forcesx_mae
-    forcesy_mae
-    forcesz_mae
-    forces_mae
-    forces_cos
-    forces_magnitude
-
-Energy:
-    energy_mae
-    energy_mse
-    energy_per_atom_mae
-    energy_per_atom_mse
-    energy_within_threshold
-    energy_force_within_threshold
-
-Position:
-    average_distance_within_threshold
-    positions_mae
-    positions_mse
-
-
-This benchmark focuses on s2ef task to train MLFF calculator which can be used in MD simulation.
-Among the available metrics, we recommend metrics related force and energy.
-
-Example (for brevity):
-    forces_mae
-    energy_mae_per_atom
-
-"""
 
 class MetricEvaluator(Evaluator):
 

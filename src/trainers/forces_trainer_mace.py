@@ -1,6 +1,13 @@
 """
-written by byunggook.na
+Copyright (C) 2023 Samsung Electronics Co. LTD
+
+This software is a property of Samsung Electronics.
+No part of this software, either material or conceptual may be copied or distributed, transmitted,
+transcribed, stored in a retrieval system or translated into any human or computer language in any form by any means,
+electronic, mechanical, manual or otherwise, or disclosed
+to third parties without the express written permission of Samsung Electronics.
 """
+
 import ast
 import torch
 import numpy as np
@@ -12,10 +19,10 @@ from ocpmodels.common.registry import registry
 
 from mace.tools import get_atomic_number_table_from_zs
 
-from src.common.utils import bm_logging # benchmark logging
+from src.common.utils import bm_logging
 from src.common.collaters.parallel_collater_mace import ParallelCollaterMACE
 from src.trainers.forces_trainer import ForcesTrainer
-from src.datasets.mace.statistics import (
+from src.models.mace.utils import (
     compute_average_E0s, 
     compute_avg_num_neighbors,
     compute_mean_std_atomic_inter_energy,
@@ -26,8 +33,8 @@ from src.datasets.mace.statistics import (
 @registry.register_trainer("forces_mace")
 class MACEForcesTrainer(ForcesTrainer):
     """
-    Trainer class for the Structure to Energy & Force (S2EF) task, 
-    and this class is especially used to train a MACE model.
+    Trainer class for the S2EF (Structure to Energy & Force) task, 
+    and this class is especially used to train MACE models.
     """
     def __init__(self, config):
         super().__init__(config)
@@ -37,8 +44,6 @@ class MACEForcesTrainer(ForcesTrainer):
 
         # TODO: SWA
         # In MACE code, there is SWA option (stochastic weight averaging).
-        # But handling loss for SWA is expected to be burdensome for now (2023. 3. 28),
-        # and so its priority is low.
     
     def _parse_config(self, config):
         trainer_config = super()._parse_config(config)

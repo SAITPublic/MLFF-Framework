@@ -1,3 +1,13 @@
+"""
+Copyright (C) 2023 Samsung Electronics Co. LTD
+
+This software is a property of Samsung Electronics.
+No part of this software, either material or conceptual may be copied or distributed, transmitted,
+transcribed, stored in a retrieval system or translated into any human or computer language in any form by any means,
+electronic, mechanical, manual or otherwise, or disclosed
+to third parties without the express written permission of Samsung Electronics.
+"""
+
 import os
 import logging
 import torch
@@ -48,7 +58,6 @@ class FilesLogger(Logger):
     def __init__(self, config):
         super().__init__(config)
 
-        # logdir = logs/files/{timestamp_id}/
         logdir = self.config["cmd"]["logs_dir"] 
         self.log_path = {"train" : os.path.join(logdir, "train.log")}
         if self.config.get("val_dataset", None):
@@ -75,13 +84,6 @@ class FilesLogger(Logger):
 
     def mark_preempting(self):
         pass
-
-    # def add_headline(self, metric_names):
-    #     # metric_names is List
-    #     for path in self.log_path:
-    #         outfile = open(path, 'a')
-    #         outfile.write("\t".join(metric_names) + "\n")
-    #         outfile.close()
 
     def log_model_training_info(self, model=None):
         model_log_path = os.path.join(self.config["cmd"]["logs_dir"], "model_training_info.yml")

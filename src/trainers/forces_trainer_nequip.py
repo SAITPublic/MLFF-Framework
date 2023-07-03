@@ -1,5 +1,11 @@
 """
-written by byunggook.na
+Copyright (C) 2023 Samsung Electronics Co. LTD
+
+This software is a property of Samsung Electronics.
+No part of this software, either material or conceptual may be copied or distributed, transmitted,
+transcribed, stored in a retrieval system or translated into any human or computer language in any form by any means,
+electronic, mechanical, manual or otherwise, or disclosed
+to third parties without the express written permission of Samsung Electronics.
 """
 
 import torch
@@ -11,14 +17,14 @@ from nequip.data.transforms import TypeMapper
 
 from src.trainers.forces_trainer import ForcesTrainer
 from src.common.collaters.parallel_collater_nequip import ParallelCollaterNequIP
-from src.common.utils import bm_logging # benchmark logging
+from src.common.utils import bm_logging
 
 
 @registry.register_trainer("forces_nequip")
 class NequIPForcesTrainer(ForcesTrainer):
     """
-    Trainer class for the Structure to Energy & Force (S2EF) task, 
-    and this class is especially used to train an NequIP model or an Allegro model.
+    Trainer class for the S2EF (Structure to Energy & Force) task, 
+    and this class is especially used to train NequIP or Allegro models.
     """
     def __init__(self, config):
         super().__init__(config)
@@ -35,10 +41,13 @@ class NequIPForcesTrainer(ForcesTrainer):
         if not trainer_config["dataset"].get("normalize_labels", True):
             bm_logging.info("Applying the data normalization is default in NequIP (or Allegro), but the normalization turns off in this training")
         trainer_config["model_attributes"]["data_normalization"] = trainer_config["dataset"].get("normalize_labels", True)
-        trainer_config["model_attributes"]["dataset"] = trainer_config["dataset"]
+        trainer_config["model_attributes"]["dataset"] = {"src": trainer_config["dataset"]["src"]}
 
         # NequIP, Allegro does not need normalizer (they use own normaliation strategy)
         trainer_config["dataset"]["normalize_labels"] = False
+
+        if self.mode == "validate":
+            trainer_config["model_attributes"]["initialize"] = False
         return trainer_config
     
     def initiate_collater(self):
@@ -105,7 +114,6 @@ class NequIPForcesTrainer(ForcesTrainer):
                     "energy": _out[AtomicDataDict.TOTAL_ENERGY_KEY],
                     "forces": _out[AtomicDataDict.FORCE_KEY],
                 }
-                # print("-> eval mode loss energy GT:", batch_list[0].y.tolist(), "Pred:", out["energy"].tolist())
                 return super()._compute_loss(out=normalized_out, batch_list=normalized_batch_list)
 
     def _compute_metrics(self, out, batch_list, evaluator, metrics={}):
@@ -128,4 +136,12 @@ class NequIPForcesTrainer(ForcesTrainer):
                 out["energy"] = _out[AtomicDataDict.TOTAL_ENERGY_KEY]
                 out["forces"] = _out[AtomicDataDict.FORCE_KEY]
         
-        return super()._compute_metrics(out=out, batch_list=batch_list, evaluator=evaluator, metrics=metrics)    
+        return super()._compute_metrics(out=out, batch_list=batch_list, evaluator=evaluator, metrics=metrics)
+
+    def make_checkpoint_dict(self, metrics, training_state):
+        if "dataset" in self.config["model_attributes"]:
+            del self.config["model_attributes"]["dataset"]
+            self.config["model_attributes"]["avg_num_neighbors"] = self._unwrapped_model.avg_num_neighbors
+
+        ckpt_dict = super().make_checkpoint_dict(metrics, training_state)
+        return ckpt_dict

@@ -1,9 +1,20 @@
+"""
+Copyright (C) 2023 Samsung Electronics Co. LTD
+
+This software is a property of Samsung Electronics.
+No part of this software, either material or conceptual may be copied or distributed, transmitted,
+transcribed, stored in a retrieval system or translated into any human or computer language in any form by any means,
+electronic, mechanical, manual or otherwise, or disclosed
+to third parties without the express written permission of Samsung Electronics.
+"""
+
 import torch
 from torch_geometric.data import Batch
 
-from src.common.utils import bm_logging # benchmark logging
+from src.common.utils import bm_logging
 
-# copied from ocpmodels.common.data_parallel
+
+# reference : ocp/ocpmodels/common/data_parallel.py
 class ParallelCollater:
     def __init__(self, num_gpus, otf_graph=False):
         self.num_gpus = num_gpus
@@ -11,16 +22,13 @@ class ParallelCollater:
 
     def set_neighbors_in_a_batch(self, data_list, batch):
         try:
-            n_neighbors = []
-            for i, data in enumerate(data_list):
-                n_index = data.edge_index[1, :]
-                n_neighbors.append(n_index.shape[0])
+            # edge_index shape : (2, numEdges)
+            n_neighbors = [data.edge_index.shape[1] for data in data_list]
             batch.neighbors = torch.tensor(n_neighbors)
         except (NotImplementedError, TypeError):
             bm_logging.warning("LMDB does not contain edge index information, set otf_graph=True")
         return batch
 
-    # copied from ocpmodels.common.datasets
     def data_list_collater(self, data_list, otf_graph=False):
         batch = Batch.from_data_list(data_list)
         if batch.y.dtype == torch.float64:

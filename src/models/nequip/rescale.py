@@ -1,12 +1,19 @@
+"""
+Copyright (C) 2023 Samsung Electronics Co. LTD
 
-from typing import List, Optional, Union
-
-import torch
+This software is a property of Samsung Electronics.
+No part of this software, either material or conceptual may be copied or distributed, transmitted,
+transcribed, stored in a retrieval system or translated into any human or computer language in any form by any means,
+electronic, mechanical, manual or otherwise, or disclosed
+to third parties without the express written permission of Samsung Electronics.
+"""
 
 from nequip.nn import RescaleOutput, GraphModuleMixin, PerSpeciesScaleShift
 from nequip.data import AtomicDataDict
 from nequip.data.transforms import TypeMapper
 
+
+# reference: RescaleEnergyEtc class in nequip/nequip/model/_scaling.py
 def RescaleEnergyEtc(
     model: GraphModuleMixin,
     config,
@@ -22,6 +29,7 @@ def RescaleEnergyEtc(
     )
 
 
+# reference: GlobalRescale class in nequip/nequip/model/_scaling.py
 def GlobalRescale(
     model: GraphModuleMixin,
     config,
@@ -33,7 +41,7 @@ def GlobalRescale(
 ):
     """Add global rescaling for energy(-based quantities).
     
-    Statistics are computed in the constructor of NequIPWrap class (src.models.nequip.nequip.py)
+    Statistics are already computed or loaded in the constructor of NequIPWrap class
     """
     return RescaleOutput(
         model=model,
@@ -48,13 +56,14 @@ def GlobalRescale(
     )
 
 
+# reference: PerSpeciesRescale class in nequip/nequip/model/_scaling.py
 def PerSpeciesRescale(
     model: GraphModuleMixin,
     config,
 ):
     """Add global rescaling for energy(-based quantities).
 
-    Statistics are computed in the constructor of NequIPWrap class (src.models.nequip.nequip.py)
+    Statistics are already computed or loaded in the constructor of NequIPWrap class
     """
     model.insert_from_parameters(
         before="total_energy_sum",
