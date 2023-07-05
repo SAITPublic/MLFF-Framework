@@ -572,6 +572,7 @@ class BaseTrainer(ABC):
                 "config": self.config,
                 "val_metrics": metrics,
                 "amp": amp_scaler,
+                "trained_epochs": self.epoch+1,
             }
         
         if self.config["model_name"] == "bpnn":
