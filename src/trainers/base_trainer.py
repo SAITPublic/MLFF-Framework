@@ -457,7 +457,7 @@ class BaseTrainer(ABC):
             task_attributes=task_attributes,
             task_primary_metric=task_primary_metric,
             device=self.device,
-            )
+        )
 
     def _set_evaluator(self):
         # build an evaluator

@@ -145,15 +145,19 @@ class ForcesTrainer(BaseTrainer):
 
     def update_best(self, primary_metric, val_metrics):
         curr_metric = val_metrics[primary_metric]["metric"]
-        if (("mae" in primary_metric and curr_metric < self.best_val_metric) or
-            ("mae" not in primary_metric and curr_metric > self.best_val_metric)
-        ):
-            self.best_val_metric = curr_metric
-            self.save(
-                metrics=val_metrics,
-                checkpoint_file="best_checkpoint.pt",
-                training_state=False,
-            )
+        if "mae" in primary_metric or "mse" in primary_metric:
+            if curr_metric >= self.best_val_metric:
+                return
+        else:
+            if curr_metric <= self.best_val_metric:
+                return
+                
+        self.best_val_metric = curr_metric
+        self.save(
+            metrics=val_metrics,
+            checkpoint_file="best_checkpoint.pt",
+            training_state=False,
+        )
 
     def train(self):
         start_train_time = time.time()
