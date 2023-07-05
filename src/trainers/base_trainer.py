@@ -457,7 +457,7 @@ class BaseTrainer(ABC):
             task_attributes=task_attributes,
             task_primary_metric=task_primary_metric,
             device=self.device,
-            )
+        )
 
     def _set_evaluator(self):
         # build an evaluator
@@ -572,6 +572,7 @@ class BaseTrainer(ABC):
                 "config": self.config,
                 "val_metrics": metrics,
                 "amp": amp_scaler,
+                "trained_epochs": self.epoch+1,
             }
         
         if self.config["model_name"] == "bpnn":
