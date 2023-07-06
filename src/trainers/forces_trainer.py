@@ -179,7 +179,7 @@ class ForcesTrainer(BaseTrainer):
             not hasattr(self, "primary_metric")
             or self.primary_metric != primary_metric
         ):
-            self.best_val_metric = 1e9 if "mae" in primary_metric else -1.0
+            self.best_val_metric = 1e9
         else:
             primary_metric = self.primary_metric
         self.metrics = {}
