@@ -6,6 +6,7 @@ sys.path.insert(2, os.path.abspath("./codebases/nequip"))
 sys.path.insert(3, os.path.abspath("./codebases/allegro")) 
 
 import torch
+import ase
 
 from ocpmodels.common.utils import load_state_dict
 from src.models.nequip.nequip import NequIPWrap
@@ -66,7 +67,12 @@ metadata[TORCH_VERSION_KEY] = "1.12.1+cu116"
 metadata[E3NN_VERSION_KEY] = "0.5.1"
 metadata[NEQUIP_VERSION_KEY] = "0.5.6"
 metadata[R_MAX_KEY] = "6.0"
-type_names = ckpt['config']['model_attributes']['chemical_symbols']
+chemical_symbols=ckpt['config']['model_attributes']['chemical_symbols']
+atomic_nums = [ase.data.atomic_numbers[sym] for sym in chemical_symbols]
+chemical_symbols = [
+                e[1] for e in sorted(zip(atomic_nums, chemical_symbols))
+            ]
+type_names = chemical_symbols
 metadata[N_SPECIES_KEY] = f"{len(type_names)}"
 metadata[TYPE_NAMES_KEY] = " ".join(type_names)
 metadata[JIT_BAILOUT_KEY] = "2"
