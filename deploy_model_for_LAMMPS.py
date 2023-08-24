@@ -6,7 +6,8 @@ sys.path.insert(2, os.path.abspath("./codebases/nequip"))
 sys.path.insert(3, os.path.abspath("./codebases/allegro")) 
 
 import torch
-
+import ase
+import numpy as np
 from ocpmodels.common.utils import load_state_dict
 from src.models.nequip.nequip import NequIPWrap
 from src.models.allegro.allegro import AllegroWrap
@@ -66,7 +67,19 @@ metadata[TORCH_VERSION_KEY] = "1.12.1+cu116"
 metadata[E3NN_VERSION_KEY] = "0.5.1"
 metadata[NEQUIP_VERSION_KEY] = "0.5.6"
 metadata[R_MAX_KEY] = "6.0"
-type_names = ckpt['config']['model_attributes']['chemical_symbols']
+if('chemical_symbols' in ckpt['config']['model_attributes'].keys()):
+    chemical_symbols=ckpt['config']['model_attributes']['chemical_symbols']
+    atomic_nums = [ase.data.atomic_numbers[sym] for sym in chemical_symbols]
+    chemical_symbols = [
+                    e[1] for e in sorted(zip(atomic_nums, chemical_symbols))
+                ]
+    type_names = chemical_symbols
+elif ('chemical_symbol_to_type' in ckpt['config']['model_attributes'].keys()):
+    symbols=list(ckpt['config']['model_attributes']['chemical_symbol_to_type'].keys())
+    vals=[ ckpt['config']['model_attributes']['chemical_symbol_to_type'][sym_] for sym_ in symbols]
+    idx=np.argsort(vals)
+    sym__=np.array(symbols)
+    type_names=list(sym__[idx])
 metadata[N_SPECIES_KEY] = f"{len(type_names)}"
 metadata[TYPE_NAMES_KEY] = " ".join(type_names)
 metadata[JIT_BAILOUT_KEY] = "2"
