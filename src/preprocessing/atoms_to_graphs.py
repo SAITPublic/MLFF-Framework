@@ -13,6 +13,13 @@ from pymatgen.io.ase import AseAtomsAdaptor
 
 from ocpmodels.preprocessing.atoms_to_graphs import AtomsToGraphs
 
+import ase.db.sqlite
+import ase.io.trajectory
+import numpy as np
+import torch
+from torch_geometric.data import Data
+from ocpmodels.common.utils import collate
+from ase.stress import voigt_6_to_full_3x3_stress, full_3x3_to_voigt_6_stress
 
 class AtomsToGraphsWithTolerance(AtomsToGraphs):
     def __init__(
@@ -21,6 +28,7 @@ class AtomsToGraphsWithTolerance(AtomsToGraphs):
         radius=6,
         r_energy=False,
         r_forces=False,
+        r_stress=False,
         r_distances=False,
         r_edges=True,
         r_fixed=True,
@@ -37,6 +45,8 @@ class AtomsToGraphsWithTolerance(AtomsToGraphs):
             r_fixed=r_fixed,
             r_pbc=r_pbc,
         )
+        
+        self.r_stress=r_stress
         # set the numerical tolerance which will be used to exclude self-edge when obtaining neighbors
         self.tolerance = tolerance
 
@@ -62,3 +72,70 @@ class AtomsToGraphsWithTolerance(AtomsToGraphs):
         _offsets = _offsets[_nonmax_idx]
 
         return _c_index, _n_index, n_distance, _offsets
+    def convert(
+        self,
+        atoms,
+    ):
+        """Convert a single atomic stucture to a graph.
+
+        Args:
+            atoms (ase.atoms.Atoms): An ASE atoms object.
+
+        Returns:
+            data (torch_geometric.data.Data): A torch geometic data object with positions, atomic_numbers, tags,
+            and optionally, energy, forces, distances, edges, and periodic boundary conditions.
+            Optional properties can included by setting r_property=True when constructing the class.
+        """
+
+        # set the atomic numbers, positions, and cell
+        atomic_numbers = torch.Tensor(atoms.get_atomic_numbers())
+        positions = torch.Tensor(atoms.get_positions())
+        cell = torch.Tensor(atoms.get_cell()).view(1, 3, 3)
+        natoms = positions.shape[0]
+        # initialized to torch.zeros(natoms) if tags missing.
+        # https://wiki.fysik.dtu.dk/ase/_modules/ase/atoms.html#Atoms.get_tags
+        tags = torch.Tensor(atoms.get_tags())
+
+        # put the minimum data in torch geometric data object
+        data = Data(
+            cell=cell,
+            pos=positions,
+            atomic_numbers=atomic_numbers,
+            natoms=natoms,
+            tags=tags,
+        )
+
+        # optionally include other properties
+        if self.r_edges:
+            # run internal functions to get padded indices and distances
+            split_idx_dist = self._get_neighbors_pymatgen(atoms)
+            edge_index, edge_distances, cell_offsets = self._reshape_features(
+                *split_idx_dist
+            )
+
+            data.edge_index = edge_index
+            data.cell_offsets = cell_offsets
+        if self.r_energy:
+            energy = atoms.get_potential_energy(apply_constraint=False)
+            data.y = energy
+        if self.r_forces:
+            forces = torch.Tensor(atoms.get_forces(apply_constraint=False))
+            data.force = forces
+        if self.r_stress:
+            stress = torch.Tensor(voigt_6_to_full_3x3_stress(atoms.get_stress(apply_constraint=False))).unsqueeze(0)
+            data.stress = stress
+        if self.r_distances and self.r_edges:
+            data.distances = edge_distances
+        if self.r_fixed:
+            fixed_idx = torch.zeros(natoms)
+            if hasattr(atoms, "constraints"):
+                from ase.constraints import FixAtoms
+
+                for constraint in atoms.constraints:
+                    if isinstance(constraint, FixAtoms):
+                        fixed_idx[constraint.index] = 1
+            data.fixed = fixed_idx
+        if self.r_pbc:
+            data.pbc = torch.tensor(atoms.pbc)
+
+        return data
