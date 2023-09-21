@@ -18,7 +18,7 @@ from ocpmodels.models.base import BaseModel
 from nequip.utils.config import Config
 from nequip.data import AtomicDataDict, AtomicData
 from nequip.data.transforms import TypeMapper
-from nequip.model import ForceOutput, PartialForceOutput
+from nequip.model import ForceOutput, PartialForceOutput, StressForceOutput
 
 from src.common.utils import bm_logging
 from src.models.nequip.rescale import RescaleEnergyEtc, PerSpeciesRescale
@@ -45,6 +45,7 @@ class AllegroWrap(BaseModel):
         max_neighbors=None,
         use_pbc=True,
         regress_forces=True,
+        regress_stress=False,
         otf_graph=False,
         # data-related arguments (type mapper and statistics)
         num_types=None,
@@ -98,9 +99,9 @@ class AllegroWrap(BaseModel):
         self.num_targets = num_targets
         self.use_pbc = use_pbc
         self.regress_forces = regress_forces
+        self.regress_stress=regress_stress
         self.otf_graph = otf_graph
         self.cutoff = cutoff
-
         if self.otf_graph:
             raise NotImplementedError("on-the-fly garph generation is not enabled for Allegro")
         
@@ -217,6 +218,8 @@ class AllegroWrap(BaseModel):
         out = self.allegro_model(input_data)
         
         # return values required in an OCP-based trainer
+        if self.regress_stress:
+            return out[AtomicDataDict.TOTAL_ENERGY_KEY], out[AtomicDataDict.FORCE_KEY], out[AtomicDataDict.STRESS_KEY]
         if self.regress_forces:
             return out[AtomicDataDict.TOTAL_ENERGY_KEY], out[AtomicDataDict.FORCE_KEY]
         else:
