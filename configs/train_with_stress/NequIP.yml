@@ -1,0 +1,90 @@
+dataset:
+  # graph generated with cutoff radius 6 and max neighbors 50
+  - src: datasets/HfO/atom_graph_rmax6.0_maxneighbor50/train.lmdb
+    normalize_labels: True
+    per_atom: True
+    normalize_labels_json: datasets/HfO/atom_graph_rmax6.0_maxneighbor50/normalize_stats.json
+  - src: datasets/HfO/atom_graph_rmax6.0_maxneighbor50/valid.lmdb
+  - src: datasets/HfO/atom_graph_rmax6.0_maxneighbor50/test.lmdb
+
+logger: files
+
+task:
+  dataset: lmdb
+  description: "Regressing to energies and forces for DFT trajectories of HfO"
+  metrics: 
+    - energy_per_atom_mae
+    - energy_per_atom_mse
+    - forces_mae
+    - forces_mse
+    - stress_mae
+    - stress_mse
+  primary_metric: forces_mse
+  train_on_free_atoms: False
+  eval_on_free_atoms: False
+
+
+trainer: forces_nequip
+
+model:
+  name: nequip
+  # neural network
+  model_builders: 
+    - SimpleIrrepsConfig
+    - EnergyModel
+    - PerSpeciesRescale
+    - StressForceOutput
+    - RescaleEnergyEtc
+  num_layers: 5
+  l_max: 2
+  parity: True
+  num_features: 32
+  num_basis: 8
+  BesselBasis_trainable: True
+  PolynomialCutoff_p: 6
+  invariant_layers: 2
+  invariant_neurons: 64 
+  avg_num_neighbors: auto # 'auto' requires to set 'initialize' as True, meaning that data statistics will be calculated if the statistics file does not exist
+  use_sc: True
+  nonlinearity_type: gate
+  resnet: False
+  nonlinearity_scalars:
+    e: silu
+    o: tanh
+  nonlinearity_gates:
+    e: silu
+    o: tanh
+
+  # force
+  regress_forces: True
+  regress_stress: True
+  # graph
+  cutoff: 6.0 
+  otf_graph: False 
+  use_pbc: True 
+
+  # data-related arg
+  chemical_symbols:
+    - Hf
+    - O
+
+optim:
+  batch_size: 2
+  eval_batch_size: 2
+  num_workers: 2
+  max_epochs: 50
+
+  optimizer: Adam
+  optimizer_params: {"amsgrad": False}
+  scheduler: LinearLR
+  lr_initial: 0.005
+  ema_decay: 0.99
+
+  energy_coefficient: 1
+  force_coefficient: 1
+  stress_coefficient: 1
+
+  # MSE-based loss
+  loss_energy: energy_per_atom_mse
+  loss_force: force_per_dim_mse
+  loss_stress: mse
