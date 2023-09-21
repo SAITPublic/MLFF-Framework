@@ -210,6 +210,7 @@ class ForcesTrainer(BaseTrainer):
                 scale = self.scaler.get_scale() if self.scaler else 1.0
 
                 # Compute metrics.
+              
                 self.metrics = self._compute_metrics(
                     out,
                     batch,
@@ -294,13 +295,23 @@ class ForcesTrainer(BaseTrainer):
         self._end_train()
 
     def _forward(self, batch_list):
-        out_energy, out_forces = self.model(batch_list)
-        if out_energy.shape[-1] == 1:
-            out_energy = out_energy.view(-1)
-        out = {
-            "energy": out_energy,
-            "forces": out_forces,
-        }
+        out= self.model(batch_list)
+        if out[0].shape[-1] == 1:
+            out0 = out[0].view(-1)
+        else:
+            out0=out[0]
+        if(len(out)==2):
+            out = {
+            "energy": out0,
+            "forces": out[1],
+            }
+        elif(len(out)==3):
+            out = {
+            "energy": out0,
+            "forces": out[1],
+            "stress": out[2],
+            }
+    
         return out
 
     def _compute_loss(self, out, batch_list):
@@ -378,6 +389,23 @@ class ForcesTrainer(BaseTrainer):
             )
         loss.append(force_mult * force_loss)
 
+        if(self.use_stress):
+        # Stress loss
+            stress_mult = self.config["optim"].get("stress_coefficient", 30)        
+            stress_target = torch.cat(
+                [batch.stress.to(self.device) for batch in batch_list], dim=0
+            )
+            if self.normalizer.get("normalize_labels", False):
+                stress_target = self.normalizers["grad_target"].norm(stress_target)        
+
+
+            stress_loss = self.loss_fn["stress"](
+                    input=out["stress"], 
+                    target=stress_target,
+                )
+            loss.append(stress_mult * stress_loss)
+
+
         # Sanity check to make sure the compute graph is correct.
         for lc in loss:
             assert hasattr(lc, "grad_fn")
@@ -386,6 +414,7 @@ class ForcesTrainer(BaseTrainer):
         return loss
 
     def _compute_metrics(self, out, batch_list, evaluator, metrics={}):
+        
         target = {
             "energy": torch.cat(
                 [batch.y.to(self.device) for batch in batch_list], dim=0
@@ -397,7 +426,10 @@ class ForcesTrainer(BaseTrainer):
                 [batch.natoms.to(self.device) for batch in batch_list], dim=0
             ),
         }
-
+        if(self.use_stress):
+            target["stress"]= torch.cat(
+                [batch.stress.to(self.device) for batch in batch_list], dim=0
+            )
         if self.config["task"].get("eval_on_free_atoms", True):
             fixed = torch.cat(
                 [batch.fixed.to(self.device) for batch in batch_list]
@@ -425,6 +457,5 @@ class ForcesTrainer(BaseTrainer):
             else:
                 out["energy"] = self.normalizers["target"].denorm(out["energy"])
             out["forces"] = self.normalizers["grad_target"].denorm(out["forces"])
-
         metrics = evaluator.eval(out, target, prev_metrics=metrics)
         return metrics

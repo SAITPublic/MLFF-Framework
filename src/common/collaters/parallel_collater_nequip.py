@@ -48,6 +48,8 @@ def convert_ocp_Data_into_nequip_AtomicData(ocp_data, transform):
 
     # pos
     kwargs["pos"] = ocp_data.pos
+    if hasattr(ocp_data, 'stress') and ocp_data.y is not None:
+        kwargs["stress"] = ocp_data.stress.view(3,3)
 
     # initiate AtomicData
     data = AtomicData(**kwargs)

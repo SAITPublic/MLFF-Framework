@@ -110,3 +110,9 @@ def squared_error_per_atom(prediction, target, natoms):
         "total": torch.sum(error).item(),
         "numel": prediction.numel(),
     }
+
+def stress_mae(prediction,target):
+    return absolute_error(prediction["stress"],target["stress"])
+
+def stress_mse(prediction,target):
+    return squared_error(prediction["stress"],target["stress"])
