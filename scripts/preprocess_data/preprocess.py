@@ -85,7 +85,8 @@ def write_extxyz_to_lmdb(args):
         max_neigh=2000000000 if args.max_neighbors is None else args.max_neighbors, 
         radius=args.r_max,
         r_energy=True, 
-        r_forces=True, 
+        r_forces=True,
+        r_stress=args.get_stress,
         r_fixed=True,
         r_distances=False,
         r_edges=(args.r_max is not None), # if r_max is given, graph data with edges is generated
@@ -113,7 +114,6 @@ def write_extxyz_to_lmdb(args):
         )
 
         # preprocess and push data into lmdb
-        print(f"Start converting `{xyzfile}` to `{lmdbfile}` ...")
         for i, snapshot in enumerate(tqdm(trajectory)):
             data = a2g.convert(snapshot)
             # explictly save both total_energy and free_energy that exist in the data

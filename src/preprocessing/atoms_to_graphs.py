@@ -13,6 +13,13 @@ from pymatgen.io.ase import AseAtomsAdaptor
 
 from ocpmodels.preprocessing.atoms_to_graphs import AtomsToGraphs
 
+import ase.db.sqlite
+import ase.io.trajectory
+import numpy as np
+import torch
+from torch_geometric.data import Data
+from ocpmodels.common.utils import collate
+from ase.stress import voigt_6_to_full_3x3_stress, full_3x3_to_voigt_6_stress
 
 class AtomsToGraphsWithTolerance(AtomsToGraphs):
     def __init__(
@@ -21,6 +28,7 @@ class AtomsToGraphsWithTolerance(AtomsToGraphs):
         radius=6,
         r_energy=False,
         r_forces=False,
+        r_stress=False,
         r_distances=False,
         r_edges=True,
         r_fixed=True,
@@ -37,6 +45,8 @@ class AtomsToGraphsWithTolerance(AtomsToGraphs):
             r_fixed=r_fixed,
             r_pbc=r_pbc,
         )
+        
+        self.r_stress=r_stress
         # set the numerical tolerance which will be used to exclude self-edge when obtaining neighbors
         self.tolerance = tolerance
 
@@ -62,3 +72,9 @@ class AtomsToGraphsWithTolerance(AtomsToGraphs):
         _offsets = _offsets[_nonmax_idx]
 
         return _c_index, _n_index, n_distance, _offsets
+    def convert(self,atoms,):
+        data=super().convert(atoms)
+        if self.r_stress:
+            stress = torch.Tensor(voigt_6_to_full_3x3_stress(atoms.get_stress(apply_constraint=False))).unsqueeze(0)
+            data.stress = stress
+        return data

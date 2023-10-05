@@ -75,6 +75,12 @@ class DataFlags:
             help="If the cutoff radius is set, output LMDB files include edge index information, which means otf_graph in config files can be False.",
         )
         self.parser.add_argument(
+            "--get-stress",
+            type=bool,
+            default=True,
+            help="Save stress"
+        )
+        self.parser.add_argument(
             "--max-neighbors",
             type=int,
             default=None,
