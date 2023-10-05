@@ -128,7 +128,7 @@ class BaseTrainer(ABC):
             os.makedirs(self.config["cmd"]["logs_dir"], exist_ok=True)
 
         # determine whether to use stress
-        self.use_stress=config['model']['regress_stress'] if 'regress_stress' in config['model'].keys() else False
+        self.use_stress = config['model'].get('regress_stress', False)
 
         # set various modules used in the trainer        
         self._inititiate()

@@ -282,7 +282,7 @@ class NequIPWrap(BaseModel):
         # return values required in an OCP-based trainer
         if self.regress_stress:
             return out[AtomicDataDict.TOTAL_ENERGY_KEY], out[AtomicDataDict.FORCE_KEY], out[AtomicDataDict.STRESS_KEY]
-        if self.regress_forces:
+        elif self.regress_forces:
             return out[AtomicDataDict.TOTAL_ENERGY_KEY], out[AtomicDataDict.FORCE_KEY]
         else:
             return out[AtomicDataDict.TOTAL_ENERGY_KEY]

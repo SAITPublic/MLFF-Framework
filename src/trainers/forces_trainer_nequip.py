@@ -84,7 +84,8 @@ class NequIPForcesTrainer(ForcesTrainer):
                 normalized_batch = AtomicData.from_AtomicDataDict(b)
                 normalized_batch.y = b[AtomicDataDict.TOTAL_ENERGY_KEY]
                 normalized_batch.force = b[AtomicDataDict.FORCE_KEY]
-                normalized_batch.stress = b[AtomicDataDict.STRESS_KEY]
+                if self.use_stress:
+                    normalized_batch.stress = b[AtomicDataDict.STRESS_KEY]
                 normalized_batch.natoms = torch.bincount(batch[AtomicDataDict.BATCH_KEY])
                 normalized_batch_list.append(normalized_batch)
             return super()._compute_loss(out=out, batch_list=normalized_batch_list)
@@ -101,39 +102,23 @@ class NequIPForcesTrainer(ForcesTrainer):
                     normalized_batch = AtomicData.from_AtomicDataDict(b)
                     normalized_batch.y = b[AtomicDataDict.TOTAL_ENERGY_KEY]
                     normalized_batch.force = b[AtomicDataDict.FORCE_KEY]
-                    if(self.use_stress):
+                    if self.use_stress:
                         normalized_batch.stress = b[AtomicDataDict.STRESS_KEY]
                     normalized_batch.natoms = torch.bincount(batch[AtomicDataDict.BATCH_KEY])
                     normalized_batch_list.append(normalized_batch)
                 # prediction is converted ? -> normalized unit
-                if(self.use_stress):
-                    _out = self._unwrapped_model.do_unscale(
-                    {
-                        AtomicDataDict.TOTAL_ENERGY_KEY: out["energy"], 
-                        AtomicDataDict.FORCE_KEY: out["forces"],
-                        AtomicDataDict.STRESS_KEY: out["stress"],
-                    }, 
+                nequip_ocp_key_mapper = [
+                    [AtomicDataDict.TOTAL_ENERGY_KEY, "energy"],
+                    [AtomicDataDict.FORCE_KEY, "forces"],
+                ]
+                if self.use_stress:
+                    nequip_ocp_key_mapper.append([AtomicDataDict.STRESS_KEY, "stress"])
+
+                _out = self._unwrapped_model.do_unscale(
+                    data={key_map[0]: out[key_map[1]] for key_map in nequip_ocp_key_mapper},
                     force_process=True,
-                    )
-                
-                    normalized_out = {
-                    "energy": _out[AtomicDataDict.TOTAL_ENERGY_KEY],
-                    "forces": _out[AtomicDataDict.FORCE_KEY],
-                    "stress": _out[AtomicDataDict.STRESS_KEY],
-                    }
-                else:
-                    _out = self._unwrapped_model.do_unscale(
-                    {
-                        AtomicDataDict.TOTAL_ENERGY_KEY: out["energy"], 
-                        AtomicDataDict.FORCE_KEY: out["forces"],
-                    }, 
-                    force_process=True,
-                    )
-                
-                    normalized_out = {
-                    "energy": _out[AtomicDataDict.TOTAL_ENERGY_KEY],
-                    "forces": _out[AtomicDataDict.FORCE_KEY],
-                    }
+                )
+                normalized_out = {key_map[1]: _out[key_map[0]] for key_map in nequip_ocp_key_mapper}
                 return super()._compute_loss(out=normalized_out, batch_list=normalized_batch_list)
 
     def _compute_metrics(self, out, batch_list, evaluator, metrics={}):
@@ -147,19 +132,19 @@ class NequIPForcesTrainer(ForcesTrainer):
             # train mode
             # prediction is converted normalized unit -> real unit
             with torch.no_grad():
-                _unscaled={
-                        AtomicDataDict.TOTAL_ENERGY_KEY: out["energy"], 
-                        AtomicDataDict.FORCE_KEY: out["forces"],
-                    }
-                if(self.use_stress):
-                    _unscaled[AtomicDataDict.STRESS_KEY]=out["stress"]
+                _unscaled = {
+                    AtomicDataDict.TOTAL_ENERGY_KEY: out["energy"], 
+                    AtomicDataDict.FORCE_KEY: out["forces"],
+                }
+                if self.use_stress:
+                    _unscaled[AtomicDataDict.STRESS_KEY] = out["stress"]
                 _out = self._unwrapped_model.do_scale(
                     _unscaled,
                     force_process=True,
                 )
                 out["energy"] = _out[AtomicDataDict.TOTAL_ENERGY_KEY]
                 out["forces"] = _out[AtomicDataDict.FORCE_KEY]
-                if(self.use_stress):
+                if self.use_stress:
                     out["stress"] = _out[AtomicDataDict.STRESS_KEY]
         
         return super()._compute_metrics(out=out, batch_list=batch_list, evaluator=evaluator, metrics=metrics)
