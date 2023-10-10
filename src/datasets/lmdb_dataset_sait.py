@@ -73,8 +73,7 @@ class LmdbDatasetSAIT(Dataset):
                 keys = random_sample(keys, num_samples=int(len(keys)*sampled_ratio))
             self._keys.append(keys)
 
-            if len(self.db_paths) > 1:
-                bm_logging.info(f" - {db_path.resolve()}")
+            bm_logging.info(f" - {db_path.resolve()}")
 
         # append all the lmdb files by managing keys
         keylens = [len(k) for k in self._keys]
