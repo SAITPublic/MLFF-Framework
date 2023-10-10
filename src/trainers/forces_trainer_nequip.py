@@ -9,6 +9,7 @@ to third parties without the express written permission of Samsung Electronics.
 """
 
 import torch
+from pathlib import Path
 
 from ocpmodels.common.registry import registry
 
@@ -38,13 +39,41 @@ class NequIPForcesTrainer(ForcesTrainer):
     
     def _parse_config(self, config):
         trainer_config = super()._parse_config(config)
-        if not trainer_config["dataset"].get("normalize_labels", True):
-            bm_logging.info("Applying the data normalization is default in NequIP (or Allegro), but the normalization turns off in this training")
-        trainer_config["model_attributes"]["data_normalization"] = trainer_config["dataset"].get("normalize_labels", True)
-        trainer_config["model_attributes"]["dataset"] = {"src": trainer_config["dataset"]["src"]}
 
-        # NequIP, Allegro does not need normalizer (they use own normaliation strategy)
-        trainer_config["dataset"]["normalize_labels"] = False
+        # NequIP and Allegro do not need OCP normalizer (they use own normaliation strategy)
+        ocp_normalize_flag = False
+        data_config_style = trainer_config.get("data_config_style", "OCP")
+        if data_config_style == "OCP":
+            ocp_normalize_flag = trainer_config["dataset"].get("normalize_labels", False)
+            trainer_config["dataset"]["normalize_labels"] = False
+        elif data_config_style == "SAIT":
+            ocp_normalize_flag = trainer_config["normalizer"].get("normalize_labels", False)
+            trainer_config["normalizer"]["normalize_labels"] = False
+        if ocp_normalize_flag:
+            bm_logging.info("In the given configuration file or the configuration saved in the checkpoint, `normalize_labels` is set as `True` ")
+            bm_logging.info("  NequIP and Allegro do not need OCP normalizers, instead they use own normalization strategy by employing scale and shift layers.")
+            bm_logging.info("  Hence `normalize_labels` will be changed as `False` to turn off the OCP normalizer operation.")
+            bm_logging.info("  You can control their own normalization strategy by turning on/off `use_scale_shift` in the model configuration.")
+        
+        if "data_normalization" in trainer_config["model_attributes"].keys():
+            bm_logging.info("(deprecated) The configuration saved in the checkpoint is old-styled. `data_normalization` is converted into `use_scale_shift`.")
+            trainer_config["model_attributes"]["use_scale_shift"] = trainer_config["model_attributes"]["data_normalization"]
+            del trainer_config["model_attributes"]["data_normalization"]
+
+        if (trainer_config["model_attributes"].get("use_scale_shift", True) 
+            or trainer_config["model_attributes"].get("avg_num_neighbors", None) == "auto"
+        ):
+            if data_config_style == "OCP":
+                # OCP data config style
+                trainer_config["model_attributes"]["dataset"] = trainer_config["dataset"]["src"]
+            elif data_config_style == "SAIT":
+                # SAIT data config style
+                assert isinstance(trainer_config["dataset"], list)
+                if len(trainer_config["dataset"]) > 1:
+                    bm_logging("The first source of training datasets will be used to obtain avg_num_neighbors, scale, or shift.")
+                if not Path(trainer_config["dataset"][0]["src"]).exists():
+                    raise RuntimeError("The lmdb source file or directory should be specified.")
+                trainer_config["model_attributes"]["dataset"] = trainer_config["dataset"][0]["src"]
 
         if self.mode == "validate":
             trainer_config["model_attributes"]["initialize"] = False
@@ -152,7 +181,8 @@ class NequIPForcesTrainer(ForcesTrainer):
     def make_checkpoint_dict(self, metrics, training_state):
         if "dataset" in self.config["model_attributes"]:
             del self.config["model_attributes"]["dataset"]
-            self.config["model_attributes"]["avg_num_neighbors"] = self._unwrapped_model.avg_num_neighbors
+        
+        self.config["model_attributes"]["avg_num_neighbors"] = self._unwrapped_model.avg_num_neighbors
 
         ckpt_dict = super().make_checkpoint_dict(metrics, training_state)
         return ckpt_dict
