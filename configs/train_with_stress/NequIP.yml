@@ -1,16 +1,22 @@
 dataset:
-  # graph generated with cutoff radius 6 and max neighbors 50
-  - src: datasets/HfO/atom_graph_rmax6.0_maxneighbor50/train.lmdb
+  normalize:
     normalize_labels: True
     per_atom: True
     normalize_labels_json: datasets/HfO/atom_graph_rmax6.0_maxneighbor50/normalize_stats.json
-  - src: datasets/HfO/atom_graph_rmax6.0_maxneighbor50/valid.lmdb
-  - src: datasets/HfO/atom_graph_rmax6.0_maxneighbor50/test.lmdb
+
+  train:
+    - src: datasets/HfO/atom_graph_rmax6.0_maxneighbor50/train.lmdb
+
+  valid:
+    - src: datasets/HfO/atom_graph_rmax6.0_maxneighbor50/valid.lmdb
+  
+  test:
+    - src: datasets/HfO/atom_graph_rmax6.0_maxneighbor50/test.lmdb
 
 logger: files
 
 task:
-  dataset: lmdb
+  dataset: lmdb_sait
   description: "Regressing to energies, forces, and stress for DFT trajectories of HfO"
   metrics: 
     - energy_per_atom_mae
@@ -43,7 +49,6 @@ model:
   PolynomialCutoff_p: 6
   invariant_layers: 2
   invariant_neurons: 64 
-  avg_num_neighbors: auto # 'auto' requires to set 'initialize' as True, meaning that data statistics will be calculated if the statistics file does not exist
   use_sc: True
   nonlinearity_type: gate
   resnet: False
@@ -53,6 +58,11 @@ model:
   nonlinearity_gates:
     e: silu
     o: tanh
+  
+  # using data statistics
+  # 'auto' requires to set 'initialize' as True, meaning that data statistics will be calculated if the statistics file does not exist
+  avg_num_neighbors: auto  
+  use_scale_shift: False
 
   # force
   regress_forces: True

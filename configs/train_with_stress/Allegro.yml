@@ -1,16 +1,22 @@
 dataset:
-  # graph generated with cutoff radius 6 and max neighbors 50
-  - src: datasets/HfO/atom_graph_rmax6.0_maxneighbor50/train.lmdb
+  normalize:
     normalize_labels: True
     per_atom: True
     normalize_labels_json: datasets/HfO/atom_graph_rmax6.0_maxneighbor50/normalize_stats.json
-  - src: datasets/HfO/atom_graph_rmax6.0_maxneighbor50/valid.lmdb
-  - src: datasets/HfO/atom_graph_rmax6.0_maxneighbor50/test.lmdb
+
+  train:
+    - src: datasets/HfO/atom_graph_rmax6.0_maxneighbor50/train.lmdb
+
+  valid:
+    - src: datasets/HfO/atom_graph_rmax6.0_maxneighbor50/valid.lmdb
+  
+  test:
+    - src: datasets/HfO/atom_graph_rmax6.0_maxneighbor50/test.lmdb
 
 logger: files
 
 task:
-  dataset: lmdb
+  dataset: lmdb_sait
   description: "Regressing to energies, forces, and stress for DFT trajectories of HfO"
   metrics: 
     - energy_per_atom_mae
@@ -54,6 +60,12 @@ model:
   edge_eng_mlp_latent_dimensions: [128]
   #edge_eng_mlp_nonlinearity: None # if None, comment out
   edge_eng_mlp_initialization: uniform
+
+  # using data statistics
+  # 'auto' requires to set 'initialize' as True, meaning that data statistics will be calculated if the statistics file does not exist
+  # if None, comment out
+  avg_num_neighbors: auto  
+  use_scale_shift: True
 
   # force
   regress_forces: True
