@@ -108,7 +108,7 @@ def setup_benchmark_imports(config=None):
         # SAIT-MLFF-Framework
         # : re-define classes of trainers and tasks
         importlib.import_module("src.common.logger")
-        for key in ["trainers", "models", "tasks", "md_evaluate"]:
+        for key in ["trainers", "datasets", "models", "tasks", "md_evaluate"]:
             for path in (benchmark_root / "src" / key).rglob("*.py"):
                 module_name = ".".join(
                     path.absolute()
