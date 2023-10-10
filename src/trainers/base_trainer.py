@@ -162,6 +162,13 @@ class BaseTrainer(ABC):
             "noddp": config["noddp"],
             "save_ckpt_every_epoch": config["save_ckpt_every_epoch"],
         }
+
+        # set data configuration style
+        if config["task"]["dataset"] == "lmdb":
+            trainer_config["data_config_style"] = "OCP"
+        elif config["task"]["dataset"] == "lmdb_sait":
+            trainer_config["data_config_style"] = "SAIT"
+
         # specify dataset path
         dataset = config["dataset"]
         if isinstance(dataset, list):
@@ -173,8 +180,10 @@ class BaseTrainer(ABC):
                 trainer_config["test_dataset"] = dataset[2]
         elif isinstance(dataset, dict):
             trainer_config["dataset"] = dataset.get("train", None)
-            trainer_config["val_dataset"] = dataset.get("val", None)
+            trainer_config["val_dataset"] = dataset.get("valid", None)
             trainer_config["test_dataset"] = dataset.get("test", None)
+            if trainer_config["data_config_style"] == "SAIT":
+                trainer_config["normalizer"] = dataset.get("normalize", {})
         else:
             trainer_config["dataset"] = dataset
             
@@ -262,7 +271,9 @@ class BaseTrainer(ABC):
         """ After setting dataset and loader, this function is called."""
         if self.config["model_name"] == "bpnn":
             # scale and pca should be used in BPNN
-            dataset_path = self.config["model_attributes"].get("dataset_path", self.config["dataset"]["src"]) # train dataset
+            if trainer_config.get("data_config_style", "OCP") == "SAIT":
+                assert ("dataset_path" in self.config["model_attributes"] or "src" in self.normalizer)
+            dataset_path = self.config["model_attributes"].get("dataset_path", self.normalizer["src"]) # train dataset
             if os.path.isfile(dataset_path):
                 # single lmdb file
                 pca_path = Path(dataset_path).parent / "BPNN_pca.pt"
@@ -291,7 +302,8 @@ class BaseTrainer(ABC):
         
         # train set
         if self.config.get("dataset", None) and self.flag_loading_dataset:
-            bm_logging.info(f"Loading train dataset (type: {self.config['task']['dataset']}): {self.config['dataset']['src']}")
+            bm_logging.info(f"Loading train dataset (type: {self.config['task']['dataset']}): \
+                              {self.config['dataset']['src'] if self.config.get('data_config_style', 'OCP') == 'OCP' else ''}")
             self.train_dataset = dataset_class(self.config["dataset"])
             self.train_sampler = self.get_sampler(
                 dataset=self.train_dataset,
@@ -308,7 +320,8 @@ class BaseTrainer(ABC):
 
         # validation set
         if self.config.get("val_dataset", None) and self.flag_loading_dataset:
-            bm_logging.info(f"Loading validation dataset (type: {self.config['task']['dataset']}): {self.config['val_dataset']['src']}")
+            bm_logging.info(f"Loading validation dataset (type: {self.config['task']['dataset']}): \
+                              {self.config['dataset']['src'] if self.config.get('data_config_style', 'OCP') == 'OCP' else ''}")
             self.val_dataset = dataset_class(self.config["val_dataset"])
             self.val_sampler = self.get_sampler(
                 dataset=self.val_dataset,
@@ -324,7 +337,8 @@ class BaseTrainer(ABC):
 
         # test set
         if self.config.get("test_dataset", None) and self.flag_loading_dataset:
-            bm_logging.info(f"Loading test dataset (type: {self.config['task']['dataset']}): {self.config['test_dataset']['src']}")
+            bm_logging.info(f"Loading test dataset (type: {self.config['task']['dataset']}): \
+                              {self.config['dataset']['src'] if self.config.get('data_config_style', 'OCP') == 'OCP' else ''}")
             self.test_dataset = dataset_class(self.config["test_dataset"])
             self.test_sampler = self.get_sampler(
                 dataset=self.test_dataset,
