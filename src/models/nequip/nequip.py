@@ -34,8 +34,8 @@ def set_model_config_based_on_data_statistics(model_config, type_mapper, dataset
     # add statistics results to config
     dataset = None
     if initialize and dataset_name is not None:
-        dataset_class = registry.get_dataset_class("lmdb")
-        dataset = dataset_class({"src": dataset_name})
+        dataset_class = registry.get_dataset_class("lmdb_sait")
+        dataset = dataset_class([{"src": dataset_name}])
 
     # 1) avg_num_neighbors (required by EnergyModel)
     avg_num_neighbors = model_config.get("avg_num_neighbors", None)

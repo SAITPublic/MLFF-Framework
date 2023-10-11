@@ -43,29 +43,25 @@ class LmdbDatasetSAIT(Dataset):
 
         # listup lmdb files
         self.db_paths = []
+        self.sampled_ratios = []
         for src_info in self.config:
             src_path = Path(src_info["src"])
+            sampled_ratio = src_info.get("sampled_ratio", None)
             if src_path.is_dir():
                 # directory including lmdb file(s)
                 file_paths = sorted(src_path.glob("*.lmdb"))
                 assert len(file_paths) > 0, f"No LMDBs found in '{src_path}'"
-                if "sampled_ratio" in src_info.keys():
-                    file_paths = [[f, src_info["sampled_ratio"]] for f in file_paths]
                 self.db_paths += file_paths
+                self.sampled_ratios += [sampled_ratio for _ in range(len(file_paths))]
             else:
                 # a single lmdb file
                 assert src_path.exists(), f"No LMDB found at '{src_path}'"
-                if "sampled_ratio" in src_info.keys():
-                    src_path = [src_path, src_info["sampled_ratio"]]
                 self.db_paths.append(src_path)
+                self.sampled_ratios.append(sampled_ratio)
 
         # setup databases
         self._keys, self.envs = [], []
-        for db_path in self.db_paths:
-            sampled_ratio = None
-            if isinstance(db_path, list):
-                sampled_ratio = db_path[1]
-                db_path = db_path[0]
+        for db_path, sampled_ratio in zip(self.db_paths, self.sampled_ratios):
             env = self.connect_db(db_path)
             self.envs.append(env)
             keys = [f"{j}".encode("ascii") for j in range(env.stat()["entries"])]

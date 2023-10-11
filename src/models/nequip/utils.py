@@ -12,6 +12,9 @@ import os
 import numpy as np
 import torch
 
+from ocpmodels.common import distutils
+from ocpmodels.common.registry import registry
+
 from nequip.data import (
     AtomicData,
     AtomicDataDict,
@@ -23,8 +26,6 @@ from nequip.utils.torch_geometric.batch import Batch as BatchNequIP
 from nequip.data.transforms import TypeMapper
 from nequip.model.builder_utils import _add_avg_num_neighbors_helper
 from nequip.model._scaling import RESCALE_THRESHOLD
-
-from ocpmodels.common import distutils
 
 from src.common.utils import bm_logging
 from src.common.collaters.parallel_collater_nequip import convert_ocp_Data_into_nequip_AtomicData
@@ -235,6 +236,22 @@ def _per_atom_statistics(
         )
 
 
+def get_stat_file_parent_path(dataset):
+    lmdb_class = registry.get_dataset_class("lmdb")
+    lmdb_sait_class = registry.get_dataset_class("lmdb_sait")
+    if isinstance(dataset, lmdb_class):
+        if dataset.path.is_dir():
+            return dataset.path
+        elif dataset.path.is_file():
+            return dataset.path.parent
+        else:
+            raise RuntimeError(f"Check dataset path (given : {dataset.path})")
+    elif isinstance(dataset, lmdb_sait_class):
+        # Given multiple training dataset sources, 
+        # the directory including the first source will be used to save the statistics required by NequIP
+        return dataset.db_paths[0].parent
+
+
 def statistics(dataset, transform, fields, modes, stride, unbiased=True, kwargs={}):
     assert len(modes) == len(fields)
     assert transform is not None
@@ -247,14 +264,8 @@ def statistics(dataset, transform, fields, modes, stride, unbiased=True, kwargs=
     else:
         filepath = "NequIP_statistics-" + ",".join(modes) + "-num_neighbors.pt"
 
-    # dataset.path is pathlib.Path
-    if dataset.path.is_dir():
-        filepath = dataset.path / filepath
-    elif dataset.path.is_file():
-        filepath = dataset.path.parent / filepath
-    else:
-        RuntimeError(f"Check dataset path (given : {type(dataset.path)} - {dataset.path})")
-
+    # set the location of the statistics file
+    filepath = get_stat_file_parent_path(dataset) / filepath
     if filepath.exists():
         out = torch.load(filepath)
         bm_logging.info(f"Statistics loaded from {filepath} (stats: {out})")
