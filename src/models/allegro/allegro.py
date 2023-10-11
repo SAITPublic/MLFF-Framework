@@ -92,7 +92,7 @@ class AllegroWrap(BaseModel):
         global_rescale_shift=None, # RescaleEnergyEtc
         global_rescale_scale="dataset_forces_rms", # RescaleEnergyEtc
         # normalization on/off
-        data_normalization=True,
+        use_scale_shift=True,
         # initialize: False = load checkpoint, True = data seeing is the first
         initialize=True,
     ):
@@ -163,12 +163,12 @@ class AllegroWrap(BaseModel):
 
         # compute statistics (similar to Normalizers of OCP)
         # or load the pre-computed values
-        self.data_normalization = data_normalization
+        self.use_scale_shift = use_scale_shift
         model_config = set_model_config_based_on_data_statistics(
             model_config=model_config, 
             type_mapper=self.type_mapper, 
             dataset_name=dataset,
-            data_normalization=data_normalization,
+            use_scale_shift=use_scale_shift,
             initialize=initialize,
         )
 
@@ -190,7 +190,7 @@ class AllegroWrap(BaseModel):
             outer_layer = getattr(outer_layer, "model", None)
 
     def do_unscale(self, data, force_process=False):
-        if not self.data_normalization:
+        if not self.use_scale_shift:
             return data
             
         # unscaling (by RescaleEnergyEtc, or GlobalRescale)
@@ -200,7 +200,7 @@ class AllegroWrap(BaseModel):
         return data
 
     def do_scale(self, data, force_process=False):
-        if not self.data_normalization:
+        if not self.use_scale_shift:
             return data
 
         # scaling (by RescaleEnergyEtc, or GlobalRescale)
