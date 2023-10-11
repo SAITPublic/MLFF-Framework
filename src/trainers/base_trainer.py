@@ -156,6 +156,7 @@ class BaseTrainer(ABC):
                 "checkpoint_dir": os.path.join(config["run_dir"], "checkpoints", timestamp_id),
                 "logs_dir": os.path.join(config["run_dir"], "logs", logger_name, timestamp_id),
                 "show_eval_progressbar": config.get("show_eval_progressbar", False),
+                "resume": config.get("resume", False),
             },
             "local_rank": config["local_rank"],
             "slurm": config["slurm"],
@@ -387,18 +388,19 @@ class BaseTrainer(ABC):
         )
         if distutils.initialized() and not self.config["noddp"]:
             # wrapping pytorch DDP
-            if(self.config["model_name"]=='bpnn' or self.config["model_name"]=='allegro'):
+            if (self.config["model_name"]=='bpnn' 
+                or self.config["model_name"]=='allegro'
+            ):
                 self.model = DistributedDataParallel(
-                module=self.model, 
-                device_ids=[self.device],
-                find_unused_parameters=True
+                    module=self.model, 
+                    device_ids=[self.device],
+                    find_unused_parameters=True # it makes computation somewhat slow
                 )
-            
             else:
                 self.model = DistributedDataParallel(
-                module=self.model, 
-                device_ids=[self.device],
-            )
+                    module=self.model, 
+                    device_ids=[self.device],
+                )
 
     def _set_loss(self):
         # initiate loss which is wrapped with DDPLoss in default
@@ -491,18 +493,34 @@ class BaseTrainer(ABC):
                 errno.ENOENT, "Checkpoint file not found", checkpoint_path
             )
 
-        bm_logging.info(f"Loading checkpoint from: {checkpoint_path}")
+        log_temp_str = ""
+        if self.mode == "train":
+            if self.config["cmd"]["resume"]:
+                log_temp_str = "resuming the training"
+            else:
+                log_temp_str = "finetuning"
+        if self.mode == "validate":
+            log_temp_str = "validation"
+        bm_logging.info(f"Loading checkpoint from {checkpoint_path} (used for `{log_temp_str}`)")
+        
         map_location = torch.device("cpu") if self.cpu else self.device
         checkpoint = torch.load(checkpoint_path, map_location=map_location)
 
-        # load the training config
-        self.config = checkpoint.get("config", None)
-        assert self.config is not None
+        # load the training config saved in the checkpoint if resuming the training
+        if self.config["cmd"]["resume"]:
+            self.config = checkpoint.get("config", None)
+            assert self.config is not None
 
-        self.epoch = checkpoint.get("epoch", 0)
-        self.step = checkpoint.get("step", 0)
-        self.best_val_metric = checkpoint.get("best_val_metric", None)
-        self.primary_metric = checkpoint.get("primary_metric", None)
+            self.epoch = checkpoint.get("epoch", 0)
+            self.step = checkpoint.get("step", 0)
+            self.best_val_metric = checkpoint.get("best_val_metric", None)
+            self.primary_metric = checkpoint.get("primary_metric", None)
+
+            if "optimizer" in checkpoint and self.mode == "train":
+                self.optimizer.load_state_dict(checkpoint["optimizer"])
+
+            if "scheduler" in checkpoint and checkpoint["scheduler"] is not None and self.mode == "train":
+                self.scheduler.scheduler.load_state_dict(checkpoint["scheduler"])
 
         # Match the "module." count in the keys of model and checkpoint state_dict
         # DataParallel model has 1 "module.",  DistributedDataParallel has 2 "module."
@@ -525,12 +543,6 @@ class BaseTrainer(ABC):
 
         strict = self.config["task"].get("strict_load", True)
         load_state_dict(self.model, new_dict, strict=strict)
-
-        if "optimizer" in checkpoint and self.mode == "train":
-            self.optimizer.load_state_dict(checkpoint["optimizer"])
-
-        if "scheduler" in checkpoint and checkpoint["scheduler"] is not None and self.mode == "train":
-            self.scheduler.scheduler.load_state_dict(checkpoint["scheduler"])
             
         if "ema" in checkpoint and checkpoint["ema"] is not None:
             self.ema.load_state_dict(checkpoint["ema"])

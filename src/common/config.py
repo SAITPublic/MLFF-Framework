@@ -21,6 +21,9 @@ def add_benchmark_config(config, args):
     # to save checkpoints at every given epoch
     config["save_ckpt_every_epoch"] = args.save_ckpt_every_epoch
 
+    # specify resume or finetune
+    config["resume"] = args.resume
+
     return config
 
 
@@ -36,6 +39,7 @@ def add_benchmark_fit_scale_config(config, args):
 def add_benchmark_validate_config(config, args):
     if args.mode == "validate":
         config["validate_data"] = args.validate_data
+        config["validate_batch_size"] = args.validate_batch_size
     return config
 
 
@@ -54,6 +58,7 @@ def check_config(config):
     assert "amp" in config
     assert "cpu" in config
     assert "noddp" in config
+    assert "resume" in config
 
     if config.get("run_dir", "./") == "./":
         config["run_dir"] = os.getcwd()

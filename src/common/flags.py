@@ -46,6 +46,13 @@ class BenchmarkFlags(Flags):
             action="store_true", 
             help="Show a tqdm progressbar of calculating metrics (mainly used in the 'validate' mode)",
         )
+        # resume (training is continued from the given checkpoint)
+        self.parser.add_argument(
+            "--resume",
+            default=False,
+            action="store_true",
+            help="Resume the training of the given checkpoint"
+        )
 
     def _add_fit_scale_args(self):
         # some models need to generate scale files fitted to training data
