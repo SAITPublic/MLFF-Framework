@@ -295,22 +295,13 @@ class ForcesTrainer(BaseTrainer):
         self._end_train()
 
     def _forward(self, batch_list):
-        out = self.model(batch_list)
-        if out[0].shape[-1] == 1:
-            out0 = out[0].view(-1)
-        else:
-            out0 = out[0]
-        if len(out) == 2:
-            out = {
-                "energy": out0,
-                "forces": out[1],
-            }
-        elif len(out) ==3:
-            out = {
-                "energy": out0,
-                "forces": out[1],
-                "stress": out[2],
-            }
+        _out = self.model(batch_list)
+        # energy
+        out = {"energy": _out[0].view(-1) if _out[0].shape[-1] == 1 else _out[0]}
+        if len(_out) == 2:
+            out["forces"] = _out[1]
+        if len(_out) == 3:
+            out["stress"] = _out[2]
         return out
 
     def _compute_loss(self, out, batch_list):
