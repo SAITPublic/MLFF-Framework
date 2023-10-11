@@ -40,6 +40,8 @@ def add_benchmark_validate_config(config, args):
     if args.mode == "validate":
         config["validate_data"] = args.validate_data
         config["validate_batch_size"] = args.validate_batch_size
+        config["separate_evaluation"] = args.separate_evaluation
+        config["shuffle"] = args.shuffle
     return config
 
 

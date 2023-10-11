@@ -97,7 +97,21 @@ class BenchmarkFlags(Flags):
             "--validate-batch-size",
             default=None,
             type=int,
-            help="batch size (default : eval_batch_size specified in a config file)",
+            help="batch size (default : eval_batch_size or batch_size specified in a config file)",
+        )
+        # batch size for validation
+        self.parser.add_argument(
+            "--separate-evaluation",
+            default=False,
+            action="store_true", 
+            help="Evaluate lmdb files included in the given directory path, individually",
+        )
+        # batch size for validation
+        self.parser.add_argument(
+            "--shuffle",
+            default=False,
+            action="store_true", 
+            help="Shuffle the validation data",
         )
         
     def _add_run_md_args(self):
