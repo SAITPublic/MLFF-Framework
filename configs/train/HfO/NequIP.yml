@@ -80,7 +80,7 @@ optim:
   batch_size: 16 
   eval_batch_size: 16
   num_workers: 2
-  max_epochs: 1
+  max_epochs: 200
 
   optimizer: Adam
   optimizer_params: {"amsgrad": False}

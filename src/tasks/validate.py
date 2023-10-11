@@ -38,7 +38,7 @@ class ValidateTask(BaseTask):
                 loaders[f"{file_path.name}"] = self.get_dataloader(dataset)
         else:
             dataset = self.get_dataset(path)
-            loaders[f"{path}"] = self.get_dataloader(dataset)
+            loaders[f"{path.name}"] = self.get_dataloader(dataset)
 
         # valiate the dataset(s)
         table = self.trainer.create_metric_table(dataloaders=loaders)

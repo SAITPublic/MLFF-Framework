@@ -88,7 +88,7 @@ class BenchmarkCalculator(Calculator):
         self.model.eval() 
 
         # set normalizers (if it exists)
-        if "normalize_labels" in ckpt_config["dataset"].keys():
+        if ckpt_config.get("data_config_style", "OCP") == "OCP":
             # OCP data config style
             normalizer = ckpt_config["dataset"]
         else:

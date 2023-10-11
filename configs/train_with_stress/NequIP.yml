@@ -62,7 +62,7 @@ model:
   # using data statistics
   # 'auto' requires to set 'initialize' as True, meaning that data statistics will be calculated if the statistics file does not exist
   avg_num_neighbors: auto  
-  use_scale_shift: False
+  use_scale_shift: True
 
   # force
   regress_forces: True
@@ -71,7 +71,7 @@ model:
   regress_stress: True
 
   # graph
-  cutoff: 6.0 
+  cutoff: 6.0
   otf_graph: False 
   use_pbc: True 
 

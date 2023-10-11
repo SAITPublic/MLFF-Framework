@@ -129,9 +129,19 @@ class MACEForcesTrainer(ForcesTrainer):
     def _do_data_related_settings(self):
         """ After setting dataset and loader, this function is called."""
         # load the precomputed results (if they exist)
-        mace_statistics_file_path = (
-            Path(self.config['dataset']['src']).parent / "MACE_statistics.pt"
-        )
+        data_config_style = self.config.get("data_config_style", "OCP")
+        if data_config_style == "OCP":
+            # OCP data config style
+            mace_statistics_file_path = (Path(self.config['dataset']['src']).parent / "MACE_statistics.pt")
+        if data_config_style == "SAIT":
+            # SAIT data config style
+            assert isinstance(self.config["dataset"], list)
+            if len(self.config["dataset"]) > 1:
+                bm_logging("The first source of training datasets will be used to obtain atomic_energies, avg_num_neighbors, atomic_inter_scale, and atomic_inter_shift.")
+            if not Path(self.config["dataset"][0]["src"]).exists():
+                raise RuntimeError("The lmdb source file or directory should be specified.")
+            mace_statistics_file_path = (Path(self.config['dataset'][0]['src']).parent / "MACE_statistics.pt")
+
         mace_statistics = {}
         if mace_statistics_file_path.is_file():
             mace_statistics = torch.load(mace_statistics_file_path)

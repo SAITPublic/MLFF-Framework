@@ -303,8 +303,9 @@ class BaseTrainer(ABC):
         
         # train set
         if self.config.get("dataset", None) and self.flag_loading_dataset:
-            bm_logging.info(f"Loading train dataset (type: {self.config['task']['dataset']}): \
-                              {self.config['dataset']['src'] if self.config.get('data_config_style', 'OCP') == 'OCP' else ''}")
+            bm_logging.info(f"Loading train dataset (type: {self.config['task']['dataset']})")
+            if self.config.get('data_config_style', 'OCP') == 'OCP':
+                bm_logging.info(f" - {self.config['dataset']['src']}")
             self.train_dataset = dataset_class(self.config["dataset"])
             self.train_sampler = self.get_sampler(
                 dataset=self.train_dataset,
@@ -321,8 +322,9 @@ class BaseTrainer(ABC):
 
         # validation set
         if self.config.get("val_dataset", None) and self.flag_loading_dataset:
-            bm_logging.info(f"Loading validation dataset (type: {self.config['task']['dataset']}): \
-                              {self.config['dataset']['src'] if self.config.get('data_config_style', 'OCP') == 'OCP' else ''}")
+            bm_logging.info(f"Loading validation dataset (type: {self.config['task']['dataset']})")
+            if self.config.get('data_config_style', 'OCP') == 'OCP':
+                bm_logging.info(f" - {self.config['val_dataset']['src']}")
             self.val_dataset = dataset_class(self.config["val_dataset"])
             self.val_sampler = self.get_sampler(
                 dataset=self.val_dataset,
@@ -338,8 +340,9 @@ class BaseTrainer(ABC):
 
         # test set
         if self.config.get("test_dataset", None) and self.flag_loading_dataset:
-            bm_logging.info(f"Loading test dataset (type: {self.config['task']['dataset']}): \
-                              {self.config['dataset']['src'] if self.config.get('data_config_style', 'OCP') == 'OCP' else ''}")
+            bm_logging.info(f"Loading test dataset (type: {self.config['task']['dataset']})")
+            if self.config.get('data_config_style', 'OCP') == 'OCP':
+                bm_logging.info(f" - {self.config['test_dataset']['src']}")
             self.test_dataset = dataset_class(self.config["test_dataset"])
             self.test_sampler = self.get_sampler(
                 dataset=self.test_dataset,
