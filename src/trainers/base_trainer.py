@@ -272,7 +272,7 @@ class BaseTrainer(ABC):
         """ After setting dataset and loader, this function is called."""
         if self.config["model_name"] == "bpnn":
             # scale and pca should be used in BPNN
-            if trainer_config.get("data_config_style", "OCP") == "SAIT":
+            if self.config.get("data_config_style", "OCP") == "SAIT":
                 assert ("dataset_path" in self.config["model_attributes"] or "src" in self.normalizer)
             dataset_path = self.config["model_attributes"].get("dataset_path", self.normalizer["src"]) # train dataset
             if os.path.isfile(dataset_path):
@@ -568,6 +568,9 @@ class BaseTrainer(ABC):
 
         if self.scaler and checkpoint["amp"]:
             self.scaler.load_state_dict(checkpoint["amp"])
+
+        if self.config["model_name"] == "bpnn":
+            self._unwrapped_model.pca = checkpoint["pca"]
 
     def make_checkpoint_dict(self, metrics, training_state):
         if self.config["model_name"] == "bpnn":
