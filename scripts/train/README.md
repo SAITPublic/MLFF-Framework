@@ -18,8 +18,8 @@ The arguments mean as follows:
 * `--config-yml` : a configuration file to train an MLFF model
 * `--run-dir` : a path to save training results
 * `--identifier` : an identifier of a training trial, where users can describe the training.
-* `--print-every N` : print a log at every N step (iteration)
-* `--save-ckpt-every-epoch N` : save a model parameters checkpoint at every N epoch
+* `--print-every N` (optional) : print a log at every N step (default: 10)
+* `--save-ckpt-every-epoch N` (optional) : save a model parameters checkpoint at every N epoch (default: None, meaning that cthe intermediate heckpoints are not saved during training)
 
 
 ## Convenient Training Script
@@ -42,13 +42,19 @@ To modify training hyperparameters, please refer [the directory](../../configs/)
 
 *Note* :  In our benchmark paper, two loss functions are explained: MSE- and MAE-based losses.  These two losses can be seen in each configuration file.   Just **activate only one loss function**.
 
-## Resume Training from a Checkpoint
+## Additional Command : `Finetune` the Model from a Checkpoint or `Resume` Training of a Checkpoint
 ```
 CUDA_VISIBLE_DEVICES=$GPU python main.py \
     --mode train \
     --config-yml $CONFIG \
     --run-dir $RUNDIR \
     --checkpoint $CKPT_PATH \
+    --resume \
 ```
 Users should specify `CONFIG`, `RUNDIR`, and `CKPT_PATH`.
-Checkpoints and logging files will be appended to the same path which was used to train the checkpoint.
+
+When resuming, checkpoints and logging files will be appended to the same path which was used to train the checkpoint.
+
+The arguments mean as follows:
+* `--checkpoint` (optional) : a checkpoint path to used for resuming the training of checkpoint or finetuning a model from the checkpoint (default: None)
+* `--resume` (optional) : determine to resume the training of the given checkpoint (default: False, meaning that finetuning the model from the checkpoint)
