@@ -99,7 +99,7 @@ class AllegroWrap(BaseModel):
         self.num_targets = num_targets
         self.use_pbc = use_pbc
         self.regress_forces = regress_forces
-        self.regress_stress=regress_stress
+        self.regress_stress = regress_stress
         self.otf_graph = otf_graph
         self.cutoff = cutoff
         if self.otf_graph:
@@ -220,7 +220,7 @@ class AllegroWrap(BaseModel):
         # return values required in an OCP-based trainer
         if self.regress_stress:
             return out[AtomicDataDict.TOTAL_ENERGY_KEY], out[AtomicDataDict.FORCE_KEY], out[AtomicDataDict.STRESS_KEY]
-        if self.regress_forces:
+        elif self.regress_forces:
             return out[AtomicDataDict.TOTAL_ENERGY_KEY], out[AtomicDataDict.FORCE_KEY]
         else:
             return out[AtomicDataDict.TOTAL_ENERGY_KEY]
