@@ -17,7 +17,7 @@ logger: files
 
 task:
   dataset: lmdb_sait
-  description: "Regressing to energies, forces, and stress for DFT trajectories of HfO"
+  description: "Regressing to energies and forces for DFT trajectories of HfO"
   metrics: 
     - energy_per_atom_mae
     - energy_per_atom_mse
