@@ -50,6 +50,10 @@ class BenchmarkCalculator(Calculator):
         # adjust the model-specific attributes for evaluation mode
         if self.model_name in ["nequip", "allegro"]:
             ckpt_config["model_attributes"]["initialize"] = False
+            if "data_normalization" in ckpt_config["model_attributes"].keys():
+                bm_logging.info(f"This configuration is old-styled. `data_normalization` is converted into `use_scale_shift` ({ckpt_config['model_attributes']['data_normalization']} in this config file).")
+                ckpt_config["model_attributes"]["use_scale_shift"] = ckpt_config["model_attributes"]["data_normalization"]
+                del ckpt_config["model_attributes"]["data_normalization"]
         elif self.model_name in ["bpnn"]:
             ckpt_config["model_attributes"]["pca_path"] = None 
             ckpt_config["model_attributes"]["dataset_path"] = None
@@ -84,9 +88,16 @@ class BenchmarkCalculator(Calculator):
         self.model.eval() 
 
         # set normalizers (if it exists)
+        if "normalize_labels" in ckpt_config["dataset"].keys():
+            # OCP data config style
+            normalizer = ckpt_config["dataset"]
+        else:
+            # SAIT data config style
+            assert "normalizer" in ckpt_config.keys()
+            normalizer = ckpt_config["normalizer"]
         self.normalizers = {}
-        if ckpt_config["dataset"].get("normalize_labels", False):
-            self.normalization_per_atom = ckpt_config["dataset"].get("per_atom", False)
+        if normalizer.get("normalize_labels", False):
+            self.normalization_per_atom = normalizer.get("per_atom", False)
             if self.normalization_per_atom:
                 self.normalizers["target"] = NormalizerPerAtom(mean=0.0, std=1.0, device=self.device)
             else:
