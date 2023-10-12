@@ -10,10 +10,10 @@ to third parties without the express written permission of Samsung Electronics.
 
 import sys
 import os
-sys.path.insert(0, os.path.abspath("./"))
-sys.path.insert(1, os.path.abspath("./codebases/ocp")) 
-sys.path.insert(2, os.path.abspath("./codebases/nequip")) 
-sys.path.insert(3, os.path.abspath("./codebases/allegro")) 
+sys.path.insert(0, os.path.abspath("../../"))
+sys.path.insert(1, os.path.abspath("../../codebases/ocp")) 
+sys.path.insert(2, os.path.abspath("../../codebases/nequip")) 
+sys.path.insert(3, os.path.abspath("../../codebases/allegro")) 
 
 import torch
 import ase
@@ -53,6 +53,14 @@ def compile_for_deploy(model):
 ckpt_path = sys.argv[2]
 ckpt = torch.load(ckpt_path, map_location="cpu")
 ckpt["config"]["model_attributes"]["initialize"] = False
+
+if "data_normalization" in ckpt["config"]["model_attributes"].keys():
+    # make old checkpoints compatible with current implementation
+    use_scale_shift = ckpt["config"]["model_attributes"]["data_normalization"]
+    print("The checkpoint is old-styled and equipped with data_normalization.")
+    print(f"data_normalization ({use_scale_shift})  is converted into use_scale_shift")
+    ckpt["config"]["model_attributes"]["use_scale_shift"] = use_scale_shift
+    del ckpt["config"]["model_attributes"]["data_normalization"]
 
 new_dict ={}
 for k, v in ckpt["state_dict"].items():
