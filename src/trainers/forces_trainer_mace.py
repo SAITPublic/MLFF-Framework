@@ -48,16 +48,20 @@ class MACEForcesTrainer(ForcesTrainer):
     def _parse_config(self, config):
         trainer_config = super()._parse_config(config)
 
-        if trainer_config["dataset"].get("normalize_labels", True):
-            no_scale = trainer_config["model_attributes"].get("scaling", "rms_forces_scaling") == "no_scaling"
-            no_shift = not trainer_config["model_attributes"].get("shifting", False)
-            if no_scale and no_shift:
-                raise AttributeError("Please make the normalization option consistent. Change normalize_labels = False, or use scale or shift")
-        else:
-            bm_logging.info("Applying the data normalization is default in MACE, but the normalization turns off in this training")
-        
-        # MACE does not need normalizer (they use own normaliation strategy)
-        trainer_config["dataset"]["normalize_labels"] = False
+        # MACE does not need OCP normalizer (it uses own normaliation strategy)
+        ocp_normalize_flag = False
+        data_config_style = trainer_config.get("data_config_style", "OCP")
+        if data_config_style == "OCP":
+            ocp_normalize_flag = trainer_config["dataset"].get("normalize_labels", False)
+            trainer_config["dataset"]["normalize_labels"] = False
+        elif data_config_style == "SAIT":
+            ocp_normalize_flag = trainer_config["normalizer"].get("normalize_labels", False)
+            trainer_config["normalizer"]["normalize_labels"] = False
+        if ocp_normalize_flag:
+            bm_logging.info("In the given configuration file or the configuration saved in the checkpoint, `normalize_labels` is set as `True` ")
+            bm_logging.info("  MACE does not need OCP normalizers, instead it uses own normalization strategy.")
+            bm_logging.info("  Hence `normalize_labels` will be changed as `False` to turn off the OCP normalizer operation.")
+            bm_logging.info("  You can control their own normalization strategy by changing `scaling` and `shifting` in the model configuration.")
         
         # set hidden irreps
         hidden_irreps = trainer_config["model_attributes"].get("hidden_irreps", None)
@@ -105,7 +109,7 @@ class MACEForcesTrainer(ForcesTrainer):
                 int(z.item())
                 for dataset in datasets
                 for data in dataset
-                for z in data.atomic_numbers            
+                for z in data.atomic_numbers
             )
             for dataset in datasets:
                 dataset.close_db()
@@ -125,9 +129,19 @@ class MACEForcesTrainer(ForcesTrainer):
     def _do_data_related_settings(self):
         """ After setting dataset and loader, this function is called."""
         # load the precomputed results (if they exist)
-        mace_statistics_file_path = (
-            Path(self.config['dataset']['src']).parent / "MACE_statistics.pt"
-        )
+        data_config_style = self.config.get("data_config_style", "OCP")
+        if data_config_style == "OCP":
+            # OCP data config style
+            mace_statistics_file_path = (Path(self.config['dataset']['src']).parent / "MACE_statistics.pt")
+        if data_config_style == "SAIT":
+            # SAIT data config style
+            assert isinstance(self.config["dataset"], list)
+            if len(self.config["dataset"]) > 1:
+                bm_logging("The first source of training datasets will be used to obtain atomic_energies, avg_num_neighbors, atomic_inter_scale, and atomic_inter_shift.")
+            if not Path(self.config["dataset"][0]["src"]).exists():
+                raise RuntimeError("The lmdb source file or directory should be specified.")
+            mace_statistics_file_path = (Path(self.config['dataset'][0]['src']).parent / "MACE_statistics.pt")
+
         mace_statistics = {}
         if mace_statistics_file_path.is_file():
             mace_statistics = torch.load(mace_statistics_file_path)

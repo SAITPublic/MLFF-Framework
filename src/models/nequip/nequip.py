@@ -14,12 +14,11 @@ import inspect
 from ocpmodels.common.registry import registry
 from ocpmodels.common.utils import conditional_grad
 from ocpmodels.models.base import BaseModel
-from ocpmodels.datasets import LmdbDataset 
 
 from nequip.utils.config import Config
 from nequip.data import AtomicDataDict, AtomicData
 from nequip.data.transforms import TypeMapper
-from nequip.model import SimpleIrrepsConfig, ForceOutput, PartialForceOutput,StressForceOutput
+from nequip.model import SimpleIrrepsConfig, ForceOutput, PartialForceOutput, StressForceOutput
 
 from src.common.utils import bm_logging
 from src.models.nequip.energy_model import EnergyModel
@@ -31,27 +30,30 @@ from src.models.nequip.utils import (
 )
 
 
-def set_model_config_based_on_data_statistics(model_config, type_mapper, dataset_name, data_normalization=True, initialize=True):
+def set_model_config_based_on_data_statistics(model_config, type_mapper, dataset_name, use_scale_shift=True, initialize=True):
     # add statistics results to config
-    if initialize:
-        assert dataset_name is not None
-        dataset = LmdbDataset(dataset_name)
-    else:
-        dataset = None
+    dataset = None
+    if initialize and dataset_name is not None:
+        dataset_class = registry.get_dataset_class("lmdb_sait")
+        dataset = dataset_class([{"src": dataset_name}])
 
     # 1) avg_num_neighbors (required by EnergyModel)
-    avg_num_neighbors = compute_avg_num_neighbors(
-        config=model_config, 
-        initialize=initialize, 
-        dataset=dataset,
-        transform=type_mapper,
-    )
+    avg_num_neighbors = model_config.get("avg_num_neighbors", None)
+    if initialize and avg_num_neighbors == "auto":
+        assert dataset is not None
+        avg_num_neighbors = compute_avg_num_neighbors(
+            config=model_config, 
+            initialize=initialize, 
+            dataset=dataset,
+            transform=type_mapper,
+        )
+        
     model_config["avg_num_neighbors"] = avg_num_neighbors
     bm_logging.info(f"avg_num_neighbors used in interaction layers is {avg_num_neighbors}")
 
     # 2) per_species_rescale_shifts and per_species_rescale_scales (required by PerSpeciesRescale)
     if "PerSpeciesRescale" in model_config["model_builders"]:
-        if data_normalization:
+        if use_scale_shift:
             shifts, scales, arguments_in_dataset_units = compute_per_species_shift_and_scale(
                 config=model_config, 
                 initialize=initialize, 
@@ -69,7 +71,7 @@ def set_model_config_based_on_data_statistics(model_config, type_mapper, dataset
 
     # 3) global_rescale_shift and global_rescale_scale (required by RescaleEnergyEtc (i.e., GlobalRescale))
     if "RescaleEnergyEtc" in model_config["model_builders"]:
-        if data_normalization:
+        if use_scale_shift:
             global_shift, global_scale = compute_global_shift_and_scale(
                 config=model_config, 
                 initialize=initialize, 
@@ -150,7 +152,7 @@ class NequIPWrap(BaseModel):
         invariant_layers=2,
         invariant_neurons=64,
         use_sc=True,
-        avg_num_neighbors="auto",
+        avg_num_neighbors=None,
         per_species_rescale_shifts_trainable=False,
         per_species_rescale_scales_trainable=False,
         per_species_rescale_shifts="dataset_per_atom_total_energy_mean",
@@ -160,14 +162,14 @@ class NequIPWrap(BaseModel):
         global_rescale_shift=None,
         global_rescale_scale="dataset_forces_rms",
         # normalization on/off
-        data_normalization=True,
+        use_scale_shift=True,
         # initialize: False = load checkpoint, True = data seeing is the first
         initialize=True,
     ):
         self.num_targets = num_targets
         self.use_pbc = use_pbc
         self.regress_forces = regress_forces
-        self.regress_stress=regress_stress
+        self.regress_stress = regress_stress
         self.otf_graph = otf_graph
         self.cutoff = cutoff
 
@@ -225,12 +227,12 @@ class NequIPWrap(BaseModel):
 
         # compute statistics (similar to Normalizers of OCP)
         # or load the pre-computed values
-        self.data_normalization = data_normalization
+        self.use_scale_shift = use_scale_shift
         model_config = set_model_config_based_on_data_statistics(
             model_config=model_config, 
             type_mapper=self.type_mapper, 
             dataset_name=dataset,
-            data_normalization=data_normalization,
+            use_scale_shift=use_scale_shift,
             initialize=initialize,
         )
 
@@ -252,7 +254,7 @@ class NequIPWrap(BaseModel):
             outer_layer = getattr(outer_layer, "model", None)
 
     def do_unscale(self, data, force_process=False):
-        if not self.data_normalization:
+        if not self.use_scale_shift:
             return data
             
         # unscaling (by RescaleEnergyEtc, or GlobalRescale)
@@ -262,7 +264,7 @@ class NequIPWrap(BaseModel):
         return data
 
     def do_scale(self, data, force_process=False):
-        if not self.data_normalization:
+        if not self.use_scale_shift:
             return data
 
         # scaling (by RescaleEnergyEtc, or GlobalRescale)
@@ -282,7 +284,7 @@ class NequIPWrap(BaseModel):
         # return values required in an OCP-based trainer
         if self.regress_stress:
             return out[AtomicDataDict.TOTAL_ENERGY_KEY], out[AtomicDataDict.FORCE_KEY], out[AtomicDataDict.STRESS_KEY]
-        if self.regress_forces:
+        elif self.regress_forces:
             return out[AtomicDataDict.TOTAL_ENERGY_KEY], out[AtomicDataDict.FORCE_KEY]
         else:
             return out[AtomicDataDict.TOTAL_ENERGY_KEY]

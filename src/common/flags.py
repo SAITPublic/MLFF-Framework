@@ -46,6 +46,13 @@ class BenchmarkFlags(Flags):
             action="store_true", 
             help="Show a tqdm progressbar of calculating metrics (mainly used in the 'validate' mode)",
         )
+        # resume (training is continued from the given checkpoint)
+        self.parser.add_argument(
+            "--resume",
+            default=False,
+            action="store_true",
+            help="Resume the training of the given checkpoint"
+        )
 
     def _add_fit_scale_args(self):
         # some models need to generate scale files fitted to training data
@@ -90,7 +97,21 @@ class BenchmarkFlags(Flags):
             "--validate-batch-size",
             default=None,
             type=int,
-            help="batch size (default : eval_batch_size specified in a config file)",
+            help="batch size (default : eval_batch_size or batch_size specified in a config file)",
+        )
+        # batch size for validation
+        self.parser.add_argument(
+            "--separate-evaluation",
+            default=False,
+            action="store_true", 
+            help="Evaluate lmdb files included in the given directory path, individually",
+        )
+        # batch size for validation
+        self.parser.add_argument(
+            "--shuffle",
+            default=False,
+            action="store_true", 
+            help="Shuffle the validation data",
         )
         
     def _add_run_md_args(self):

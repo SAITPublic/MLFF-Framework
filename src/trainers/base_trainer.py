@@ -128,7 +128,7 @@ class BaseTrainer(ABC):
             os.makedirs(self.config["cmd"]["logs_dir"], exist_ok=True)
 
         # determine whether to use stress
-        self.use_stress=config['model']['regress_stress'] if 'regress_stress' in config['model'].keys() else False
+        self.use_stress = config['model'].get('regress_stress', False)
 
         # set various modules used in the trainer        
         self._inititiate()
@@ -156,12 +156,20 @@ class BaseTrainer(ABC):
                 "checkpoint_dir": os.path.join(config["run_dir"], "checkpoints", timestamp_id),
                 "logs_dir": os.path.join(config["run_dir"], "logs", logger_name, timestamp_id),
                 "show_eval_progressbar": config.get("show_eval_progressbar", False),
+                "resume": config.get("resume", False),
             },
             "local_rank": config["local_rank"],
             "slurm": config["slurm"],
             "noddp": config["noddp"],
             "save_ckpt_every_epoch": config["save_ckpt_every_epoch"],
         }
+
+        # set data configuration style
+        if config["task"]["dataset"] == "lmdb":
+            trainer_config["data_config_style"] = "OCP"
+        elif config["task"]["dataset"] == "lmdb_sait":
+            trainer_config["data_config_style"] = "SAIT"
+
         # specify dataset path
         dataset = config["dataset"]
         if isinstance(dataset, list):
@@ -173,8 +181,10 @@ class BaseTrainer(ABC):
                 trainer_config["test_dataset"] = dataset[2]
         elif isinstance(dataset, dict):
             trainer_config["dataset"] = dataset.get("train", None)
-            trainer_config["val_dataset"] = dataset.get("val", None)
+            trainer_config["val_dataset"] = dataset.get("valid", None)
             trainer_config["test_dataset"] = dataset.get("test", None)
+            if trainer_config["data_config_style"] == "SAIT":
+                trainer_config["normalizer"] = dataset.get("normalize", {})
         else:
             trainer_config["dataset"] = dataset
             
@@ -262,7 +272,9 @@ class BaseTrainer(ABC):
         """ After setting dataset and loader, this function is called."""
         if self.config["model_name"] == "bpnn":
             # scale and pca should be used in BPNN
-            dataset_path = self.config["model_attributes"].get("dataset_path", self.config["dataset"]["src"]) # train dataset
+            if self.config.get("data_config_style", "OCP") == "SAIT":
+                assert ("dataset_path" in self.config["model_attributes"] or "src" in self.normalizer)
+            dataset_path = self.config["model_attributes"].get("dataset_path", self.normalizer["src"]) # train dataset
             if os.path.isfile(dataset_path):
                 # single lmdb file
                 pca_path = Path(dataset_path).parent / "BPNN_pca.pt"
@@ -291,7 +303,9 @@ class BaseTrainer(ABC):
         
         # train set
         if self.config.get("dataset", None) and self.flag_loading_dataset:
-            bm_logging.info(f"Loading train dataset (type: {self.config['task']['dataset']}): {self.config['dataset']['src']}")
+            bm_logging.info(f"Loading train dataset (type: {self.config['task']['dataset']})")
+            if self.config.get('data_config_style', 'OCP') == 'OCP':
+                bm_logging.info(f" - {self.config['dataset']['src']}")
             self.train_dataset = dataset_class(self.config["dataset"])
             self.train_sampler = self.get_sampler(
                 dataset=self.train_dataset,
@@ -308,7 +322,9 @@ class BaseTrainer(ABC):
 
         # validation set
         if self.config.get("val_dataset", None) and self.flag_loading_dataset:
-            bm_logging.info(f"Loading validation dataset (type: {self.config['task']['dataset']}): {self.config['val_dataset']['src']}")
+            bm_logging.info(f"Loading validation dataset (type: {self.config['task']['dataset']})")
+            if self.config.get('data_config_style', 'OCP') == 'OCP':
+                bm_logging.info(f" - {self.config['val_dataset']['src']}")
             self.val_dataset = dataset_class(self.config["val_dataset"])
             self.val_sampler = self.get_sampler(
                 dataset=self.val_dataset,
@@ -324,7 +340,9 @@ class BaseTrainer(ABC):
 
         # test set
         if self.config.get("test_dataset", None) and self.flag_loading_dataset:
-            bm_logging.info(f"Loading test dataset (type: {self.config['task']['dataset']}): {self.config['test_dataset']['src']}")
+            bm_logging.info(f"Loading test dataset (type: {self.config['task']['dataset']})")
+            if self.config.get('data_config_style', 'OCP') == 'OCP':
+                bm_logging.info(f" - {self.config['test_dataset']['src']}")
             self.test_dataset = dataset_class(self.config["test_dataset"])
             self.test_sampler = self.get_sampler(
                 dataset=self.test_dataset,
@@ -373,18 +391,19 @@ class BaseTrainer(ABC):
         )
         if distutils.initialized() and not self.config["noddp"]:
             # wrapping pytorch DDP
-            if(self.config["model_name"]=='bpnn' or self.config["model_name"]=='allegro'):
+            if (self.config["model_name"]=='bpnn' 
+                or self.config["model_name"]=='allegro'
+            ):
                 self.model = DistributedDataParallel(
-                module=self.model, 
-                device_ids=[self.device],
-                find_unused_parameters=True
+                    module=self.model, 
+                    device_ids=[self.device],
+                    find_unused_parameters=True # it makes computation somewhat slow
                 )
-            
             else:
                 self.model = DistributedDataParallel(
-                module=self.model, 
-                device_ids=[self.device],
-            )
+                    module=self.model, 
+                    device_ids=[self.device],
+                )
 
     def _set_loss(self):
         # initiate loss which is wrapped with DDPLoss in default
@@ -477,18 +496,34 @@ class BaseTrainer(ABC):
                 errno.ENOENT, "Checkpoint file not found", checkpoint_path
             )
 
-        bm_logging.info(f"Loading checkpoint from: {checkpoint_path}")
+        log_temp_str = ""
+        if self.mode == "train":
+            if self.config["cmd"]["resume"]:
+                log_temp_str = "resuming the training"
+            else:
+                log_temp_str = "finetuning"
+        if self.mode == "validate":
+            log_temp_str = "validation"
+        bm_logging.info(f"Loading checkpoint from {checkpoint_path} (used for `{log_temp_str}`)")
+        
         map_location = torch.device("cpu") if self.cpu else self.device
         checkpoint = torch.load(checkpoint_path, map_location=map_location)
 
-        # load the training config
-        self.config = checkpoint.get("config", None)
-        assert self.config is not None
+        # load the training config saved in the checkpoint if resuming the training
+        if self.config["cmd"]["resume"]:
+            self.config = checkpoint.get("config", None)
+            assert self.config is not None
 
-        self.epoch = checkpoint.get("epoch", 0)
-        self.step = checkpoint.get("step", 0)
-        self.best_val_metric = checkpoint.get("best_val_metric", None)
-        self.primary_metric = checkpoint.get("primary_metric", None)
+            self.epoch = checkpoint.get("epoch", 0)
+            self.step = checkpoint.get("step", 0)
+            self.best_val_metric = checkpoint.get("best_val_metric", None)
+            self.primary_metric = checkpoint.get("primary_metric", None)
+
+            if "optimizer" in checkpoint and self.mode == "train":
+                self.optimizer.load_state_dict(checkpoint["optimizer"])
+
+            if "scheduler" in checkpoint and checkpoint["scheduler"] is not None and self.mode == "train":
+                self.scheduler.scheduler.load_state_dict(checkpoint["scheduler"])
 
         # Match the "module." count in the keys of model and checkpoint state_dict
         # DataParallel model has 1 "module.",  DistributedDataParallel has 2 "module."
@@ -511,12 +546,6 @@ class BaseTrainer(ABC):
 
         strict = self.config["task"].get("strict_load", True)
         load_state_dict(self.model, new_dict, strict=strict)
-
-        if "optimizer" in checkpoint and self.mode == "train":
-            self.optimizer.load_state_dict(checkpoint["optimizer"])
-
-        if "scheduler" in checkpoint and checkpoint["scheduler"] is not None and self.mode == "train":
-            self.scheduler.scheduler.load_state_dict(checkpoint["scheduler"])
             
         if "ema" in checkpoint and checkpoint["ema"] is not None:
             self.ema.load_state_dict(checkpoint["ema"])
@@ -542,6 +571,9 @@ class BaseTrainer(ABC):
 
         if self.scaler and checkpoint["amp"]:
             self.scaler.load_state_dict(checkpoint["amp"])
+
+        if self.config["model_name"] == "bpnn":
+            self._unwrapped_model.pca = checkpoint["pca"]
 
     def make_checkpoint_dict(self, metrics, training_state):
         if self.config["model_name"] == "bpnn":

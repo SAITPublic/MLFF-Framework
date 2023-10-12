@@ -1,18 +1,23 @@
 dataset:
-  # graph generated with cutoff radius 6 and max neighbors 50
-  - src: datasets/HfO/atom_graph_rmax6.0_maxneighbor50/train.lmdb
+  normalize:
     normalize_labels: True
     per_atom: True
     normalize_labels_json: datasets/HfO/atom_graph_rmax6.0_maxneighbor50/normalize_stats.json
-  - src: datasets/HfO/atom_graph_rmax6.0_maxneighbor50/valid.lmdb
-  - src: datasets/HfO/atom_graph_rmax6.0_maxneighbor50/test.lmdb
 
+  train:
+    - src: datasets/HfO/atom_graph_rmax6.0_maxneighbor50/train.lmdb
+
+  valid:
+    - src: datasets/HfO/atom_graph_rmax6.0_maxneighbor50/valid.lmdb
+  
+  test:
+    - src: datasets/HfO/atom_graph_rmax6.0_maxneighbor50/test.lmdb
 
 logger: files
 
 task:
-  dataset: lmdb
-  description: "Regressing to energies and forces for DFT trajectories of HfO"
+  dataset: lmdb_sait
+  description: "Regressing to energies, forces, and stress for DFT trajectories of HfO"
   metrics: 
     - energy_per_atom_mae
     - energy_per_atom_mse
@@ -24,10 +29,7 @@ task:
   train_on_free_atoms: False
   eval_on_free_atoms: False
 
-
-
 trainer: forces_nequip
-use_stress: True
 
 model:
   name: allegro
@@ -59,28 +61,33 @@ model:
   #edge_eng_mlp_nonlinearity: None # if None, comment out
   edge_eng_mlp_initialization: uniform
 
+  # using data statistics
+  # 'auto' requires to set 'initialize' as True, meaning that data statistics will be calculated if the statistics file does not exist
+  # if None, comment out
+  avg_num_neighbors: auto  
+  use_scale_shift: True
+
   # force
   regress_forces: True
-  #stress
-  regress_stress: true
+
+  # stress
+  regress_stress: True
+
   # graph
   cutoff: 6.0 
-  max_neighbors: 20000
   otf_graph: False 
   use_pbc: True
 
   # data-related arg
-  chemical_symbols:
-    - Hf
-    - O
-
-
+  chemical_symbol_to_type:
+    O: 0
+    Hf: 1
 
 optim:
-  batch_size: 2
-  eval_batch_size: 2
+  batch_size: 8
+  eval_batch_size: 16
   num_workers: 2
-  max_epochs: 50
+  max_epochs: 100
 
   optimizer: Adam
   optimizer_params: {"amsgrad": False}

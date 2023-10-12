@@ -108,7 +108,7 @@ def setup_benchmark_imports(config=None):
         # SAIT-MLFF-Framework
         # : re-define classes of trainers and tasks
         importlib.import_module("src.common.logger")
-        for key in ["trainers", "models", "tasks", "md_evaluate"]:
+        for key in ["trainers", "datasets", "models", "tasks", "md_evaluate"]:
             for path in (benchmark_root / "src" / key).rglob("*.py"):
                 module_name = ".".join(
                     path.absolute()
@@ -152,7 +152,12 @@ def new_trainer_context(*, config: Dict[str, Any], args: Namespace):
             # make timestamp_id not empty
             config["timestamp_id"] = _set_timestamp_id(config)
         else:
-            config["timestamp_id"] = Path(config["checkpoint"]).parent.name
+            if args.resume:
+                # resume the training of the checkpoint
+                config["timestamp_id"] = Path(config["checkpoint"]).parent.name
+            else:
+                # finetune the model from the given checkpoint
+                config["timestamp_id"] = _set_timestamp_id(config)
 
     # check whether arguments which are required to initiate a Trainer class exist in a configuration
     config = check_config(config)
@@ -171,7 +176,7 @@ def new_trainer_context(*, config: Dict[str, Any], args: Namespace):
         assert trainer_class is not None, "Trainer class is not found"
         trainer = trainer_class(config = config)
 
-        if config["mode"] == "train":
+        if config["mode"] == "train" and (not config["resume"]):
             # save a training configuration yaml file into checkpoint_dir
             with open(os.path.join(trainer.config["cmd"]["checkpoint_dir"], "config_train.yml"), 'w') as f:
                 input_config, _, _ = load_config(args.config_yml)

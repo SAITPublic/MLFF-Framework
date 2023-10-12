@@ -1,5 +1,31 @@
-includes:
-- configs/train/HfO/base_rmax6_maxneighbor50.yml
+dataset:
+  normalize:
+    normalize_labels: True
+    per_atom: True
+    normalize_labels_json: datasets/HfO/atom_graph_rmax6.0_maxneighbor50/normalize_stats.json
+
+  train:
+    - src: datasets/HfO/atom_graph_rmax6.0_maxneighbor50/train.lmdb
+
+  valid:
+    - src: datasets/HfO/atom_graph_rmax6.0_maxneighbor50/valid.lmdb
+  
+  test:
+    - src: datasets/HfO/atom_graph_rmax6.0_maxneighbor50/test.lmdb
+
+logger: files
+
+task:
+  dataset: lmdb_sait
+  description: "Regressing to energies and forces for DFT trajectories of HfO"
+  metrics: 
+    - energy_per_atom_mae
+    - energy_per_atom_mse
+    - forces_mae
+    - forces_mse
+  primary_metric: forces_mse
+  train_on_free_atoms: False
+  eval_on_free_atoms: False
 
 trainer: forces_nequip
 
@@ -14,7 +40,6 @@ model:
   num_layers: 3
   l_max: 2
   parity: o3_full
-  avg_num_neighbors: auto
   BesselBasis_trainable: True
   PolynomialCutoff_p: 6
   env_embed_multiplicity: 32
@@ -32,6 +57,12 @@ model:
   edge_eng_mlp_latent_dimensions: [128]
   #edge_eng_mlp_nonlinearity: None # if None, comment out
   edge_eng_mlp_initialization: uniform
+
+  # using data statistics
+  # 'auto' requires to set 'initialize' as True, meaning that data statistics will be calculated if the statistics file does not exist
+  # if None, comment out
+  avg_num_neighbors: auto  
+  use_scale_shift: True
 
   # force
   regress_forces: True
