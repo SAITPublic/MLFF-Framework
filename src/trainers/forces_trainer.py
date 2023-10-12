@@ -298,7 +298,7 @@ class ForcesTrainer(BaseTrainer):
         _out = self.model(batch_list)
         # energy
         out = {"energy": _out[0].view(-1) if _out[0].shape[-1] == 1 else _out[0]}
-        if len(_out) == 2:
+        if len(_out) >= 2:
             out["forces"] = _out[1]
         if len(_out) == 3:
             out["stress"] = _out[2]
