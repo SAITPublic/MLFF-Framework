@@ -16,7 +16,7 @@ After following the instructions below, users can install the framework and perf
 
 ```
 git clone https://github.com/SAITPublic/MLFF-Framework.git
-cd SAIT-MLFF-Framework
+cd MLFF-Framework
 ```
 
 From now on, the base working directory is the inside of `SAIT-MLFF-Framework/`.
